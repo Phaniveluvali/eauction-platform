@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-payment-broker
+  namespace: eauction
+  labels:
+    app: eauction-payment-broker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: eauction-payment-broker
+  template:
+    metadata:
+      labels:
+        app: eauction-payment-broker
+    spec:
+      containers:
+        - name: payment-broker
+          image: eauction-payment-broker:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+              name: http
+          env:
+            - name: PORT
+              value: "8082"
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: KAFKA_BROKERS
+            - name: KAFKA_PAYMENT_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: KAFKA_PAYMENT_TOPIC
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: JWT_SECRET
+            - name: RAZORPAY_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: RAZORPAY_WEBHOOK_SECRET
+            - name: CASHFREE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: CASHFREE_WEBHOOK_SECRET
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 384Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-payment-broker
+  namespace: eauction
+  labels:
+    app: eauction-payment-broker
+spec:
+  ports:
+    - port: 8082
+      targetPort: 8082
+      name: http
+  selector:
+    app: eauction-payment-broker

@@ -1,0 +1,102 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: eauction-ingress
+  namespace: eauction
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "eauction-bidding-engine"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tecnics-internal.online
+      http:
+        paths:
+          - path: /seller-buyer
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: 80
+          - path: /api/v1/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-payment-broker
+                port:
+                  number: 8082
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-catalog-identity
+                port:
+                  number: 8080
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-keycloak
+                port:
+                  number: 8080
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-bidding-engine
+                port:
+                  number: 8081
+    - host: eauction.tecnics-internal.online
+      http:
+        paths:
+          - path: /seller-buyer
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: 80
+          - path: /api/v1/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-payment-broker
+                port:
+                  number: 8082
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-catalog-identity
+                port:
+                  number: 8080
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-keycloak
+                port:
+                  number: 8080
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-bidding-engine
+                port:
+                  number: 8081
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - tecnics-internal.online
+        - eauction.tecnics-internal.online
+      secretName: ca-vmx-tls-cert

@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-catalog-identity
+  namespace: eauction
+  labels:
+    app: eauction-catalog-identity
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: eauction-catalog-identity
+  template:
+    metadata:
+      labels:
+        app: eauction-catalog-identity
+    spec:
+      containers:
+        - name: catalog-identity
+          image: eauction-catalog-identity:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: POSTGRES_PASSWORD
+            - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+            - name: SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE
+            - name: SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT
+            - name: SERVER_TOMCAT_THREADS_MAX
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SERVER_TOMCAT_THREADS_MAX
+            - name: SERVER_TOMCAT_THREADS_MIN_SPARE
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SERVER_TOMCAT_THREADS_MIN_SPARE
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_KAFKA_BOOTSTRAP_SERVERS
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: JWT_SECRET
+            - name: NOTIFICATION_WHATSAPP_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: NOTIFICATION_WHATSAPP_URL
+            - name: NOTIFICATION_WHATSAPP_INSTANCE
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: NOTIFICATION_WHATSAPP_INSTANCE
+            - name: NOTIFICATION_WHATSAPP_APIKEY
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: NOTIFICATION_WHATSAPP_APIKEY
+            - name: SPRING_MAIL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_MAIL_HOST
+            - name: SPRING_MAIL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_MAIL_PORT
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1536Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 25
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 15
+            timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-catalog-identity
+  namespace: eauction
+  labels:
+    app: eauction-catalog-identity
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  selector:
+    app: eauction-catalog-identity
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: eauction-catalog-identity-hpa
+  namespace: eauction
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: eauction-catalog-identity
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80

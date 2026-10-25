@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eauction
+  labels:
+    app.kubernetes.io/name: alwataneya-eauction
+    app.kubernetes.io/part-of: eauction-platform

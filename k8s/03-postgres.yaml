@@ -1,0 +1,236 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-ha-scripts
+  namespace: eauction
+data:
+  entrypoint-ha.sh: |
+    #!/bin/sh
+    set -e
+
+    POD_INDEX=${HOSTNAME##*-}
+    echo "=========================================================="
+    echo "[Postgres-HA] Starting node: $HOSTNAME (Index: $POD_INDEX)"
+    echo "=========================================================="
+
+    export PGDATA="/var/lib/postgresql/data/pgdata"
+    mkdir -p "$PGDATA"
+    chmod 700 "$PGDATA"
+
+    if [ "$POD_INDEX" = "0" ]; then
+        echo "[Postgres-HA] Initializing PRIMARY node..."
+        # If this is the first run, configure replication permissions
+        mkdir -p /docker-entrypoint-initdb.d
+        cat << 'EOF' > /docker-entrypoint-initdb.d/01-init-replication.sh
+    #!/bin/sh
+    set -e
+    echo "[Postgres-HA] Provisioning replication role and HBA rules..."
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+        DO \$\$
+        BEGIN
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'replicator') THEN
+                CREATE ROLE replicator WITH REPLICATION LOGIN ENCRYPTED PASSWORD 'replicatorpassword';
+            END IF;
+        END
+        \$\$;
+    EOSQL
+    echo "host replication replicator 0.0.0.0/0 md5" >> "$PGDATA/pg_hba.conf"
+    echo "host all all 0.0.0.0/0 md5" >> "$PGDATA/pg_hba.conf"
+    EOF
+        chmod +x /docker-entrypoint-initdb.d/01-init-replication.sh
+
+        # Ensure replicator role and pg_hba.conf are always active in background
+        (
+            until pg_isready -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER"; do
+                sleep 2
+            done
+            psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+                DO \$\$
+                BEGIN
+                    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'replicator') THEN
+                        CREATE ROLE replicator WITH REPLICATION LOGIN ENCRYPTED PASSWORD 'replicatorpassword';
+                    END IF;
+                END
+                \$\$;" || true
+            if [ -f "$PGDATA/pg_hba.conf" ] && ! grep -q "replicator" "$PGDATA/pg_hba.conf"; then
+                echo "host replication replicator 0.0.0.0/0 md5" >> "$PGDATA/pg_hba.conf"
+                pg_ctl reload -D "$PGDATA" || true
+            fi
+        ) &
+
+        exec docker-entrypoint.sh postgres \
+            -c listen_addresses='*' \
+            -c max_connections=300 \
+            -c shared_buffers=256MB \
+            -c work_mem=16MB \
+            -c wal_level=replica \
+            -c max_wal_senders=10 \
+            -c max_replication_slots=10 \
+            -c hot_standby=on
+    else
+        echo "[Postgres-HA] Initializing STANDBY REPLICA node..."
+        PRIMARY_HOST="eauction-postgres-0.eauction-postgres-headless.eauction.svc.cluster.local"
+
+        if [ ! -f "$PGDATA/PG_VERSION" ]; then
+            echo "[Postgres-HA] Standby data directory is empty. Waiting for Primary ($PRIMARY_HOST)..."
+            until pg_isready -h "$PRIMARY_HOST" -p 5432 -U "$POSTGRES_USER"; do
+                echo "[Postgres-HA] Primary is not ready yet. Retrying in 2 seconds..."
+                sleep 2
+            done
+
+            echo "[Postgres-HA] Primary is ready! Cloning Primary via pg_basebackup streaming..."
+            rm -rf "${PGDATA:?}"/*
+            PGPASSWORD="replicatorpassword" pg_basebackup \
+                -h "$PRIMARY_HOST" \
+                -p 5432 \
+                -D "$PGDATA" \
+                -U replicator \
+                -Fp -Xs -P -R
+
+            chown -R postgres:postgres "$PGDATA"
+            chmod 700 "$PGDATA"
+            echo "[Postgres-HA] pg_basebackup successfully cloned database state!"
+        fi
+
+        echo "[Postgres-HA] Ensuring correct file permissions on PGDATA..."
+        chown -R postgres:postgres "$PGDATA"
+        chmod 700 "$PGDATA"
+
+        echo "[Postgres-HA] Launching PostgreSQL in Hot Standby Read-Only mode as postgres user..."
+        exec docker-entrypoint.sh postgres \
+            -c listen_addresses='*' \
+            -c max_connections=300 \
+            -c shared_buffers=256MB \
+            -c work_mem=16MB \
+            -c hot_standby=on
+    fi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: eauction-postgres
+  namespace: eauction
+  labels:
+    app: eauction-postgres
+spec:
+  serviceName: eauction-postgres-headless
+  replicas: 2
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app: eauction-postgres
+  template:
+    metadata:
+      labels:
+        app: eauction-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "/scripts/entrypoint-ha.sh"]
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1500m
+              memory: 2048Mi
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: scripts
+              mountPath: /scripts
+          readinessProbe:
+            exec:
+              command: ["psql", "-U", "postgres", "-d", "eauction_db", "-c", "SELECT 1"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["psql", "-U", "postgres", "-d", "eauction_db", "-c", "SELECT 1"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: scripts
+          configMap:
+            name: postgres-ha-scripts
+            defaultMode: 0755
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path-retain
+        resources:
+          requests:
+            storage: 10Gi
+---
+# Primary RW Service: Guarantees all writes, transactions, and locks hit postgres-0
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-postgres
+  namespace: eauction
+  labels:
+    app: eauction-postgres
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    statefulset.kubernetes.io/pod-name: eauction-postgres-0
+---
+# Read-Only Replica Service: Offloads catalog searches, vehicle views, and login checks
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-postgres-replica
+  namespace: eauction
+  labels:
+    app: eauction-postgres
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: eauction-postgres
+---
+# Headless Service for Stable Inter-Node DNS & Streaming Replication
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-postgres-headless
+  namespace: eauction
+  labels:
+    app: eauction-postgres
+spec:
+  clusterIP: None
+  ports:
+    - port: 5432
+      name: postgres
+  selector:
+    app: eauction-postgres

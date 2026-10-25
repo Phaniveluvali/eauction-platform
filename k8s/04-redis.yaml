@@ -1,0 +1,249 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-ha-scripts
+  namespace: eauction
+data:
+  entrypoint-redis.sh: |
+    #!/bin/sh
+    set -e
+
+    POD_INDEX=${HOSTNAME##*-}
+    echo "=========================================================="
+    echo "[Redis-HA] Starting node: $HOSTNAME (Index: $POD_INDEX)"
+    echo "=========================================================="
+
+    if [ "$POD_INDEX" = "0" ]; then
+        echo "[Redis-HA] Initializing PRIMARY (MASTER) node..."
+        exec redis-server \
+            --appendonly yes \
+            --protected-mode no \
+            --maxmemory 768mb \
+            --maxmemory-policy noeviction
+    else
+        echo "[Redis-HA] Initializing STANDBY REPLICA node..."
+        MASTER_HOST="eauction-redis-0.eauction-redis-headless.eauction.svc.cluster.local"
+
+        echo "[Redis-HA] Waiting for Master ($MASTER_HOST) to be ready..."
+        until redis-cli -h "$MASTER_HOST" -p 6379 ping | grep -q "PONG"; do
+            echo "[Redis-HA] Master not ready yet. Retrying in 2 seconds..."
+            sleep 2
+        done
+
+        echo "[Redis-HA] Master is ready! Connecting as Replica..."
+        exec redis-server \
+            --appendonly yes \
+            --protected-mode no \
+            --replicaof "$MASTER_HOST" 6379 \
+            --maxmemory 768mb \
+            --maxmemory-policy noeviction
+    fi
+
+  entrypoint-sentinel.sh: |
+    #!/bin/sh
+    set -e
+
+    echo "[Redis-Sentinel] Waiting for Master DNS resolution..."
+    until getent hosts eauction-redis-0.eauction-redis-headless.eauction.svc.cluster.local > /dev/null 2>&1; do
+        echo "[Redis-Sentinel] Waiting for eauction-redis-0 DNS..."
+        sleep 2
+    done
+
+    MASTER_IP=$(getent hosts eauction-redis-0.eauction-redis-headless.eauction.svc.cluster.local | awk '{ print $1 }' | head -n 1)
+    echo "[Redis-Sentinel] Resolved Master IP: $MASTER_IP"
+
+    cat << EOF > /tmp/sentinel.conf
+    port 26379
+    dir /tmp
+    sentinel resolve-hostnames yes
+    sentinel announce-hostnames yes
+    sentinel monitor mymaster $MASTER_IP 6379 2
+    sentinel down-after-milliseconds mymaster 3000
+    sentinel failover-timeout mymaster 60000
+    sentinel parallel-syncs mymaster 1
+    protected-mode no
+    EOF
+
+    echo "[Redis-Sentinel] Launching Sentinel process on port 26379..."
+    exec redis-sentinel /tmp/sentinel.conf
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: eauction-redis
+  namespace: eauction
+  labels:
+    app: eauction-redis
+spec:
+  serviceName: eauction-redis-headless
+  replicas: 2
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app: eauction-redis
+  template:
+    metadata:
+      labels:
+        app: eauction-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "/scripts/entrypoint-redis.sh"]
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+            - name: scripts
+              mountPath: /scripts
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: scripts
+          configMap:
+            name: redis-ha-scripts
+            defaultMode: 0755
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path-retain
+        resources:
+          requests:
+            storage: 5Gi
+---
+# Primary Master Service: Directs all atomic Lua bid scripts to Master
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-redis
+  namespace: eauction
+  labels:
+    app: eauction-redis
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+  selector:
+    statefulset.kubernetes.io/pod-name: eauction-redis-0
+---
+# Read-Only Replica Service: Offloads state inspection & cache lookups
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-redis-replica
+  namespace: eauction
+  labels:
+    app: eauction-redis
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+  selector:
+    app: eauction-redis
+---
+# Headless Service for Inter-Node Redis Replication
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-redis-headless
+  namespace: eauction
+  labels:
+    app: eauction-redis
+spec:
+  clusterIP: None
+  ports:
+    - port: 6379
+      name: redis
+  selector:
+    app: eauction-redis
+---
+# Redis Sentinel StatefulSet: 3 Replicas for Quorum-based Automated Failover
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: eauction-redis-sentinel
+  namespace: eauction
+  labels:
+    app: eauction-redis-sentinel
+spec:
+  serviceName: eauction-redis-sentinel
+  replicas: 3
+  selector:
+    matchLabels:
+      app: eauction-redis-sentinel
+  template:
+    metadata:
+      labels:
+        app: eauction-redis-sentinel
+    spec:
+      containers:
+        - name: sentinel
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "/scripts/entrypoint-sentinel.sh"]
+          ports:
+            - containerPort: 26379
+              name: sentinel
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "-p", "26379", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "-p", "26379", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: scripts
+          configMap:
+            name: redis-ha-scripts
+            defaultMode: 0755
+---
+# Redis Sentinel ClusterIP Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-redis-sentinel
+  namespace: eauction
+  labels:
+    app: eauction-redis-sentinel
+spec:
+  ports:
+    - port: 26379
+      targetPort: 26379
+      name: sentinel
+  selector:
+    app: eauction-redis-sentinel

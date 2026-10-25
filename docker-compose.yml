@@ -1,0 +1,177 @@
+services:
+  # ---------------------------------------------------------------------------
+  # 1. PostgreSQL 16: Automated Schema & Initial Seed Data Migration
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: eauction-postgres
+    environment:
+      POSTGRES_DB: eauction_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d eauction_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # 2. Redis 7: Ultra Low-Latency State & Lua Engine
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: eauction-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Automated Redis Cache Primer: Populates active auction state for Go Engine
+  redis-init:
+    image: redis:7-alpine
+    container_name: eauction-redis-init
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Priming Redis auction states...' &&
+        redis-cli -h redis hset auction:e87e1a92-3a56-4279-bf7c-88e89f89ef32:state status ACTIVE start_price 2500000.00 reserve_price 3000000.00 min_increment 25000.00 current_highest_bid 2500000.00 highest_bidder_id c3333333-3333-3333-3333-333333333333 last_bid_timestamp 1728864000000 &&
+        redis-cli -h redis hset auction:f98f2b83-4b67-5380-ca8d-99f90f90fa43:state status ACTIVE start_price 1800000.00 reserve_price 2100000.00 min_increment 10000.00 current_highest_bid 1800000.00 highest_bidder_id c3333333-3333-3333-3333-333333333333 last_bid_timestamp 1728864000000 &&
+        echo 'Redis auction cache primed successfully!'
+      "
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # 3. Apache Kafka & Zookeeper Event Pipeline
+  # ---------------------------------------------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: eauction-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: eauction-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # 4. Catalog & Identity Service (Java 17 + Spring Boot 3.3+)
+  # ---------------------------------------------------------------------------
+  catalog-identity-service:
+    build:
+      context: ./catalog-identity-service
+      dockerfile: Dockerfile
+    container_name: eauction-catalog-identity
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eauction_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      JWT_SECRET: eauction_secret_jwt_signing_key_32bytes_minimum_length_production_ready_value!
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+    ports:
+      - "8080:8080"
+
+  # ---------------------------------------------------------------------------
+  # 5. Bidding Engine (Go 1.22 + Gorilla WebSockets)
+  # ---------------------------------------------------------------------------
+  bidding-engine:
+    build:
+      context: ./bidding-engine
+      dockerfile: Dockerfile
+    container_name: eauction-bidding-engine
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis-init:
+        condition: service_completed_successfully
+    environment:
+      SERVER_PORT: 8081
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_BID_TOPIC: vehicle-bids-topic
+      JWT_SECRET: eauction_secret_jwt_signing_key_32bytes_minimum_length_production_ready_value!
+    ports:
+      - "8081:8081"
+
+  # ---------------------------------------------------------------------------
+  # 6. Payment Broker (Node.js 20 + TypeScript + Express)
+  # ---------------------------------------------------------------------------
+  payment-broker:
+    build:
+      context: ./payment-broker
+      dockerfile: Dockerfile
+    container_name: eauction-payment-broker
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      PORT: 8082
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_PAYMENT_TOPIC: vehicle-payments-topic
+      JWT_SECRET: eauction_secret_jwt_signing_key_32bytes_minimum_length_production_ready_value!
+      RAZORPAY_WEBHOOK_SECRET: rzp_test_secret_key_indian_auctions
+      CASHFREE_WEBHOOK_SECRET: cf_test_secret_key_indian_auctions
+    ports:
+      - "8082:8082"
+
+  # ---------------------------------------------------------------------------
+  # 7. Frontend Client Portal (React 18 + Vite + Tailwind + Nginx)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: eauction-frontend
+    depends_on:
+      - catalog-identity-service
+      - bidding-engine
+      - payment-broker
+    ports:
+      - "3000:80"
+    environment:
+      VITE_CATALOG_API_URL: http://localhost:8080
+      VITE_BIDDING_WS_URL: ws://localhost:8081
+      VITE_PAYMENT_API_URL: http://localhost:8082

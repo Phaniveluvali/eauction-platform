@@ -1,0 +1,117 @@
+{
+  "timestamp": 1792871090,
+  "test_name": "Al Wataneya 20,000-User 12,000-Bid 5-Minute HA Concurrency Benchmark",
+  "target_users": 20000,
+  "target_bids": 12000,
+  "active_auctions": 102,
+  "keycloak_benchmark": {
+    "count": 4,
+    "mean": 4686.78,
+    "p50": 4929.92,
+    "p90": 4949.96,
+    "p95": 4949.96,
+    "p99": 4949.96,
+    "min": 3940.39,
+    "max": 4949.96
+  },
+  "stress_results": {
+    "bids_submitted": 11369,
+    "total_duration_sec": 302.03,
+    "throughput_rps": 37.6,
+    "accepted_bids": 3201,
+    "rejected_bids": 7838,
+    "connection_errors": 330,
+    "overall_stats": {
+      "count": 11039,
+      "mean": 1.18,
+      "p50": 1.1,
+      "p90": 2.04,
+      "p95": 2.4,
+      "p99": 3.64,
+      "min": 0.2,
+      "max": 46.86
+    },
+    "minute_breakdowns": [
+      {
+        "minute": 1,
+        "bids": 1989,
+        "duration_sec": 60.03,
+        "throughput_rps": 33.1,
+        "stats": {
+          "count": 1989,
+          "mean": 1.58,
+          "p50": 1.4,
+          "p90": 2.43,
+          "p95": 2.98,
+          "p99": 6.65,
+          "min": 0.24,
+          "max": 46.86
+        }
+      },
+      {
+        "minute": 2,
+        "bids": 2288,
+        "duration_sec": 59.99,
+        "throughput_rps": 38.1,
+        "stats": {
+          "count": 2288,
+          "mean": 1.17,
+          "p50": 1.11,
+          "p90": 1.99,
+          "p95": 2.28,
+          "p99": 3.51,
+          "min": 0.27,
+          "max": 26.59
+        }
+      },
+      {
+        "minute": 3,
+        "bids": 2803,
+        "duration_sec": 60.0,
+        "throughput_rps": 46.7,
+        "stats": {
+          "count": 2800,
+          "mean": 1.09,
+          "p50": 0.97,
+          "p90": 1.93,
+          "p95": 2.27,
+          "p99": 3.13,
+          "min": 0.23,
+          "max": 16.65
+        }
+      },
+      {
+        "minute": 4,
+        "bids": 2555,
+        "duration_sec": 59.99,
+        "throughput_rps": 42.6,
+        "stats": {
+          "count": 2427,
+          "mean": 1.06,
+          "p50": 0.91,
+          "p90": 1.96,
+          "p95": 2.23,
+          "p99": 3.21,
+          "min": 0.2,
+          "max": 8.37
+        }
+      },
+      {
+        "minute": 5,
+        "bids": 1734,
+        "duration_sec": 62.02,
+        "throughput_rps": 28.0,
+        "stats": {
+          "count": 1535,
+          "mean": 0.99,
+          "p50": 0.75,
+          "p90": 1.83,
+          "p95": 2.12,
+          "p99": 3.01,
+          "min": 0.27,
+          "max": 10.97
+        }
+      }
+    ]
+  }
+}
