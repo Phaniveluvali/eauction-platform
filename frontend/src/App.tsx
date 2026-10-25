@@ -17,7 +17,7 @@ import { BidModal } from './components/BidModal';
 import { VehicleDetailsPage } from './components/VehicleDetailsPage';
 import { SecurityDepositModal } from './components/SecurityDepositModal';
 import { FavoritesPage } from './components/FavoritesPage';
-import { initiateKeycloakLogin, handleKeycloakCallback } from './utils/oidc';
+import { initiateKeycloakLogin, handleKeycloakCallback, logoutKeycloak } from './utils/oidc';
 import { api } from './services/api';
 import { User, Vehicle, Auction } from './types';
 import { Clock } from 'lucide-react';
@@ -396,6 +396,8 @@ export const App: React.FC = () => {
         const { deviceType } = detectDeviceInfo();
         api.logoutSession(currentUser.id, deviceType).catch(() => {});
         localStorage.removeItem('token');
+        localStorage.removeItem('kc_access_token');
+        localStorage.removeItem('kc_id_token');
         setCurrentUser(null);
         setIsIdleTimedOut(true);
         navigateToView('HOME');
@@ -567,11 +569,9 @@ export const App: React.FC = () => {
 
   const handleLogout = () => {
     if (currentUser?.id) {
-      api.logoutSession(currentUser.id);
+      api.logoutSession(currentUser.id).catch(() => {});
     }
-    localStorage.removeItem('token');
-    setCurrentUser(null);
-    navigateToView('HOME');
+    logoutKeycloak(`${window.location.origin}/seller-buyer/`);
   };
 
   const handleLiveNowClick = () => {
@@ -843,7 +843,7 @@ export const App: React.FC = () => {
               <button
                 onClick={() => {
                   setIsIdleTimedOut(false);
-                  initiateKeycloakLogin({ action: 'login' });
+                  initiateKeycloakLogin({ action: 'login', prompt: 'login' });
                 }}
                 className="w-full py-3 px-4 bg-[#D32437] hover:bg-[#b51a2b] text-white font-bold rounded-xl transition cursor-pointer shadow-md"
               >

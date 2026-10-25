@@ -38,6 +38,7 @@ export async function initiateKeycloakLogin(options?: {
   action?: 'login' | 'register';
   returnView?: string;
   returnUrl?: string;
+  prompt?: 'login' | 'none' | 'consent';
 }): Promise<void> {
   const state = generateRandomHex(24);
   const codeVerifier = generateRandomHex(32);
@@ -72,8 +73,12 @@ export async function initiateKeycloakLogin(options?: {
   params.set('code_challenge', codeChallenge);
   params.set('code_challenge_method', 'S256');
 
+  // CRITICAL: Always enforce prompt=login for authentication so that Keycloak NEVER
+  // silently bypasses credential entry and ALWAYS challenges the user for username & password!
   if (options?.action === 'register') {
     params.set('kc_action', 'register');
+  } else {
+    params.set('prompt', options?.prompt || 'login');
   }
 
   const authUrl = `${KEYCLOAK_CONFIG.authUrl}?${params.toString()}`;
@@ -132,10 +137,13 @@ export async function handleKeycloakCallback(code: string, state: string): Promi
     idToken: tokenData.id_token,
   });
 
-  // Store active platform session token and Keycloak access token
+  // Store active platform session token and Keycloak tokens
   localStorage.setItem('token', authResponse.token);
   if (tokenData.access_token) {
     localStorage.setItem('kc_access_token', tokenData.access_token);
+  }
+  if (tokenData.id_token) {
+    localStorage.setItem('kc_id_token', tokenData.id_token);
   }
 
   // Retrieve stored return views/urls
@@ -158,4 +166,27 @@ export async function handleKeycloakCallback(code: string, state: string): Promi
   } catch (ignored) {}
 
   return { authResponse, returnView, returnUrl };
+}
+
+/**
+ * Initiates OpenID Connect End-Session Logout with Keycloak to terminate
+ * the Identity Provider SSO session and invalidate all browser cookies.
+ */
+export function logoutKeycloak(postLogoutUri?: string): void {
+  const redirect = encodeURIComponent(postLogoutUri || `${window.location.origin}/seller-buyer/`);
+  const idToken = localStorage.getItem('kc_id_token');
+
+  // Clear all platform and Keycloak credentials from local & session storage
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('kc_access_token');
+    localStorage.removeItem('kc_id_token');
+    sessionStorage.clear();
+  } catch (ignored) {}
+
+  let logoutUrl = `${KEYCLOAK_CONFIG.logoutUrl}?client_id=${KEYCLOAK_CONFIG.clientId}&post_logout_redirect_uri=${redirect}`;
+  if (idToken) {
+    logoutUrl += `&id_token_hint=${encodeURIComponent(idToken)}`;
+  }
+  window.location.href = logoutUrl;
 }
