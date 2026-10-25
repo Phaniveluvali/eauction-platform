@@ -1,5 +1,5 @@
 import { getAssetUrl } from '../utils/assets';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Auction, Vehicle, User } from '../types';
 import { PortalView } from './PortalSidebar';
 import { 
@@ -179,38 +179,76 @@ export const HomePage: React.FC<HomePageProps> = ({
     return `${String(hours).padStart(2, '0')}h : ${String(minutes).padStart(2, '0')}m : ${String(seconds).padStart(2, '0')}s`;
   };
 
-  // Filtered auctions based on user inputs
-  const filteredAuctions = auctions.filter((auc) => {
-    const v = auc.vehicle || vehicles.find((item) => item.id === auc.vehicleId);
-    if (!v) return false;
+  // Filtered auctions based on user inputs - dynamically sorted by bid activity and limited to avoid heavy browser load
+  const filteredAuctions = useMemo(() => {
+    let result = auctions.filter((auc) => {
+      const v = auc.vehicle || vehicles.find((item) => item.id === auc.vehicleId);
+      if (!v) return false;
 
-    // Search query from Navbar
-    if (searchFilter) {
-      const q = searchFilter.toLowerCase();
-      const matchesSearch =
-        v.make.toLowerCase().includes(q) ||
-        v.model.toLowerCase().includes(q) ||
-        v.registrationNumber.toLowerCase().includes(q) ||
-        v.vin.toLowerCase().includes(q) ||
-        auc.id.toLowerCase().includes(q);
-      if (!matchesSearch) return false;
-    }
+      // Search query from Navbar
+      if (searchFilter) {
+        const q = searchFilter.toLowerCase();
+        const matchesSearch =
+          v.make.toLowerCase().includes(q) ||
+          v.model.toLowerCase().includes(q) ||
+          v.registrationNumber.toLowerCase().includes(q) ||
+          v.vin.toLowerCase().includes(q) ||
+          auc.id.toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
 
-    // Category Filter
-    if (selectedCategory === 'TRUCK' && v.vehicleType !== 'TRUCK') return false;
-    if (selectedCategory === 'CAR' && v.vehicleType !== 'CAR') return false;
-    if (selectedCategory === 'ONLINE' && auc.status !== 'ACTIVE') return false;
+      // Category Filter
+      if (selectedCategory === 'TRUCK' && v.vehicleType !== 'TRUCK') return false;
+      if (selectedCategory === 'CAR' && v.vehicleType !== 'CAR') return false;
+      if (selectedCategory === 'ONLINE' && auc.status !== 'ACTIVE') return false;
 
-    // Tab Filter
-    if (activeTab === 'favorites') {
-      return favorites.has(auc.id);
-    }
+      // Tab Filter
+      if (activeTab === 'favorites') {
+        return favorites.has(auc.id);
+      }
+      if (activeTab === 'ending') {
+        return auc.status === 'ACTIVE';
+      }
+
+      return true;
+    });
+
+    // In Ending Soon tab: prioritize most bidded vehicles dynamically
     if (activeTab === 'ending') {
-      return auc.status === 'ACTIVE';
+      result = [...result].sort((a, b) => {
+        const aBidActivity = (a.currentHighestBid || a.startPrice || 0) - (a.startPrice || 0);
+        const bBidActivity = (b.currentHighestBid || b.startPrice || 0) - (b.startPrice || 0);
+        if (bBidActivity !== aBidActivity) {
+          return bBidActivity - aBidActivity; // Most bidded vehicles first
+        }
+        const aEnd = a.endTime ? new Date(a.endTime).getTime() : Infinity;
+        const bEnd = b.endTime ? new Date(b.endTime).getTime() : Infinity;
+        return aEnd - bEnd; // Closest ending time next
+      });
+      return result.slice(0, 9);
     }
 
-    return true;
-  });
+    if (activeTab === 'hot') {
+      result = [...result].sort((a, b) => {
+        const aDiff = (a.currentHighestBid || 0) - (a.startPrice || 0);
+        const bDiff = (b.currentHighestBid || 0) - (b.startPrice || 0);
+        return bDiff - aDiff;
+      });
+      return result.slice(0, 9);
+    }
+
+    if (activeTab === 'new') {
+      result = [...result].sort((a, b) => {
+        const aStart = a.startTime ? new Date(a.startTime).getTime() : 0;
+        const bStart = b.startTime ? new Date(b.startTime).getTime() : 0;
+        return bStart - aStart;
+      });
+      return result.slice(0, 9);
+    }
+
+    // Default limit on homepage to avoid excessive DOM nodes and optimize performance
+    return result.slice(0, 9);
+  }, [auctions, vehicles, searchFilter, selectedCategory, activeTab, favorites]);
 
   return (
     <div className="w-full bg-white text-[#231F20] flex flex-col font-sans">
@@ -383,7 +421,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   : 'bg-[#EBEBEB] text-[#5F5F5F] hover:bg-slate-200'
               }`}
             >
-              Ending Soon ({auctions.filter(a => a.status === 'ACTIVE').length})
+              Ending Soon ({activeTab === 'ending' ? filteredAuctions.length : Math.min(9, auctions.filter(a => a.status === 'ACTIVE').length)})
             </button>
 
             <button

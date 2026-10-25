@@ -60,6 +60,16 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
 
   const [auctionStatusFilter, setAuctionStatusFilter] = useState<'ACTIVE' | 'ENDED' | 'ALL'>('ACTIVE');
 
+  // Dynamic Catalog Pagination (Matching User Screenshot 3: editable items per page, default 27)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(27);
+
+  // Reset to page 1 whenever search, filters, or sorting change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, selectedMake, selectedModel, selectedYear, selectedBodyType, lotSearch, sortBy, auctionStatusFilter]);
+
+
   // Real-time ticker
   const [now, setNow] = useState<number>(Date.now());
   useEffect(() => {
@@ -172,6 +182,12 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
 
     return true;
   });
+
+  const totalItems = liveAuctions.length;
+  const effectivePerPage = itemsPerPage > 0 ? itemsPerPage : 27;
+  const totalPages = Math.max(1, Math.ceil(totalItems / effectivePerPage));
+  const startIndex = (currentPage - 1) * effectivePerPage;
+  const paginatedAuctions = liveAuctions.slice(startIndex, startIndex + effectivePerPage);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-row font-sans">
@@ -466,8 +482,9 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {liveAuctions.map((auc) => {
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paginatedAuctions.map((auc) => {
               const vehicle = auc.vehicle || vehicles.find((v) => v.id === auc.vehicleId);
               if (!vehicle) return null;
 
@@ -642,7 +659,89 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               );
             })}
           </div>
-        )}
+
+          {/* Pagination Bar Matching Screenshot 3 */}
+          {totalItems > 0 && (
+            <div className="mt-8 pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 select-none">
+              {/* Left Side: < Previous  1  2  3  4  5  Next > */}
+              <div className="flex items-center space-x-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                >
+                  &lsaquo; Previous
+                </button>
+
+                {/* Page Number Buttons */}
+                {(() => {
+                  const pages: number[] = [];
+                  const maxButtons = 5;
+                  let startPage = Math.max(1, currentPage - 2);
+                  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+                  if (endPage - startPage + 1 < maxButtons) {
+                    startPage = Math.max(1, endPage - maxButtons + 1);
+                  }
+
+                  for (let i = startPage; i <= endPage; i++) {
+                    pages.push(i);
+                  }
+
+                  return pages.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setCurrentPage(p)}
+                      className={`min-w-[32px] h-8 px-2 text-xs font-bold rounded-md transition cursor-pointer flex items-center justify-center ${
+                        currentPage === p
+                          ? 'bg-[#D32437] text-white shadow-xs'
+                          : 'text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ));
+                })()}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                >
+                  Next &rsaquo;
+                </button>
+              </div>
+
+              {/* Right Side: Items per page: [ 27 ] matching Screenshot 3 */}
+              <div className="flex items-center space-x-2 text-xs text-slate-600">
+                <span className="font-medium">Items per page:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={itemsPerPage || ''}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val > 0) {
+                      setItemsPerPage(val);
+                      setCurrentPage(1);
+                    } else if (e.target.value === '') {
+                      setItemsPerPage(0);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (itemsPerPage <= 0) setItemsPerPage(27);
+                  }}
+                  className="w-14 h-8 px-2 text-center text-xs font-bold text-slate-800 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#D32437] focus:border-[#D32437] bg-white"
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       </main>
 

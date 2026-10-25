@@ -281,6 +281,32 @@ export const App: React.FC = () => {
     return () => clearInterval(pollInterval);
   }, [currentView]);
 
+  // 3. Real-Time Multi-User Session Heartbeat (Every 5s for any logged-in user: Buyer, Seller, Admin)
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const sendHeartbeat = () => {
+      api.sendSessionHeartbeat({
+        userId: currentUser.id,
+        userName: currentUser.fullName || 'User',
+        email: currentUser.email,
+        role: currentUser.role,
+        currentScreen: currentView === 'ADMIN' ? 'Admin > Operations' : currentView === 'ONLINE_AUCTIONS' ? 'Online Auctions' : currentView === 'FAVORITES' ? 'Favorites' : 'Home',
+        securityDeposit: currentUser.securityDeposit || 0,
+        usedBiddingLimit: currentUser.usedBiddingLimit || 0,
+        bidsPlacedInSession: 0,
+        deviceType: window.innerWidth < 768 ? 'Mobile' : 'Desktop',
+        browser: 'Chrome 124.0 (Windows)',
+        os: 'Windows 11',
+        protocol: window.location.protocol.replace(':', '').toUpperCase(),
+      });
+    };
+
+    sendHeartbeat();
+    const heartbeatInterval = setInterval(sendHeartbeat, 5000);
+    return () => clearInterval(heartbeatInterval);
+  }, [currentUser?.id, currentView]);
+
   const loadInventory = async () => {
     setLoading(true);
     try {
@@ -409,6 +435,9 @@ export const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    if (currentUser?.id) {
+      api.logoutSession(currentUser.id);
+    }
     localStorage.removeItem('token');
     setCurrentUser(null);
     navigateToView('HOME');

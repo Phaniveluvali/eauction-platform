@@ -483,4 +483,58 @@ export const api = {
     });
     return res.json();
   },
+
+  // --- REAL-TIME LIVE SESSIONS DOMAIN ---
+  async sendSessionHeartbeat(sessionData: {
+    userId: string;
+    userName?: string;
+    email?: string;
+    role?: string;
+    currentScreen?: string;
+    securityDeposit?: number;
+    usedBiddingLimit?: number;
+    bidsPlacedInSession?: number;
+    deviceType?: string;
+    browser?: string;
+    os?: string;
+    protocol?: string;
+  }): Promise<void> {
+    try {
+      await fetch(`${CATALOG_BASE}/api/v1/sessions/heartbeat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify(sessionData),
+      });
+    } catch {
+      // Heartbeat fails silently
+    }
+  },
+
+  async getLiveSessions(): Promise<{ sessions: any[]; totalUsers: number; activeBidders: number }> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/sessions/live`, {
+      headers: {
+        ...getAuthHeader(),
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch live sessions');
+    return res.json();
+  },
+
+  async logoutSession(userId: string): Promise<void> {
+    try {
+      await fetch(`${CATALOG_BASE}/api/v1/sessions/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({ userId }),
+      });
+    } catch {
+      // Ignore
+    }
+  },
 };

@@ -302,63 +302,27 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [sessionTerminateConfirm, setSessionTerminateConfirm] = useState<LiveSession | null>(null);
   const [sessionActionToast, setSessionActionToast] = useState('');
 
-  // Update current user live session when currentUser or screen changes
-  useEffect(() => {
-    if (currentUser) {
-      setLiveSessions((prev) => {
-        if (prev.length === 0) {
-          return [{
-            id: `sess-${currentUser.id ? currentUser.id.slice(0, 8) : 'adm-001'}`,
-            userId: currentUser.id || 'usr-admin-01',
-            userName: currentUser.fullName || 'Admin User',
-            email: currentUser.email || 'admin@eauction.in',
-            role: (currentUser.role as any) || 'ADMIN',
-            ipAddress: '202.153.35.221',
-            location: 'Dubai, UAE',
-            countryCode: 'AE',
-            deviceType: 'Desktop',
-            browser: 'Chrome 124.0 (Windows)',
-            os: 'Windows 11',
-            protocol: 'HTTPS',
-            podName: 'eauction-catalog-identity-78f898c76f-j9mq8',
-            podIp: '172.16.138.78',
-            currentScreen: activeSubView === 'none' ? `Admin > ${activeTab}` : `Operations > ${activeSubView.replace(/_/g, ' ')}`,
-            securityDeposit: currentUser.securityDeposit || 0,
-            biddingLimit: (currentUser.securityDeposit || 0) * 200,
-            usedBiddingLimit: currentUser.usedBiddingLimit || 0,
-            bidsPlacedInSession: 0,
-            loginTime: 'Active now',
-            lastHeartbeat: '1s ago',
-            pingMs: 1.2,
-            status: 'ONLINE',
-            isCurrentAdmin: true
-          }];
-        }
-        return prev.map((s) => s.isCurrentAdmin ? {
+  // Dynamic Real-Time Multi-User Session Polling from Backend Registry
+  const fetchLiveSessionsFromBackend = async () => {
+    try {
+      const data = await api.getLiveSessions();
+      if (data && Array.isArray(data.sessions) && data.sessions.length > 0) {
+        setLiveSessions(data.sessions.map((s: any) => ({
           ...s,
-          userName: currentUser.fullName || s.userName,
-          email: currentUser.email || s.email,
-          role: (currentUser.role as any) || s.role,
-          currentScreen: activeSubView === 'none' ? `Admin > ${activeTab}` : `Operations > ${activeSubView.replace(/_/g, ' ')}`,
-        } : s);
-      });
+          isCurrentAdmin: s.userId === currentUser?.id || s.email === currentUser?.email,
+        })));
+      }
+    } catch {
+      // Keep existing session telemetry on transient network jitter
     }
-  }, [currentUser, activeTab, activeSubView]);
+  };
 
-  // Real-time user heartbeat ping (updates active session latency only, strictly NO artificial bids)
   useEffect(() => {
+    fetchLiveSessionsFromBackend();
     if (!sessionAutoRefresh) return;
-    const interval = setInterval(() => {
-      setLiveSessions((prev) =>
-        prev.map((s) => ({
-          ...s,
-          lastHeartbeat: '1s ago',
-          pingMs: Number(Math.max(0.8, s.pingMs + (Math.random() * 0.4 - 0.2)).toFixed(1)),
-        }))
-      );
-    }, 6000);
+    const interval = setInterval(fetchLiveSessionsFromBackend, 3500);
     return () => clearInterval(interval);
-  }, [sessionAutoRefresh]);
+  }, [sessionAutoRefresh, currentUser?.id]);
 
   const [singleCarSuccess, setSingleCarSuccess] = useState('');
   const [singleCarImages, setSingleCarImages] = useState<string[]>(DEFAULT_VEHICLE_IMAGES);
