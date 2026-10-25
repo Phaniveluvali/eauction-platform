@@ -173,6 +173,7 @@ export interface LiveSession {
   email: string;
   role: 'BUYER' | 'SELLER' | 'ADMIN' | 'SUPER_ADMIN';
   ipAddress: string;
+  clientIp?: string;
   location: string;
   countryCode: string;
   deviceType: 'Desktop' | 'Mobile';
@@ -4712,10 +4713,25 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                             {/* IP & Location */}
                             <td className="px-4 py-3.5">
-                              <div className="font-mono text-xs font-semibold text-slate-800">{session.ipAddress}</div>
-                              <div className="text-[11px] text-slate-500 flex items-center space-x-1">
-                                <Globe className="w-3 h-3 text-slate-400" />
-                                <span>{session.location}</span>
+                              <div className="flex flex-col space-y-0.5">
+                                <div className="flex items-center space-x-1.5 font-mono text-xs">
+                                  <span className="font-bold text-slate-900">{session.ipAddress}</span>
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                    WAN
+                                  </span>
+                                </div>
+                                {session.clientIp && session.clientIp !== session.ipAddress && (
+                                  <div className="flex items-center space-x-1.5 font-mono text-[11px]">
+                                    <span className="font-medium text-slate-700">{session.clientIp}</span>
+                                    <span className="px-1 py-0.2 rounded text-[8px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                      CLIENT LAN
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="text-[11px] text-slate-500 flex items-center space-x-1 pt-0.5">
+                                  <Globe className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span>{session.location}</span>
+                                </div>
                               </div>
                             </td>
 
@@ -4905,7 +4921,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                         <div className="font-bold text-slate-700 mb-1">NETWORK & POD ROUTING:</div>
                         <div className="grid grid-cols-2 gap-2 text-slate-600">
-                          <div>Client IP: {sessionInspectTarget.ipAddress}</div>
+                          <div>Public WAN IP: <span className="font-semibold text-slate-900">{sessionInspectTarget.ipAddress}</span></div>
+                          <div>Client LAN / Backend IP: <span className="font-semibold text-slate-900">{sessionInspectTarget.clientIp || sessionInspectTarget.ipAddress}</span></div>
                           <div>Geo Location: {sessionInspectTarget.location}</div>
                           <div>Ingress TLS: TLSv1.3 (AES_256_GCM_SHA384)</div>
                           <div>Cluster Pod: {sessionInspectTarget.podName}</div>

@@ -343,14 +343,40 @@ export const App: React.FC = () => {
     return () => clearInterval(pollInterval);
   }, [currentView]);
 
-  // Fetch real client public IP for accurate live session identification
+  // Fetch real client public WAN IP & discover client internal LAN IP via WebRTC
+  const clientPublicIpRef = React.useRef<string>('');
+  const clientLocalIpRef = React.useRef<string>('');
+
   useEffect(() => {
+    // 1. Fetch public WAN Gateway IP
     fetch('https://api.ipify.org?format=json')
       .then((res) => res.json())
       .then((data) => {
-        if (data?.ip) clientIpRef.current = data.ip;
+        if (data?.ip) {
+          clientPublicIpRef.current = data.ip;
+          clientIpRef.current = data.ip;
+        }
       })
       .catch(() => {});
+
+    // 2. Discover client internal LAN IP via WebRTC candidate probing
+    try {
+      const RTCPC = window.RTCPeerConnection || (window as any).webkitRTCPeerConnection || (window as any).mozRTCPeerConnection;
+      if (RTCPC) {
+        const pc = new RTCPC({ iceServers: [] });
+        pc.createDataChannel('telemetry');
+        pc.createOffer().then((offer) => pc.setLocalDescription(offer)).catch(() => {});
+        pc.onicecandidate = (e) => {
+          if (!e || !e.candidate || !e.candidate.candidate) return;
+          const cand = e.candidate.candidate;
+          const match = cand.match(/\b((?:192\.168|10\.|172\.(?:1[6-9]|2[0-9]|3[0-1]))(?:\.\d{1,3}){2})\b/);
+          if (match && match[1]) {
+            clientLocalIpRef.current = match[1];
+            try { pc.close(); } catch {}
+          }
+        };
+      }
+    } catch {}
   }, []);
 
   // 15-Minute Inactivity Idle Session Timeout (logs out and prompts user)
@@ -401,7 +427,9 @@ export const App: React.FC = () => {
         browser,
         os,
         protocol: window.location.protocol.replace(':', '').toUpperCase(),
-        clientIp: clientIpRef.current || undefined,
+        ipAddress: clientPublicIpRef.current || undefined,
+        clientIp: clientLocalIpRef.current || undefined,
+        clientPrivateIp: clientLocalIpRef.current || undefined,
       });
     };
 

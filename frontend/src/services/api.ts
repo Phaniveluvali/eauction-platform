@@ -522,6 +522,8 @@ export const api = {
     os?: string;
     protocol?: string;
     clientIp?: string;
+    clientPrivateIp?: string;
+    publicIp?: string;
     ipAddress?: string;
   }): Promise<void> {
     try {
