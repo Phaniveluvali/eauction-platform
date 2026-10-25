@@ -49,6 +49,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/catalog/vehicles/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/auctions/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/auctions/*/bids").permitAll()
                         .requestMatchers("/api/v1/catalog/vehicles/create").hasAnyRole("SELLER", "ADMIN")
                         .anyRequest().authenticated()
                 )

@@ -30,14 +30,20 @@ public class AuctionController {
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
     private final VehicleRepository vehicleRepository;
+    private final com.eauction.core.identity.service.AuthService authService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     public AuctionController(
             AuctionRepository auctionRepository,
             BidRepository bidRepository,
-            VehicleRepository vehicleRepository) {
+            VehicleRepository vehicleRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.eauction.core.identity.service.AuthService authService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
         this.vehicleRepository = vehicleRepository;
+        this.authService = authService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @PostMapping
@@ -105,6 +111,124 @@ public class AuctionController {
     @Transactional(readOnly = true)
     public ResponseEntity<List<Bid>> getAuctionBids(@PathVariable UUID id) {
         return ResponseEntity.ok(bidRepository.findByAuctionIdOrderByBidAmountDesc(id));
+    }
+
+    @PostMapping("/{id}/bids")
+    @Transactional
+    public ResponseEntity<?> placeBid(
+            @PathVariable UUID id,
+            @RequestBody java.util.Map<String, Object> payload,
+            jakarta.servlet.http.HttpServletRequest request) {
+
+        Auction auction = auctionRepository.findById(id).orElse(null);
+        if (auction == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(java.util.Map.of("message", "Auction not found with ID: " + id));
+        }
+
+        // Validate lifecycle
+        if (!"ACTIVE".equalsIgnoreCase(auction.getStatus())) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "This auction has ended and is closed for bidding."));
+        }
+        if (auction.getEndTime() != null && auction.getEndTime().isBefore(java.time.Instant.now())) {
+            auction.setStatus("ENDED");
+            auctionRepository.save(auction);
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "This auction has ended and is closed for bidding."));
+        }
+
+        // Determine Bidder Identity
+        String bidderId = null;
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ") && authService != null) {
+            try {
+                String token = authHeader.substring(7);
+                bidderId = authService.extractUserId(token).toString();
+            } catch (Exception ignored) {}
+        }
+        if (bidderId == null && payload.get("bidderId") != null) {
+            bidderId = payload.get("bidderId").toString();
+        }
+        if (bidderId == null || bidderId.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "Please log in to submit a bid."));
+        }
+
+        // Parse proposed bid amount
+        if (payload.get("bidAmount") == null) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "Missing required bidAmount"));
+        }
+
+        BigDecimal proposedBid;
+        try {
+            proposedBid = new BigDecimal(payload.get("bidAmount").toString());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "Invalid numeric bid amount"));
+        }
+
+        // Pricing bounds validation
+        BigDecimal currentHighest = auction.getCurrentHighestBid() != null ? auction.getCurrentHighestBid() : BigDecimal.ZERO;
+        BigDecimal minIncrement = auction.getMinBidIncrement() != null ? auction.getMinBidIncrement() : BigDecimal.valueOf(5000);
+        BigDecimal minRequired = currentHighest.compareTo(BigDecimal.ZERO) == 0 ? auction.getStartPrice() : currentHighest.add(minIncrement);
+
+        if (proposedBid.compareTo(minRequired) < 0) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "message", "Proposed bid of AED " + proposedBid + " must be at least AED " + minRequired
+            ));
+        }
+
+        // Determine bidder UUID (support standard UUID or deterministic UUID from custom string)
+        UUID bidderUuid;
+        try {
+            bidderUuid = UUID.fromString(bidderId);
+        } catch (Exception e) {
+            bidderUuid = UUID.nameUUIDFromBytes(bidderId.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+
+        // Safety Guard: Check if user is already the leading bidder
+        boolean isLeading = auction.getHighestBidderId() != null && (
+            auction.getHighestBidderId().toString().equalsIgnoreCase(bidderId) ||
+            auction.getHighestBidderId().equals(bidderUuid)
+        );
+        boolean confirmedSelfOutbid = Boolean.TRUE.equals(payload.get("confirmSelfOutbid"));
+        if (isLeading && !confirmedSelfOutbid) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of(
+                "code", "ALREADY_HIGHEST_BIDDER",
+                "message", "You are already the highest bidder for this vehicle! Are you sure you want to outbid yourself?",
+                "currentHighestBid", currentHighest
+            ));
+        }
+
+        // Commit new highest bid to auction
+        auction.setCurrentHighestBid(proposedBid);
+        auction.setHighestBidderId(bidderUuid);
+        auctionRepository.save(auction);
+
+        // Commit to bid ledger
+        Bid acceptedBid = new Bid();
+        acceptedBid.setAuctionId(id);
+        acceptedBid.setBidderId(bidderUuid);
+        acceptedBid.setBidAmount(proposedBid);
+        acceptedBid.setStatus("ACCEPTED");
+        acceptedBid.setCreatedAt(java.time.Instant.now());
+        bidRepository.save(acceptedBid);
+
+        // Update user session activity if present
+        if (jdbcTemplate != null) {
+            try {
+                jdbcTemplate.update(
+                    "UPDATE user_sessions SET bids_placed_in_session = bids_placed_in_session + 1, used_bidding_limit = used_bidding_limit + ?, last_heartbeat = CURRENT_TIMESTAMP WHERE user_id = ?",
+                    proposedBid, bidderId
+                );
+            } catch (Exception ignored) {}
+        }
+
+        return ResponseEntity.ok(java.util.Map.of(
+            "status", "SUCCESS",
+            "message", "Bid placed successfully!",
+            "auctionId", id.toString(),
+            "bidderId", bidderId,
+            "bidAmount", proposedBid,
+            "currentHighestBid", proposedBid,
+            "timestamp", System.currentTimeMillis()
+        ));
     }
 
     @PatchMapping("/{id}/activate")

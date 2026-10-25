@@ -1,4 +1,4 @@
-import { AuthResponse, User, Vehicle, Auction, Bid, PaymentOrderResponse, UserStats } from '../types';
+import { AuthResponse, User, Vehicle, Auction, Bid, BidResponse, PaymentOrderResponse, UserStats } from '../types';
 
 const CATALOG_BASE = import.meta.env.VITE_CATALOG_API_URL || '';
 const PAYMENT_BASE = import.meta.env.VITE_PAYMENT_API_URL || '';
@@ -410,6 +410,29 @@ export const api = {
     return res.json();
   },
 
+  async placeBid(auctionId: string, bidAmount: number, confirmSelfOutbid: boolean = false): Promise<BidResponse> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/auctions/${auctionId}/bids`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({
+        auctionId,
+        bidAmount,
+        confirmSelfOutbid,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const errorObj = new Error(err.message || 'Failed to place bid');
+      (errorObj as any).code = err.code;
+      (errorObj as any).status = res.status;
+      throw errorObj;
+    }
+    return res.json();
+  },
+
   async createAuction(payload: {
     vehicleId: string;
     startPrice: number;
@@ -498,6 +521,8 @@ export const api = {
     browser?: string;
     os?: string;
     protocol?: string;
+    clientIp?: string;
+    ipAddress?: string;
   }): Promise<void> {
     try {
       await fetch(`${CATALOG_BASE}/api/v1/sessions/heartbeat`, {
@@ -523,7 +548,7 @@ export const api = {
     return res.json();
   },
 
-  async logoutSession(userId: string): Promise<void> {
+  async logoutSession(userId: string, deviceType?: string): Promise<void> {
     try {
       await fetch(`${CATALOG_BASE}/api/v1/sessions/logout`, {
         method: 'POST',
@@ -531,7 +556,7 @@ export const api = {
           'Content-Type': 'application/json',
           ...getAuthHeader(),
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, deviceType }),
       });
     } catch {
       // Ignore

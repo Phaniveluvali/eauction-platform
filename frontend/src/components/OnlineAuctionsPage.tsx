@@ -13,7 +13,9 @@ import {
   Heart, 
   ArrowRight,
   Filter,
-  Lock
+  Lock,
+  Menu,
+  CheckCircle
 } from 'lucide-react';
 import { initiateKeycloakLogin } from '../utils/oidc';
 
@@ -59,6 +61,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
   }, [favoriteIds]);
 
   const [auctionStatusFilter, setAuctionStatusFilter] = useState<'ACTIVE' | 'ENDED' | 'ALL'>('ACTIVE');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   // Dynamic Catalog Pagination (Matching User Screenshot 3: editable items per page, default 27)
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -192,15 +195,55 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-row font-sans">
       
-      {/* Left Sidebar matching Screenshot 1 */}
-      <PortalSidebar currentView="ONLINE_AUCTIONS" onNavigate={onNavigate} />
+      {/* Desktop Left Sidebar */}
+      <div className="hidden md:flex shrink-0">
+        <PortalSidebar currentView="ONLINE_AUCTIONS" onNavigate={onNavigate} />
+      </div>
+
+      {/* Mobile Drawer Backdrop and Sidebar */}
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity" 
+            onClick={() => setIsMobileSidebarOpen(false)} 
+          />
+          <div className="relative w-72 max-w-[80vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <span className="font-bold text-sm text-[#231F20]">Menu</span>
+              <button
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="p-1 rounded-md text-slate-500 hover:bg-slate-100 cursor-pointer"
+                title="Close Menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <PortalSidebar 
+                currentView="ONLINE_AUCTIONS" 
+                onNavigate={(view) => {
+                  setIsMobileSidebarOpen(false);
+                  onNavigate(view);
+                }} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         
-        {/* Header Bar matching Screenshot 1: ✕ Online Auctions */}
+        {/* Header Bar matching Screenshot 1: ☰ ✕ Online Auctions */}
         <div className="flex items-center justify-between pb-4 border-b border-[#EBEBEB] mb-4">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden p-1.5 text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+              title="Open Navigation Menu"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
             <button 
               onClick={onBackHome}
               className="p-1 text-slate-500 hover:text-black hover:bg-slate-100 rounded-full transition cursor-pointer"
@@ -492,6 +535,14 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               const currentBid = auc.currentHighestBid || auc.startPrice;
               const priceObj = formatCurrency(currentBid);
               const isEnded = auc.status === 'ENDED' || auc.status === 'COMPLETED' || (auc.endTime && new Date(auc.endTime).getTime() <= now);
+              const isLeading = Boolean(
+                currentUser && (
+                  auc.highestBidderId === currentUser.id ||
+                  auc.highestBidderId === currentUser.email ||
+                  (auc.highestBidderId && currentUser.email && auc.highestBidderId.toLowerCase() === currentUser.email.toLowerCase()) ||
+                  (auc.highestBidderId && (currentUser as any).username && auc.highestBidderId === (currentUser as any).username)
+                )
+              );
 
               const fallbackImg = vehicle.vehicleType === 'TRUCK'
                 ? 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&q=80&w=800'
@@ -502,7 +553,14 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                 : fallbackImg;
 
               return (
-                <div key={auc.id} className="awa-car-card group flex flex-col justify-between bg-white">
+                <div 
+                  key={auc.id} 
+                  className={`awa-car-card group flex flex-col justify-between transition-all duration-300 ${
+                    isLeading 
+                      ? 'ring-2 ring-emerald-500 shadow-md shadow-emerald-100/50 bg-emerald-50/10' 
+                      : 'bg-white'
+                  }`}
+                >
                   
                   {/* Vehicle Image */}
                   <div 
@@ -532,6 +590,14 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                         <span className="text-[11px] font-bold text-[#D32437] tracking-wider">
                           LIVE AUCTION
                         </span>
+                      </div>
+                    )}
+
+                    {/* Leading Bidder Badge */}
+                    {isLeading && (
+                      <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded-md shadow-md font-bold text-[10px] tracking-wide animate-pulse z-10">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span>YOU ARE WINNING</span>
                       </div>
                     )}
 
@@ -600,7 +666,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                           Current Bid
                         </span>
                         <div className="text-right">
-                          <div className="awa-price">
+                          <div className={isLeading ? "text-lg font-extrabold text-emerald-600" : "awa-price"}>
                             {priceObj.aed}
                           </div>
                           <div className="text-[11px] font-semibold text-slate-500 font-mono">
@@ -631,7 +697,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                           <Heart className={`w-5 h-5 transition-transform ${isLiked ? 'fill-[#D32437] text-[#D32437]' : ''}`} />
                         </button>
 
-                        {/* BID NOW Button or Disabled AUCTION ENDED button */}
+                        {/* BID NOW Button or Disabled AUCTION ENDED button or WINNING (RAISE) button */}
                         {isEnded ? (
                           <button
                             disabled
@@ -640,6 +706,15 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                           >
                             <Lock className="w-4 h-4 mr-1 text-slate-500" />
                             <span>AUCTION ENDED</span>
+                          </button>
+                        ) : isLeading ? (
+                          <button
+                            onClick={() => onOpenBidModal ? onOpenBidModal(auc) : handleBidClick(auc)}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer transition text-sm"
+                            title="You are currently leading this auction! Click to raise your bid."
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1 text-white" />
+                            <span>WINNING (RAISE)</span>
                           </button>
                         ) : (
                           <button

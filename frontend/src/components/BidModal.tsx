@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Shield, ArrowUpRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Shield, ArrowUpRight, Award } from 'lucide-react';
 import { Auction, Vehicle, User } from '../types';
+import { api } from '../services/api';
 
 interface BidModalProps {
   isOpen: boolean;
@@ -36,8 +37,17 @@ export const BidModal: React.FC<BidModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string>('');
   const [showLimitExceededModal, setShowLimitExceededModal] = useState<boolean>(false);
+  const [showSelfOutbidWarning, setShowSelfOutbidWarning] = useState<boolean>(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Check if current authenticated user is already the leading highest bidder
+  const isLeadingBidder = Boolean(
+    currentUser && (
+      (auction.highestBidderId && auction.highestBidderId.toLowerCase() === currentUser.id.toLowerCase()) ||
+      (currentUser.email && auction.highestBidderId && auction.highestBidderId.toLowerCase() === currentUser.email.toLowerCase())
+    )
+  );
 
   // Sync default bid amount when auction changes
   useEffect(() => {
@@ -46,12 +56,14 @@ export const BidModal: React.FC<BidModalProps> = ({
     setErrorMsg('');
     setSuccessMsg('');
     setShowLimitExceededModal(false);
-  }, [auction, currentPrice]);
+    setShowSelfOutbidWarning(false);
+  }, [auction.id, currentPrice, selectedIncrement, minInc]);
 
   const handleSelectIncrement = (inc: number) => {
     setSelectedIncrement(inc);
     setCustomBidAmount(currentPrice + inc);
     setErrorMsg('');
+    setShowSelfOutbidWarning(false);
   };
 
   const scrollIncrements = (direction: 'left' | 'right') => {
@@ -64,7 +76,6 @@ export const BidModal: React.FC<BidModalProps> = ({
   };
 
   // 200x Security Deposit Limit Logic
-  // Default to 4,000 AED deposit (800,000 AED limit) if not explicitly set for registered user
   const userDeposit = currentUser?.securityDeposit ?? 4000;
   const userBiddingLimit = currentUser?.biddingLimit ?? (userDeposit * 200);
   const usedLimit = currentUser?.usedBiddingLimit ?? 0;
@@ -96,46 +107,49 @@ export const BidModal: React.FC<BidModalProps> = ({
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      // Connect to WebSocket or REST API to place the live bid
-      const wsUrl = `wss://${window.location.host}/ws/auction/${auction.id}?token=${localStorage.getItem('token') || ''}`;
-      
-      // Submit via fetch to catalog-identity/bidding endpoint or simulated direct websocket
-      const res = await fetch(`/api/v1/auctions/${auction.id}/bids`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-        },
-        body: JSON.stringify({
-          auctionId: auction.id,
-          bidAmount: customBidAmount,
-        }),
-      }).catch(() => null);
+    // Safety guard: prompt user if they are already the highest bidder
+    if (isLeadingBidder && !showSelfOutbidWarning) {
+      setShowSelfOutbidWarning(true);
+      return;
+    }
 
-      // Successfully processed in state
+    await executeBidSubmission(false);
+  };
+
+  const executeBidSubmission = async (confirmSelfOutbid: boolean) => {
+    setIsSubmitting(true);
+    setErrorMsg('');
+
+    try {
+      // Execute live bid against platform backend
+      const resp = await api.placeBid(auction.id, customBidAmount, confirmSelfOutbid);
+
       setSuccessMsg(`Bid of AED ${customBidAmount.toLocaleString()} placed successfully!`);
       onSuccessBid(auction.id, customBidAmount);
+      setShowSelfOutbidWarning(false);
 
       setTimeout(() => {
         setIsSubmitting(false);
         onClose();
-      }, 1200);
+      }, 1000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to place bid. Please try again.');
+      if (err.code === 'ALREADY_HIGHEST_BIDDER') {
+        setShowSelfOutbidWarning(true);
+      } else {
+        setErrorMsg(err.message || 'Failed to place bid. Please try again.');
+      }
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden relative"
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden relative mx-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100">
           <div>
             <h3 className="text-base font-bold text-slate-900">
               Select the Increment Amount
@@ -146,11 +160,55 @@ export const BidModal: React.FC<BidModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Highest Bidder Banner */}
+        {isLeadingBidder && (
+          <div className="mx-4 sm:mx-5 mt-4 p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2.5 text-xs text-emerald-900 font-medium animate-in fade-in duration-150">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div>
+              <p className="font-bold text-emerald-950">You are the Highest Bidder!</p>
+              <p className="text-[11px] text-emerald-800">Your current leading bid is AED {currentPrice.toLocaleString()}.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Self Outbid Warning Popup */}
+        {showSelfOutbidWarning && (
+          <div className="mx-4 sm:mx-5 mt-4 p-3.5 bg-amber-50 border-2 border-amber-300 rounded-xl flex flex-col gap-2.5 text-xs text-amber-900 animate-in fade-in duration-150">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-950 text-sm">You are already the highest bidder!</p>
+                <p className="mt-1 text-amber-900 leading-relaxed">
+                  You are currently leading this auction with <strong className="text-amber-950">AED {currentPrice.toLocaleString()}</strong>.
+                  Submitting will raise your own winning bid to <strong className="text-amber-950">AED {customBidAmount.toLocaleString()}</strong>.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1 border-t border-amber-200/80">
+              <button
+                type="button"
+                onClick={() => setShowSelfOutbidWarning(false)}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 transition cursor-pointer"
+              >
+                Keep Current Bid
+              </button>
+              <button
+                type="button"
+                onClick={() => executeBidSubmission(true)}
+                disabled={isSubmitting}
+                className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition cursor-pointer disabled:opacity-50"
+              >
+                {isSubmitting ? 'Raising Bid...' : 'Confirm & Raise Bid'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Limit Exceeded Alert Modal Popup */}
         {showLimitExceededModal ? (
@@ -174,32 +232,30 @@ export const BidModal: React.FC<BidModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  setShowLimitExceededModal(false);
                   onClose();
                   onOpenDeposit();
                 }}
-                className="w-full bg-[#D32437] hover:bg-[#b01e2e] text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-red-500/20 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#D32437] hover:bg-[#b51f30] text-white font-bold rounded-xl text-sm transition shadow-sm cursor-pointer"
               >
-                <span>Increase Security Deposit</span>
-                <ArrowUpRight className="w-4 h-4" />
+                Increase Security Deposit
               </button>
               <button
                 type="button"
                 onClick={() => setShowLimitExceededModal(false)}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-4 rounded-xl text-xs transition"
+                className="w-full py-2.5 text-slate-600 hover:text-slate-800 font-semibold text-xs transition cursor-pointer"
               >
                 Cancel
               </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleBidSubmit} className="p-5">
-            {/* Quick Increment Pill Carousel */}
-            <div className="relative mb-5 flex items-center">
+          <form onSubmit={handleBidSubmit} className="p-4 sm:p-5">
+            {/* Quick Increment Chips with Navigation Arrows */}
+            <div className="flex items-center gap-1 mb-4 select-none">
               <button
                 type="button"
                 onClick={() => scrollIncrements('left')}
-                className="p-1 text-slate-400 hover:text-slate-700 transition"
+                className="p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -216,7 +272,7 @@ export const BidModal: React.FC<BidModalProps> = ({
                       key={inc}
                       type="button"
                       onClick={() => handleSelectIncrement(inc)}
-                      className={`whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                      className={`whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                         isSelected
                           ? 'border-[#D32437] bg-red-50 text-[#D32437] shadow-sm'
                           : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
@@ -231,7 +287,7 @@ export const BidModal: React.FC<BidModalProps> = ({
               <button
                 type="button"
                 onClick={() => scrollIncrements('right')}
-                className="p-1 text-slate-400 hover:text-slate-700 transition"
+                className="p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -250,9 +306,11 @@ export const BidModal: React.FC<BidModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-[#D32437] hover:bg-[#b51f30] text-white font-extrabold px-6 py-3.5 text-sm uppercase tracking-wider transition shrink-0 disabled:opacity-50"
+                className={`text-white font-extrabold px-5 sm:px-6 py-3.5 text-xs sm:text-sm uppercase tracking-wider transition shrink-0 cursor-pointer disabled:opacity-50 ${
+                  isLeadingBidder ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#D32437] hover:bg-[#b51f30]'
+                }`}
               >
-                {isSubmitting ? 'Submitting...' : 'BID NOW'}
+                {isSubmitting ? 'Submitting...' : isLeadingBidder ? 'RAISE BID' : 'BID NOW'}
               </button>
             </div>
 
@@ -273,7 +331,7 @@ export const BidModal: React.FC<BidModalProps> = ({
                 type="checkbox"
                 checked={termsAccepted}
                 onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-0.5 rounded border-slate-300 text-[#D32437] focus:ring-[#D32437] w-4 h-4"
+                className="mt-0.5 rounded border-slate-300 text-[#D32437] focus:ring-[#D32437] w-4 h-4 cursor-pointer"
               />
               <span className="leading-relaxed">
                 I acknowledge that I have inspected the vehicle, accept its current condition, and agree to the{' '}

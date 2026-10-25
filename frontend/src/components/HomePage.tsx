@@ -506,6 +506,14 @@ export const HomePage: React.FC<HomePageProps> = ({
                 const currentBid = auc.currentHighestBid || auc.startPrice;
                 const priceObj = formatCurrency(currentBid);
                 const isEnded = auc.status === 'ENDED' || auc.status === 'COMPLETED' || (new Date(auc.endTime).getTime() <= now);
+                const isLeading = Boolean(
+                  currentUser && (
+                    auc.highestBidderId === currentUser.id ||
+                    auc.highestBidderId === currentUser.email ||
+                    (auc.highestBidderId && currentUser.email && auc.highestBidderId.toLowerCase() === currentUser.email.toLowerCase()) ||
+                    (auc.highestBidderId && (currentUser as any).username && auc.highestBidderId === (currentUser as any).username)
+                  )
+                );
 
                 const fallbackImg = isTruck
                   ? 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&q=80&w=800'
@@ -516,7 +524,14 @@ export const HomePage: React.FC<HomePageProps> = ({
                   : fallbackImg;
 
                 return (
-                  <div key={auc.id} className="awa-car-card group flex flex-col justify-between">
+                  <div 
+                    key={auc.id} 
+                    className={`awa-car-card group flex flex-col justify-between transition-all duration-300 ${
+                      isLeading 
+                        ? 'ring-2 ring-emerald-500 shadow-md shadow-emerald-100/50 bg-emerald-50/10' 
+                        : 'bg-white'
+                    }`}
+                  >
                     
                     {/* Media Thumbnail & Badges */}
                     <div 
@@ -546,6 +561,14 @@ export const HomePage: React.FC<HomePageProps> = ({
                           <span className="text-[11px] font-bold text-[#D32437] tracking-wider">
                             LIVE
                           </span>
+                        </div>
+                      )}
+
+                      {/* Leading Bidder Badge */}
+                      {isLeading && (
+                        <div className="absolute top-3 right-16 flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded-md shadow-md font-bold text-[10px] tracking-wide animate-pulse z-10">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>YOU ARE WINNING</span>
                         </div>
                       )}
 
@@ -636,7 +659,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                             Current Bid
                           </span>
                           <div className="text-right">
-                            <div className="awa-price">
+                            <div className={isLeading ? "text-lg font-extrabold text-emerald-600" : "awa-price"}>
                               {priceObj.aed}
                             </div>
                             <div className="text-[11px] font-semibold text-slate-500 font-mono">
@@ -670,7 +693,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                             <Heart className={`w-5 h-5 transition-transform ${isLiked ? 'fill-[#D32437] text-[#D32437]' : ''}`} />
                           </button>
 
-                          {/* Green BID NOW Button or Disabled AUCTION ENDED button */}
+                          {/* Green BID NOW Button or Disabled AUCTION ENDED button or WINNING (RAISE) button */}
                           {isEnded ? (
                             <button
                               disabled
@@ -679,6 +702,15 @@ export const HomePage: React.FC<HomePageProps> = ({
                             >
                               <Lock className="w-4 h-4 mr-1 text-slate-500" />
                               <span>AUCTION ENDED</span>
+                            </button>
+                          ) : isLeading ? (
+                            <button
+                              onClick={() => onOpenBidModal ? onOpenBidModal(auc) : handleBidClick(auc)}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer transition text-sm"
+                              title="You are currently leading this auction! Click to raise your bid."
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1 text-white" />
+                              <span>WINNING (RAISE)</span>
                             </button>
                           ) : (
                             <button

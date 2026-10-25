@@ -20,6 +20,7 @@ import { FavoritesPage } from './components/FavoritesPage';
 import { initiateKeycloakLogin, handleKeycloakCallback } from './utils/oidc';
 import { api } from './services/api';
 import { User, Vehicle, Auction } from './types';
+import { Clock } from 'lucide-react';
 
 // Helper to determine initial view and auction ID from URL path
 const getRouteFromPath = (): { view: PortalView; auctionId?: string; vehicleId?: string } => {
@@ -80,6 +81,27 @@ const getPathForView = (view: PortalView, auctionId?: string): string => {
   }
 };
 
+const detectDeviceInfo = () => {
+  const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua) || (typeof window !== 'undefined' && window.innerWidth < 768);
+  const deviceType = isMobile ? 'Mobile' : 'Desktop';
+
+  let browser = 'Chrome';
+  if (/Edg/i.test(ua)) browser = 'Edge';
+  else if (/Firefox/i.test(ua)) browser = 'Firefox';
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
+  else if (/Chrome/i.test(ua)) browser = 'Chrome';
+
+  let os = 'Windows';
+  if (/Android/i.test(ua)) os = 'Android';
+  else if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
+  else if (/Mac/i.test(ua)) os = 'macOS';
+  else if (/Linux/i.test(ua)) os = 'Linux';
+  else if (/Windows/i.test(ua)) os = 'Windows';
+
+  return { deviceType, browser: `${browser} (${os})`, os };
+};
+
 export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -105,6 +127,11 @@ export const App: React.FC = () => {
   const [bidModalAuction, setBidModalAuction] = useState<Auction | null>(null);
   const [isSecurityDepositModalOpen, setIsSecurityDepositModalOpen] = useState(false);
   const [selectedVehicleDetails, setSelectedVehicleDetails] = useState<{ auction: Auction; vehicle: Vehicle } | null>(null);
+
+  // 15-Minute Idle Session Timeout & Client IP Detection
+  const [isIdleTimedOut, setIsIdleTimedOut] = useState<boolean>(false);
+  const clientIpRef = React.useRef<string>('');
+  const lastActivityRef = React.useRef<number>(Date.now());
 
   // Route Navigator that synchronizes URL pathname with /seller-buyer/*
   const navigateToView = (view: PortalView, auctionId?: string) => {
@@ -281,11 +308,51 @@ export const App: React.FC = () => {
     return () => clearInterval(pollInterval);
   }, [currentView]);
 
+  // Fetch real client public IP for accurate live session identification
+  useEffect(() => {
+    fetch('https://api.ipify.org?format=json')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.ip) clientIpRef.current = data.ip;
+      })
+      .catch(() => {});
+  }, []);
+
+  // 15-Minute Inactivity Idle Session Timeout (logs out and prompts user)
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const resetIdleTimer = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach((ev) => window.addEventListener(ev, resetIdleTimer, { passive: true }));
+
+    const idleCheckInterval = setInterval(() => {
+      const elapsed = Date.now() - lastActivityRef.current;
+      if (elapsed >= 15 * 60 * 1000) { // 15 minutes
+        const { deviceType } = detectDeviceInfo();
+        api.logoutSession(currentUser.id, deviceType).catch(() => {});
+        localStorage.removeItem('token');
+        setCurrentUser(null);
+        setIsIdleTimedOut(true);
+        navigateToView('HOME');
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => {
+      activityEvents.forEach((ev) => window.removeEventListener(ev, resetIdleTimer));
+      clearInterval(idleCheckInterval);
+    };
+  }, [currentUser?.id]);
+
   // 3. Real-Time Multi-User Session Heartbeat (Every 5s for any logged-in user: Buyer, Seller, Admin)
   useEffect(() => {
     if (!currentUser) return;
 
     const sendHeartbeat = () => {
+      const { deviceType, browser, os } = detectDeviceInfo();
       api.sendSessionHeartbeat({
         userId: currentUser.id,
         userName: currentUser.fullName || 'User',
@@ -295,10 +362,11 @@ export const App: React.FC = () => {
         securityDeposit: currentUser.securityDeposit || 0,
         usedBiddingLimit: currentUser.usedBiddingLimit || 0,
         bidsPlacedInSession: 0,
-        deviceType: window.innerWidth < 768 ? 'Mobile' : 'Desktop',
-        browser: 'Chrome 124.0 (Windows)',
-        os: 'Windows 11',
+        deviceType,
+        browser,
+        os,
         protocol: window.location.protocol.replace(':', '').toUpperCase(),
+        clientIp: clientIpRef.current || undefined,
       });
     };
 
@@ -696,6 +764,38 @@ export const App: React.FC = () => {
         onClose={() => setIsSecurityDepositModalOpen(false)}
         onUpdateDeposit={handleUpdateDeposit}
       />
+
+      {/* 15-Minute Inactivity Idle Session Expired Modal */}
+      {isIdleTimedOut && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center border border-slate-200">
+            <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Session Expired</h3>
+            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+              For your security, your session has expired after 15 minutes of inactivity. Please log in again to continue bidding and managing your account.
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={() => {
+                  setIsIdleTimedOut(false);
+                  initiateKeycloakLogin({ action: 'login' });
+                }}
+                className="w-full py-3 px-4 bg-[#D32437] hover:bg-[#b51a2b] text-white font-bold rounded-xl transition cursor-pointer shadow-md"
+              >
+                Log In Again
+              </button>
+              <button
+                onClick={() => setIsIdleTimedOut(false)}
+                className="w-full py-2.5 px-4 text-slate-600 hover:bg-slate-100 font-semibold rounded-xl transition cursor-pointer text-sm"
+              >
+                Continue as Guest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
