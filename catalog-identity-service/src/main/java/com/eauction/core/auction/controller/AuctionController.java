@@ -163,14 +163,20 @@ public class AuctionController {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", "Invalid numeric bid amount"));
         }
 
-        // Pricing bounds validation
+        // Pricing bounds validation: Bid must be higher than current highest bid (or >= startPrice if first bid)
         BigDecimal currentHighest = auction.getCurrentHighestBid() != null ? auction.getCurrentHighestBid() : BigDecimal.ZERO;
-        BigDecimal minIncrement = auction.getMinBidIncrement() != null ? auction.getMinBidIncrement() : BigDecimal.valueOf(5000);
-        BigDecimal minRequired = currentHighest.compareTo(BigDecimal.ZERO) == 0 ? auction.getStartPrice() : currentHighest.add(minIncrement);
-
-        if (proposedBid.compareTo(minRequired) < 0) {
+        if (currentHighest.compareTo(BigDecimal.ZERO) == 0) {
+            BigDecimal startPrice = auction.getStartPrice() != null ? auction.getStartPrice() : BigDecimal.ZERO;
+            if (proposedBid.compareTo(startPrice) < 0) {
+                return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "code", "BID_TOO_LOW",
+                    "message", "Your bid of AED " + proposedBid + " is less than the starting price of AED " + startPrice + ". Please enter a higher bid."
+                ));
+            }
+        } else if (proposedBid.compareTo(currentHighest) <= 0) {
             return ResponseEntity.badRequest().body(java.util.Map.of(
-                "message", "Proposed bid of AED " + proposedBid + " must be at least AED " + minRequired
+                "code", "BID_TOO_LOW",
+                "message", "Your bid of AED " + proposedBid + " is less than or equal to the existing bid of AED " + currentHighest + ". Please enter a higher bid."
             ));
         }
 

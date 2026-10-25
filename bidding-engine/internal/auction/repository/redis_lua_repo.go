@@ -68,16 +68,11 @@ local current_highest = tonumber(current_highest_str) or 0
 local min_increment = tonumber(min_increment_str) or 0
 local start_price = tonumber(start_price_str) or 0
 
-local min_required = 0
-if current_highest == 0 then
-    min_required = start_price
-else
-    min_required = current_highest + min_increment
-end
-
--- 4. Enforce baseline condition
-if proposed_bid < min_required then
-    return redis.error_reply('ERR_BID_BELOW_MINIMUM: Proposed bid ' .. tostring(proposed_bid) .. ' is below required minimum ' .. tostring(min_required))
+-- 4. Enforce baseline condition: must be higher than current highest (or >= start_price)
+if current_highest > 0 and proposed_bid <= current_highest then
+    return redis.error_reply('ERR_BID_BELOW_MINIMUM: Your bid of AED ' .. tostring(proposed_bid) .. ' is less than or equal to the existing bid of AED ' .. tostring(current_highest) .. '. Please enter a higher bid.')
+elseif current_highest == 0 and proposed_bid < start_price then
+    return redis.error_reply('ERR_BID_BELOW_MINIMUM: Your bid of AED ' .. tostring(proposed_bid) .. ' is less than the starting price of AED ' .. tostring(start_price) .. '. Please enter a higher bid.')
 end
 
 -- 5. Atomically update Redis hash state

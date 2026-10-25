@@ -289,7 +289,7 @@ export const App: React.FC = () => {
           prev.map((auc) => {
             const fresh = freshAuctions.find((f) => f.id === auc.id);
             if (!fresh) return auc;
-            if (fresh.currentHighestBid !== auc.currentHighestBid || fresh.status !== auc.status) {
+            if (fresh.currentHighestBid !== auc.currentHighestBid || fresh.status !== auc.status || fresh.highestBidderId !== auc.highestBidderId) {
               return {
                 ...auc,
                 currentHighestBid: fresh.currentHighestBid,
@@ -300,10 +300,45 @@ export const App: React.FC = () => {
             return auc;
           })
         );
+
+        // Real-time synchronization for Vehicle Details page
+        setSelectedVehicleDetails((prev) => {
+          if (!prev) return prev;
+          const fresh = freshAuctions.find((f) => f.id === prev.auction.id);
+          if (!fresh) return prev;
+          if (fresh.currentHighestBid !== prev.auction.currentHighestBid || fresh.highestBidderId !== prev.auction.highestBidderId || fresh.status !== prev.auction.status) {
+            return {
+              ...prev,
+              auction: {
+                ...prev.auction,
+                currentHighestBid: fresh.currentHighestBid,
+                highestBidderId: fresh.highestBidderId,
+                status: fresh.status,
+              },
+            };
+          }
+          return prev;
+        });
+
+        // Real-time synchronization for open Bid Modal
+        setBidModalAuction((prev) => {
+          if (!prev) return prev;
+          const fresh = freshAuctions.find((f) => f.id === prev.id);
+          if (!fresh) return prev;
+          if (fresh.currentHighestBid !== prev.currentHighestBid || fresh.highestBidderId !== prev.highestBidderId || fresh.status !== prev.status) {
+            return {
+              ...prev,
+              currentHighestBid: fresh.currentHighestBid,
+              highestBidderId: fresh.highestBidderId,
+              status: fresh.status,
+            };
+          }
+          return prev;
+        });
       } catch (err) {
         // Ignore background polling errors
       }
-    }, 2000);
+    }, 1000);
 
     return () => clearInterval(pollInterval);
   }, [currentView]);
@@ -441,14 +476,14 @@ export const App: React.FC = () => {
       )
     );
     if (bidModalAuction && bidModalAuction.id === auctionId) {
-      setBidModalAuction((prev) => prev ? { ...prev, currentHighestBid: newBidAmount } : null);
+      setBidModalAuction((prev) => prev ? { ...prev, currentHighestBid: newBidAmount, highestBidderId: currentUser?.id } : null);
     }
     if (selectedVehicleDetails && selectedVehicleDetails.auction.id === auctionId) {
       setSelectedVehicleDetails((prev) =>
         prev
           ? {
               ...prev,
-              auction: { ...prev.auction, currentHighestBid: newBidAmount },
+              auction: { ...prev.auction, currentHighestBid: newBidAmount, highestBidderId: currentUser?.id },
             }
           : null
       );

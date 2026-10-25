@@ -86,6 +86,14 @@ export const VehicleDetailsPage: React.FC<VehicleDetailsPageProps> = ({
   const currentBid = Number(auction.currentHighestBid || auction.startPrice || 0);
   const lotNumber = vehicle.lotNo || 101003;
 
+  const isLeadingBidder = Boolean(
+    currentUser && (
+      (auction.highestBidderId && auction.highestBidderId.toLowerCase() === currentUser.id.toLowerCase()) ||
+      (currentUser.email && auction.highestBidderId && auction.highestBidderId.toLowerCase() === currentUser.email.toLowerCase()) ||
+      ((currentUser as any).username && auction.highestBidderId && auction.highestBidderId === (currentUser as any).username)
+    )
+  );
+
   const nextImage = () => {
     setSelectedImageIndex((prev) => (prev + 1) % galleryImages.length);
   };
@@ -320,30 +328,54 @@ Al Wataneya Auctions LLC - Official Digital Certificate
               </div>
 
               {/* Highest Bid Card */}
-              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 flex items-center justify-between">
+              <div className={`border rounded-xl p-4 flex items-center justify-between transition ${
+                isLeadingBidder ? 'bg-emerald-50/80 border-emerald-300' : 'bg-slate-50 border-slate-200/80'
+              }`}>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-[#D32437]">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    isLeadingBidder ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-[#D32437]'
+                  }`}>
                     <Gavel className="w-4 h-4" />
                   </div>
-                  <span className="text-xs font-semibold text-slate-600">Highest Bid</span>
+                  <div>
+                    <span className="text-xs font-semibold text-slate-600 block">Highest Bid</span>
+                    {isLeadingBidder && (
+                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">
+                        You're in the lead!
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-base font-extrabold text-[#D32437]">
+                  <span className={`text-base font-extrabold ${
+                    isLeadingBidder ? 'text-emerald-700' : 'text-[#D32437]'
+                  }`}>
                     AED {currentBid.toLocaleString()}
                   </span>
                 </div>
               </div>
 
-              <p className="text-xs text-slate-500 text-center">
-                Place your bid before the timer runs out.
-              </p>
+              {isLeadingBidder ? (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-900 font-medium">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>You are the current highest bidder. Raising your bid will increase your own winning offer.</span>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 text-center">
+                  Place your bid before the timer runs out.
+                </p>
+              )}
 
-              {/* Main Green "BID NOW" Button (Matching Screenshot 3) */}
+              {/* Main Action Button */}
               <button
                 onClick={() => onOpenBidModal(auction)}
-                className="w-full bg-[#4caf50] hover:bg-[#43a047] text-white font-extrabold py-3.5 px-6 rounded-xl uppercase tracking-wider text-sm shadow-lg shadow-green-600/20 transition flex items-center justify-center gap-2"
+                className={`w-full font-extrabold py-3.5 px-6 rounded-xl uppercase tracking-wider text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
+                  isLeadingBidder
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
+                    : 'bg-[#4caf50] hover:bg-[#43a047] text-white shadow-green-600/20'
+                }`}
               >
-                <span>BID NOW</span>
+                <span>{isLeadingBidder ? 'RAISE YOUR BID' : 'BID NOW'}</span>
               </button>
 
               {/* Technical Report Download Button */}

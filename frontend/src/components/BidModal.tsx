@@ -96,8 +96,8 @@ export const BidModal: React.FC<BidModalProps> = ({
       return;
     }
 
-    if (customBidAmount <= currentPrice) {
-      setErrorMsg(`Proposed bid must be at least AED ${(currentPrice + minInc).toLocaleString()}`);
+    if (!customBidAmount || customBidAmount <= currentPrice) {
+      setErrorMsg(`Your bid of AED ${(customBidAmount || 0).toLocaleString()} is less than or equal to the existing bid of AED ${currentPrice.toLocaleString()}. Please enter a higher bid.`);
       return;
     }
 
@@ -249,7 +249,7 @@ export const BidModal: React.FC<BidModalProps> = ({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleBidSubmit} className="p-4 sm:p-5">
+          <form noValidate onSubmit={handleBidSubmit} className="p-4 sm:p-5">
             {/* Quick Increment Chips with Navigation Arrows */}
             <div className="flex items-center gap-1 mb-4 select-none">
               <button
@@ -297,10 +297,14 @@ export const BidModal: React.FC<BidModalProps> = ({
             <div className="relative flex items-center rounded-xl border-2 border-slate-200 focus-within:border-[#D32437] bg-slate-50 transition overflow-hidden mb-4">
               <input
                 type="number"
-                value={customBidAmount}
-                onChange={(e) => setCustomBidAmount(Number(e.target.value))}
-                min={currentPrice + 100}
-                step={500}
+                value={customBidAmount || ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? 0 : Number(e.target.value);
+                  setCustomBidAmount(val);
+                  setErrorMsg('');
+                }}
+                step="any"
+                placeholder="Enter bid amount"
                 className="w-full py-3 px-4 text-xl font-bold text-slate-900 bg-transparent outline-none focus:ring-0"
               />
               <button

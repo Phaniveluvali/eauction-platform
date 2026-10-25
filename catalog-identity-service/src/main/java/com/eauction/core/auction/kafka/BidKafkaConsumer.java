@@ -83,19 +83,18 @@ public class BidKafkaConsumer {
             return;
         }
 
-        // 4. Validate bid increment baseline: bidAmount >= (currentHighestBid + minBidIncrement)
+        // 4. Validate bid increment baseline: bid must be higher than currentHighest (or >= startPrice if first bid)
         BigDecimal currentHighest = auction.getCurrentHighestBid();
-        BigDecimal minRequiredBid;
-
         if (currentHighest == null || currentHighest.compareTo(BigDecimal.ZERO) == 0) {
-            minRequiredBid = auction.getStartPrice();
-        } else {
-            minRequiredBid = currentHighest.add(auction.getMinBidIncrement());
-        }
-
-        if (payload.getBidAmount().compareTo(minRequiredBid) < 0) {
-            log.warn("Bid amount [{}] is below required minimum [{}] for auction [{}]. Rejecting bid",
-                    payload.getBidAmount(), minRequiredBid, auction.getId());
+            if (auction.getStartPrice() != null && payload.getBidAmount().compareTo(auction.getStartPrice()) < 0) {
+                log.warn("Bid amount [{}] is below start price [{}] for auction [{}]. Rejecting bid",
+                        payload.getBidAmount(), auction.getStartPrice(), auction.getId());
+                recordRejectedBid(payload, "REJECTED_BID_TOO_LOW");
+                return;
+            }
+        } else if (payload.getBidAmount().compareTo(currentHighest) <= 0) {
+            log.warn("Bid amount [{}] is less than or equal to current highest [{}] for auction [{}]. Rejecting bid",
+                    payload.getBidAmount(), currentHighest, auction.getId());
             recordRejectedBid(payload, "REJECTED_BID_TOO_LOW");
             return;
         }
