@@ -1,0 +1,218 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ['alertmanager:9093']
+
+    rule_files:
+      - '/etc/prometheus/alert_rules.yml'
+
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      - job_name: 'node-exporter'
+        static_configs:
+          - targets: ['node-exporter:9100']
+
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics:8080']
+
+      - job_name: 'kubernetes-cadvisor'
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+      # Auto-scrape pods with prometheus.io/scrape=true
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+
+  alert_rules.yml: |
+    groups:
+      - name: infrastructure-and-host-alerts
+        rules:
+          # 1. Host CPU Alert
+          - alert: HostHighCpuLoad
+            expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Host CPU utilization is critical (> 85%)"
+              description: "Server CPU utilization on {{ $labels.instance }} has exceeded 85% for the last 5 minutes."
+
+          # 2. Host RAM Alert
+          - alert: HostLowMemoryAvailable
+            expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 15
+            for: 3m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Host Memory running dangerously low (< 15% free)"
+              description: "Available host memory on {{ $labels.instance }} is less than 15% (under 2.5 GiB)."
+
+          # 3. Host Disk Alert
+          - alert: HostRootDiskSpaceFillingUp
+            expr: (node_filesystem_avail_bytes{mountpoint="/host/root"} / node_filesystem_size_bytes{mountpoint="/host/root"}) * 100 < 15
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Host Root Filesystem (/) is filling up (< 15% free)"
+              description: "The root disk on {{ $labels.instance }} has less than 15% free space remaining."
+
+      - name: kubernetes-workload-alerts
+        rules:
+          # 4. Pod CrashLooping Alert
+          - alert: PodCrashLooping
+            expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 > 2
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod is repeatedly restarting (CrashLoopBackOff)"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted multiple times in the last 15 minutes."
+
+          # 5. Core Platform Service Down
+          - alert: EauctionCoreServiceDown
+            expr: kube_deployment_status_replicas_available{namespace="eauction"} < 1
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Al Wataneya core service has zero healthy replicas"
+              description: "Deployment {{ $labels.deployment }} in namespace eauction has no available replicas."
+
+          # 6. Database / StatefulSet Pod Down
+          - alert: EauctionDatabasePodDown
+            expr: kube_statefulset_status_replicas_ready{namespace="eauction"} < kube_statefulset_status_replicas{namespace="eauction"}
+            for: 3m
+            labels:
+              severity: critical
+            annotations:
+              summary: "PostgreSQL, Redis, or Kafka stateful replica is down"
+              description: "StatefulSet {{ $labels.statefulset }} in namespace eauction is missing ready replicas."
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-storage
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path-retain
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prometheus
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.45.0
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=7d"
+            - "--web.enable-lifecycle"
+          ports:
+            - name: web
+              containerPort: 9090
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 500m
+              memory: 450Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: storage
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: storage
+          persistentVolumeClaim:
+            claimName: prometheus-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+spec:
+  ports:
+    - name: web
+      port: 9090
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: prometheus

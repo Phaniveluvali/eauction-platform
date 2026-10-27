@@ -1,0 +1,53 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monitoring-ingress
+  namespace: monitoring
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: 'false'
+    nginx.ingress.kubernetes.io/proxy-body-size: '50m'
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '3600'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '3600'
+    nginx.ingress.kubernetes.io/websocket-services: 'grafana,dozzle'
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tecnics-internal.online
+      http:
+        paths:
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+          - path: /logs
+            pathType: Prefix
+            backend:
+              service:
+                name: dozzle
+                port:
+                  number: 8080
+    - host: eauction.tecnics-internal.online
+      http:
+        paths:
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+          - path: /logs
+            pathType: Prefix
+            backend:
+              service:
+                name: dozzle
+                port:
+                  number: 8080
+  tls:
+    - hosts:
+        - tecnics-internal.online
+        - eauction.tecnics-internal.online
+      secretName: ca-vmx-tls-cert
