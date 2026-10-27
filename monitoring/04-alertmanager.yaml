@@ -7,9 +7,9 @@ data:
   alertmanager.yml: |
     global:
       resolve_timeout: 5m
-      smtp_smarthost: 'smtp.gmail.com:587'
-      smtp_from: 'eauction-alerts@tecnics-internal.online'
-      smtp_require_tls: true
+      smtp_smarthost: '172.16.6.9:5433'
+      smtp_from: 'venkatesh_vangala@tecnics.com'
+      smtp_require_tls: false
 
     route:
       group_by: ['alertname', 'namespace', 'job', 'severity']
