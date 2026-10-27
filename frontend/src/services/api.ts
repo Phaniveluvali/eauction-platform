@@ -2,6 +2,7 @@ import { AuthResponse, User, Vehicle, Auction, Bid, BidResponse, PaymentOrderRes
 
 const CATALOG_BASE = import.meta.env.VITE_CATALOG_API_URL || '';
 const PAYMENT_BASE = import.meta.env.VITE_PAYMENT_API_URL || '';
+const AI_BASE = import.meta.env.VITE_AI_API_URL || '';
 
 function getAuthHeader(): Record<string, string> {
   const token = localStorage.getItem('token');
@@ -564,4 +565,85 @@ export const api = {
       // Ignore
     }
   },
+
+  // --- AI DOMAIN: MARKETING, FINANCE & CONCIERGE ---
+  async getFinanceOverview(year?: number): Promise<any> {
+    const url = year ? `${AI_BASE}/api/v1/ai/finance/overview?fiscal_year=${year}` : `${AI_BASE}/api/v1/ai/finance/overview`;
+    const res = await fetch(url, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to fetch finance overview');
+    return res.json();
+  },
+
+  async getFailedTransactions(): Promise<any> {
+    const res = await fetch(`${AI_BASE}/api/v1/ai/finance/failed-transactions`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to fetch failed transactions');
+    return res.json();
+  },
+
+  async generateBoardroomReport(): Promise<any> {
+    const res = await fetch(`${AI_BASE}/api/v1/ai/finance/generate-boardroom-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to generate boardroom report');
+    return res.json();
+  },
+
+  async generatePromoVariants(data: {
+    raw_intent: string;
+    category?: string;
+    discount_pct?: number;
+    duration_hours?: number;
+  }): Promise<{ variants: any[] }> {
+    const res = await fetch(`${AI_BASE}/api/v1/ai/marketing/generate-promo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to generate promo variants');
+    return res.json();
+  },
+
+  async broadcastPromo(campaign: any): Promise<any> {
+    const res = await fetch(`${AI_BASE}/api/v1/ai/marketing/broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify(campaign),
+    });
+    if (!res.ok) throw new Error('Failed to broadcast promo');
+    return res.json();
+  },
+
+  async getActivePromo(): Promise<{ active_promotion: any }> {
+    try {
+      const res = await fetch(`${AI_BASE}/api/v1/ai/marketing/active-promo`);
+      if (!res.ok) return { active_promotion: null };
+      return res.json();
+    } catch {
+      return { active_promotion: null };
+    }
+  },
+
+  async dismissPromo(): Promise<any> {
+    const res = await fetch(`${AI_BASE}/api/v1/ai/marketing/dismiss`, {
+      method: 'POST',
+      headers: { ...getAuthHeader() },
+    });
+    return res.json();
+  },
+
+  async conciergeChat(messages: Array<{ role: string; content: string }>, userContext?: any): Promise<any> {
+    const res = await fetch(`${AI_BASE}/api/v1/ai/concierge/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ messages, user_context: userContext }),
+    });
+    if (!res.ok) throw new Error('Failed to chat with AI Concierge');
+    return res.json();
+  },
 };
+

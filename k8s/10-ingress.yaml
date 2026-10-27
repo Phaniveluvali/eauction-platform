@@ -29,6 +29,13 @@ spec:
                 name: eauction-payment-broker
                 port:
                   number: 8082
+          - path: /api/v1/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-ai-service
+                port:
+                  number: 8000
           - path: /api
             pathType: Prefix
             backend:
@@ -67,6 +74,13 @@ spec:
                 name: eauction-payment-broker
                 port:
                   number: 8082
+          - path: /api/v1/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-ai-service
+                port:
+                  number: 8000
           - path: /api
             pathType: Prefix
             backend:

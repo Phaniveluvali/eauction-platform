@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-ai-service
+  namespace: eauction
+  labels:
+    app: eauction-ai-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: eauction-ai-service
+  template:
+    metadata:
+      labels:
+        app: eauction-ai-service
+    spec:
+      containers:
+        - name: ai-service
+          image: eauction-ai-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PORT
+              value: "8000"
+            - name: POSTGRES_REPLICA_HOST
+              value: "eauction-postgres-replica"
+            - name: POSTGRES_MASTER_HOST
+              value: "eauction-postgres"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "eauction_db"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "postgrespassword"
+            - name: REDIS_HOST
+              value: "eauction-redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: OLLAMA_HOST
+              value: "http://192.168.2.40:11434"
+            - name: MODEL_REASONING
+              value: "qwen2.5:7b-instruct"
+            - name: MODEL_VISION
+              value: "qwen2.5vl:7b"
+            - name: MODEL_CHAT
+              value: "llama3.2:latest"
+            - name: MODEL_EMBEDDING
+              value: "qwen3-embedding:latest"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-ai-service
+  namespace: eauction
+  labels:
+    app: eauction-ai-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: eauction-ai-service

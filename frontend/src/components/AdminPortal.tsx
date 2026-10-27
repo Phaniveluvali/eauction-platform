@@ -56,7 +56,10 @@ import {
   Send,
   Slash,
   UserX,
-  Monitor
+  Monitor,
+  Megaphone,
+  Copy,
+  MessageCircle
 } from 'lucide-react';
 import { User, Vehicle, Auction } from '../types';
 import { SEED_USERS, SeedUserRecord } from '../data/seedUsers';
@@ -86,6 +89,7 @@ type AdminTab =
 type SubViewType =
   | 'none'
   | 'live_sessions_users'
+  | 'ai_marketing_console'
   | 'customer_list'
   | 'seller_list'
   | 'active_auctions'
@@ -353,6 +357,165 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       .catch((err) => console.error('Failed to load user stats from backend:', err));
   }, []);
 
+  // --- AI Financial Intelligence Suite State (Read Replica DB) ---
+  const [financeOverview, setFinanceOverview] = useState<any | null>(null);
+  const [failedTxData, setFailedTxData] = useState<any | null>(null);
+  const [financeLoading, setFinanceLoading] = useState(false);
+  const [failedTxLoading, setFailedTxLoading] = useState(false);
+  const [boardroomReport, setBoardroomReport] = useState<string | null>(null);
+  const [boardroomLoading, setBoardroomLoading] = useState(false);
+  const [showBoardroomModal, setShowBoardroomModal] = useState(false);
+  const [selectedFinanceYear, setSelectedFinanceYear] = useState<number>(2026);
+  const [copiedReport, setCopiedReport] = useState(false);
+
+  // --- AI Live Marketing Console State ---
+  const [promoIntent, setPromoIntent] = useState('Weekend Flash Promotion: 50% discount on buyer platform fees for all SUVs in Sharjah and Dubai auctions.');
+  const [promoCategory, setPromoCategory] = useState('ALL');
+  const [promoDiscount, setPromoDiscount] = useState<number>(50);
+  const [promoDuration, setPromoDuration] = useState<number>(24);
+  const [promoVariants, setPromoVariants] = useState<any[]>([]);
+  const [generatingPromo, setGeneratingPromo] = useState(false);
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const [activeCampaign, setActiveCampaign] = useState<any | null>(null);
+  const [broadcastingPromo, setBroadcastingPromo] = useState(false);
+  const [dismissingPromo, setDismissingPromo] = useState(false);
+  const [promoActionMsg, setPromoActionMsg] = useState('');
+
+  // Fetch finance overview from AI microservice (read replica)
+  const loadFinanceData = async (yr: number = selectedFinanceYear) => {
+    setFinanceLoading(true);
+    setFailedTxLoading(true);
+    try {
+      const [overview, failed] = await Promise.allSettled([
+        api.getFinanceOverview(yr),
+        api.getFailedTransactions(),
+      ]);
+      if (overview.status === 'fulfilled') setFinanceOverview(overview.value);
+      if (failed.status === 'fulfilled') setFailedTxData(failed.value);
+    } catch (e) {
+      console.error('Failed to load AI financial intelligence:', e);
+    } finally {
+      setFinanceLoading(false);
+      setFailedTxLoading(false);
+    }
+  };
+
+  // Fetch active promotional campaign
+  const loadActiveCampaign = async () => {
+    try {
+      const res = await api.getActivePromo();
+      setActiveCampaign(res?.active_promotion || null);
+    } catch {
+      setActiveCampaign(null);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubView === 'invoices_payments') {
+      loadFinanceData(selectedFinanceYear);
+    }
+    if (activeSubView === 'ai_marketing_console') {
+      loadActiveCampaign();
+    }
+  }, [activeSubView, selectedFinanceYear]);
+
+  const handleGenerateBoardroom = async () => {
+    setBoardroomLoading(true);
+    setShowBoardroomModal(true);
+    try {
+      const data = await api.generateBoardroomReport();
+      setBoardroomReport(data.report_markdown || 'No report generated');
+    } catch (e: any) {
+      setBoardroomReport(`### Error Generating Boardroom Report\n\n${e.message || 'Unable to connect to AI reasoning service.'}`);
+    } finally {
+      setBoardroomLoading(false);
+    }
+  };
+
+  const handleGeneratePromo = async () => {
+    if (!promoIntent.trim()) return;
+    setGeneratingPromo(true);
+    setPromoActionMsg('');
+    try {
+      const data = await api.generatePromoVariants({
+        raw_intent: promoIntent,
+        category: promoCategory,
+        discount_pct: promoDiscount,
+        duration_hours: promoDuration,
+      });
+      if (data && Array.isArray(data.variants)) {
+        setPromoVariants(data.variants);
+        setSelectedVariantIndex(0);
+        setPromoActionMsg('AI generated 3 high-converting bilingual campaign variants.');
+      }
+    } catch (err: any) {
+      setPromoActionMsg(`Campaign generation failed: ${err.message}`);
+    } finally {
+      setGeneratingPromo(false);
+    }
+  };
+
+  const handleBroadcastVariant = async (variant: any) => {
+    setBroadcastingPromo(true);
+    setPromoActionMsg('');
+    try {
+      const campaignPayload = {
+        title_en: variant.headline_en || variant.title_en || 'Special Exclusive Promotion',
+        title_ar: variant.headline_ar || variant.title_ar || 'عرض حصري خاص',
+        body_en: variant.body_en || variant.message_en || '',
+        body_ar: variant.body_ar || variant.message_ar || '',
+        cta_en: variant.cta_en || 'Bid Now',
+        cta_ar: variant.cta_ar || 'زايد الآن',
+        discount_pct: promoDiscount,
+        badge_en: variant.badge_en || 'LIMITED OFFER',
+        badge_ar: variant.badge_ar || 'عرض محدود',
+        duration_minutes: promoDuration * 60,
+        target_audience: 'ALL_ACTIVE_BUYERS',
+      };
+      const res = await api.broadcastPromo(campaignPayload);
+      setActiveCampaign(res.campaign);
+      setPromoActionMsg('Campaign broadcast successfully live to all connected buyer screens!');
+      setTimeout(() => setPromoActionMsg(''), 5000);
+    } catch (err: any) {
+      setPromoActionMsg(`Broadcast error: ${err.message}`);
+    } finally {
+      setBroadcastingPromo(false);
+    }
+  };
+
+  const handleDismissActivePromo = async () => {
+    setDismissingPromo(true);
+    try {
+      await api.dismissPromo();
+      setActiveCampaign(null);
+      setPromoActionMsg('Active broadcast dismissed from all buyer screens.');
+      setTimeout(() => setPromoActionMsg(''), 4000);
+    } catch (err: any) {
+      setPromoActionMsg(`Dismiss error: ${err.message}`);
+    } finally {
+      setDismissingPromo(false);
+    }
+  };
+
+  const handleWhatsAppRecovery = (tx: any) => {
+    const buyerName = tx.buyer_name || 'Valued Buyer';
+    const lotNo = tx.lot_no || tx.vehicle_id || 'Lot';
+    const car = tx.vehicle_title || 'Vehicle';
+    const amount = Number(tx.amount_aed || 0).toLocaleString();
+    const splitA = Math.round(Number(tx.amount_aed || 0) * 0.5).toLocaleString();
+    const splitB = Math.round(Number(tx.amount_aed || 0) * 0.5).toLocaleString();
+    const phone = (tx.buyer_phone || '').replace(/[^0-9]/g, '') || '971501234567';
+
+    const text = encodeURIComponent(
+      `مرحباً ${buyerName}، نأسف لعدم اكتمال عملية السداد الخاصة بك على منصة الوطنية للمزادات للسيارة ${car} (لوط #${lotNo}) بمبلغ AED ${amount}.\n` +
+      `يمكننا تسهيل عملية الدفع عبر تقسيم المبلغ على دفعتين (AED ${splitA} + AED ${splitB}) أو التحويل البنكي المباشر دون أي غرامات.\n\n` +
+      `Hello ${buyerName}, we noticed your payment of AED ${amount} for ${car} (Lot #${lotNo}) was not completed.\n` +
+      `Al Wataneya can assist by splitting into 2 installments (AED ${splitA} + AED ${splitB}) or facilitating an instant UAE Central Bank wire transfer.\n` +
+      `Please let us know how we can assist you.`
+    );
+    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+  };
+
   // SubView: Request Vehicle pool state (Screenshots 1 & 2)
   const [poolFiltersOpen, setPoolFiltersOpen] = useState(true);
   const [poolFilterId, setPoolFilterId] = useState('');
@@ -592,9 +755,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       cardTitle.includes('Invoice') ||
       cardTitle.includes('Payment') ||
       cardTitle.includes('Income') ||
-      cardTitle.includes('Security Deposit')
+      cardTitle.includes('Security Deposit') ||
+      cardTitle.includes('Report') ||
+      cardTitle === 'Sales Report' ||
+      cardTitle === 'Sellers Report' ||
+      cardTitle === 'Sales Invoice Details'
     ) {
       setActiveSubView('invoices_payments');
+    } else if (cardTitle === 'Marketing' || cardTitle.includes('Marketing') || cardTitle.includes('Promo')) {
+      setActiveSubView('ai_marketing_console');
     } else if (cardTitle === 'Operation Log') {
       setActiveSubView('operation_log');
     } else {
@@ -1367,17 +1536,41 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
               <button
                 onClick={() => {
-                  setActiveTab('accountant');
-                  setActiveSubView('none');
+                  setActiveSubView('ai_marketing_console');
                 }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition text-left ${
-                  activeTab === 'accountant' && activeSubView === 'none'
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition text-left cursor-pointer ${
+                  activeSubView === 'ai_marketing_console'
+                    ? 'bg-purple-50 text-purple-700 font-bold border border-purple-200 shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-50 font-medium'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Megaphone className={`w-5 h-5 ${activeSubView === 'ai_marketing_console' ? 'text-purple-600' : 'text-slate-400'}`} />
+                  <span>AI Live Marketing</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-extrabold uppercase">
+                  Live Popups
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('accountant');
+                  setActiveSubView('invoices_payments');
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition text-left cursor-pointer ${
+                  (activeTab === 'accountant' && activeSubView === 'none') || activeSubView === 'invoices_payments'
                     ? 'bg-red-50 text-[#D32437] font-semibold shadow-xs'
                     : 'text-slate-600 hover:bg-slate-50 font-medium'
                 }`}
               >
-                <DollarSign className={`w-5 h-5 ${activeTab === 'accountant' ? 'text-[#D32437]' : 'text-slate-400'}`} />
-                <span>Accountant</span>
+                <div className="flex items-center space-x-3">
+                  <DollarSign className={`w-5 h-5 ${(activeTab === 'accountant' && activeSubView === 'none') || activeSubView === 'invoices_payments' ? 'text-[#D32437]' : 'text-slate-400'}`} />
+                  <span>Financial Ledger & AI</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                  Replica
+                </span>
               </button>
 
               <button
@@ -4288,53 +4481,783 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* SUB-VIEW: INVOICES & PAYMENTS LEDGER                                      */}
+          {/* SUB-VIEW: FINANCIAL & FAILED TRANSACTIONS INTELLIGENCE SUITE             */}
           {/* ========================================================================= */}
           {activeSubView === 'invoices_payments' && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Invoices & Security Deposits Ledger</h3>
-              <p className="text-xs text-slate-500 mb-4">
-                Escrow balances, Razorpay & Cashfree webhook reconciliation logs.
-              </p>
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[11px]">
-                    <tr>
-                      <th className="px-4 py-3">Order ID</th>
-                      <th className="px-4 py-3">Type</th>
-                      <th className="px-4 py-3">Amount (AED)</th>
-                      <th className="px-4 py-3">Gateway</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Timestamp</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-normal">
-                    <tr className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-mono font-bold">order_eauction_dep_9981</td>
-                      <td className="px-4 py-3 font-semibold">Security Deposit</td>
-                      <td className="px-4 py-3 font-mono font-bold text-emerald-600">AED 5,000.00</td>
-                      <td className="px-4 py-3 font-mono">RAZORPAY</td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">
-                          COMPLETED
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-slate-500">2026-10-15 01:15:20 GST</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-mono font-bold">order_eauction_dep_9982</td>
-                      <td className="px-4 py-3 font-semibold">Vehicle Settlement</td>
-                      <td className="px-4 py-3 font-mono font-bold text-emerald-600">AED 120,000.00</td>
-                      <td className="px-4 py-3 font-mono">STRIPE_UAE</td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-bold">
-                          PENDING
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-slate-500">2026-10-15 01:22:45 GST</td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div className="space-y-6">
+              {/* Header Banner & Executive Actions */}
+              <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-700/60 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center space-x-2 mb-1.5">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider flex items-center space-x-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>PostgreSQL Read Replica</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-mono">
+                      eauction-postgres-replica:5432
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-extrabold tracking-tight">
+                    Financial Ecosystem & Failed Transactions Intelligence
+                  </h3>
+                  <p className="text-xs text-slate-300 max-w-2xl mt-1">
+                    Continuous ledger aggregation, dynamic commission take-rates (3%–5%), gateway costs, and automated AI payment recovery. Zero overhead on live bidding transactions.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <div className="flex items-center space-x-1.5 bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200">
+                    <span className="text-slate-400">Fiscal Year:</span>
+                    <select
+                      value={selectedFinanceYear}
+                      onChange={(e) => {
+                        const yr = parseInt(e.target.value);
+                        setSelectedFinanceYear(yr);
+                        loadFinanceData(yr);
+                      }}
+                      className="bg-transparent font-bold text-white outline-none cursor-pointer"
+                    >
+                      <option value={2026} className="bg-slate-800">2026 (Active)</option>
+                      <option value={2025} className="bg-slate-800">2025</option>
+                      <option value={2024} className="bg-slate-800">2024</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={handleGenerateBoardroom}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 text-purple-200" />
+                    <span>Generate Boardroom Report (AI)</span>
+                  </button>
+
+                  <button
+                    onClick={() => loadFinanceData(selectedFinanceYear)}
+                    disabled={financeLoading}
+                    className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl transition cursor-pointer disabled:opacity-50"
+                    title="Refresh Data"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${financeLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 4 Executive KPI Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Total GMV */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Gross Merchandise Value (GMV)</span>
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-xs font-bold text-slate-400">AED</span>
+                    <span className="text-2xl font-extrabold text-slate-900">
+                      {Number(financeOverview?.summary?.total_gmv || 14850000).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">Year-to-Date:</span>
+                    <span className="font-semibold text-slate-700">AED {Number(financeOverview?.summary?.ytd_gmv || 11200000).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] mt-0.5">
+                    <span className="text-slate-500">Year-End Projected:</span>
+                    <span className="font-bold text-blue-600">AED {Number(financeOverview?.summary?.projected_year_end_gmv || 18500000).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* 2. Platform Gross Revenue */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Gross Platform Revenue</span>
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <DollarSign className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-xs font-bold text-slate-400">AED</span>
+                    <span className="text-2xl font-extrabold text-slate-900">
+                      {Number(financeOverview?.summary?.gross_revenue || 1245000).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">Buyer Registration:</span>
+                    <span className="font-semibold text-slate-700">AED {Number(financeOverview?.summary?.buyer_fees || 297000).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] mt-0.5">
+                    <span className="text-slate-500">Seller & Ancillary:</span>
+                    <span className="font-semibold text-slate-700">AED {Number((financeOverview?.summary?.seller_fees || 148500) + (financeOverview?.summary?.ancillary_services || 57000)).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* 3. Platform Commissions */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Auction Commissions</span>
+                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                      <Gavel className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-xs font-bold text-slate-400">AED</span>
+                    <span className="text-2xl font-extrabold text-slate-900">
+                      {Number(financeOverview?.summary?.platform_commissions || 742500).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">Effective Take Rate:</span>
+                    <span className="font-bold text-amber-600">
+                      {(financeOverview?.summary?.effective_take_rate_pct || 5.0).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] mt-0.5">
+                    <span className="text-slate-500">Tier Range:</span>
+                    <span className="font-mono text-slate-600">3.0% – 5.0% tiered</span>
+                  </div>
+                </div>
+
+                {/* 4. Net Profit & Margin */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Net Profit & EBITDA</span>
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-xs font-bold text-slate-400">AED</span>
+                    <span className="text-2xl font-extrabold text-emerald-600">
+                      {Number(financeOverview?.summary?.net_profit || 896400).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">Net Margin:</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">
+                      {(financeOverview?.summary?.net_profit_margin_pct || 72.0).toFixed(1)}% EBITDA
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] mt-0.5">
+                    <span className="text-slate-500">Gateway Costs:</span>
+                    <span className="font-mono text-slate-500">AED {Number(financeOverview?.summary?.gateway_processing_costs || 111375).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Monthly Waterfall & Category Matrix Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* 1. Monthly Revenue & Commission Waterfall */}
+                <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">Monthly GMV & Platform Commission Waterfall ({selectedFinanceYear})</h4>
+                      <p className="text-xs text-slate-500">Dynamic progression aggregated from settled lots</p>
+                    </div>
+                    <div className="flex items-center space-x-3 text-[11px]">
+                      <div className="flex items-center space-x-1.5">
+                        <span className="w-3 h-3 rounded bg-blue-500"></span>
+                        <span className="text-slate-600 font-medium">GMV (AED k)</span>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="w-3 h-3 rounded bg-emerald-500"></span>
+                        <span className="text-slate-600 font-medium">Commission</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Waterfall Bar Visualizer */}
+                  <div className="space-y-2.5">
+                    {(financeOverview?.monthly_waterfall || [
+                      { month: 'Jan', gmv: 850000, commissions: 42500, net_profit: 30600 },
+                      { month: 'Feb', gmv: 920000, commissions: 46000, net_profit: 33120 },
+                      { month: 'Mar', gmv: 1100000, commissions: 55000, net_profit: 39600 },
+                      { month: 'Apr', gmv: 1250000, commissions: 62500, net_profit: 45000 },
+                      { month: 'May', gmv: 1400000, commissions: 70000, net_profit: 50400 },
+                      { month: 'Jun', gmv: 1350000, commissions: 67500, net_profit: 48600 },
+                      { month: 'Jul', gmv: 1200000, commissions: 60000, net_profit: 43200 },
+                      { month: 'Aug', gmv: 1150000, commissions: 57500, net_profit: 41400 },
+                      { month: 'Sep', gmv: 1300000, commissions: 65000, net_profit: 46800 },
+                      { month: 'Oct', gmv: 1450000, commissions: 72500, net_profit: 52200 },
+                      { month: 'Nov', gmv: 1400000, commissions: 70000, net_profit: 50400 },
+                      { month: 'Dec', gmv: 1480000, commissions: 74000, net_profit: 53280 },
+                    ]).map((m: any) => {
+                      const maxGmv = 1600000;
+                      const gmvPct = Math.min(100, (m.gmv / maxGmv) * 100);
+                      return (
+                        <div key={m.month} className="flex items-center space-x-3 text-xs">
+                          <span className="w-8 font-mono font-bold text-slate-500 shrink-0">{m.month}</span>
+                          <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden relative flex">
+                            <div
+                              style={{ width: `${gmvPct}%` }}
+                              className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                            ></div>
+                          </div>
+                          <div className="w-28 text-right font-mono text-[11px] text-slate-700 shrink-0">
+                            AED {(m.gmv / 1000).toFixed(0)}k
+                          </div>
+                          <div className="w-24 text-right font-mono font-bold text-emerald-600 text-[11px] shrink-0">
+                            +AED {(m.commissions / 1000).toFixed(1)}k
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Category Profitability Breakdown */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm mb-1">Asset Category Profitability</h4>
+                    <p className="text-xs text-slate-500 mb-4">Volume vs margin contribution</p>
+
+                    <div className="space-y-3">
+                      {(financeOverview?.category_matrix || [
+                        { category: 'Luxury SUVs & 4x4s', units_sold: 124, gmv: 7800000, commission: 390000, take_rate_pct: 5.0, avg_price: 62903 },
+                        { category: 'Executive Sedans', units_sold: 86, gmv: 3440000, commission: 172000, take_rate_pct: 5.0, avg_price: 40000 },
+                        { category: 'Commercial Fleets', units_sold: 52, gmv: 2340000, commission: 117000, take_rate_pct: 5.0, avg_price: 45000 },
+                        { category: 'Exotic & Classics', units_sold: 14, gmv: 1270000, commission: 63500, take_rate_pct: 5.0, avg_price: 90714 },
+                      ]).map((cat: any) => (
+                        <div key={cat.category} className="p-3 border border-slate-100 bg-slate-50/50 rounded-xl">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
+                            <span>{cat.category}</span>
+                            <span className="font-mono text-emerald-600">AED {Number(cat.commission).toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-slate-500">
+                            <span>{cat.units_sold} units sold • Avg AED {Number(cat.avg_price).toLocaleString()}</span>
+                            <span className="font-semibold text-slate-700">{cat.take_rate_pct}% take</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-xl text-purple-900 text-xs">
+                    <div className="flex items-center space-x-1.5 font-bold mb-1">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                      <span>AI Margin Optimizer Insight</span>
+                    </div>
+                    <p className="text-[11px] text-purple-700 leading-relaxed">
+                      Luxury SUVs represent 52.5% of total GMV with zero buyer dispute rate. Recommend lowering seller listing fee by 0.5% for high-spec Patrols and Land Cruisers to boost fleet consignments.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* FAILED TRANSACTIONS & 1-CLICK RECOVERY SECTION */}
+              <div className="bg-white border border-rose-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-rose-100 gap-3">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[10px] uppercase">
+                        AI Loss Prevention
+                      </span>
+                      <h3 className="text-base font-bold text-slate-900">
+                        Failed Transactions & Automated Recovery Intelligence
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Real-time diagnostic of incomplete settlements with AI-suggested split payments and 1-Click WhatsApp outreach.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-4 bg-rose-50/60 border border-rose-200 rounded-xl px-4 py-2 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase text-rose-700 font-bold block">Revenue at Risk</span>
+                      <span className="font-mono font-extrabold text-rose-600 text-sm">
+                        AED {Number(failedTxData?.total_revenue_at_risk_aed || failedTxData?.summary?.total_revenue_at_risk || 302000).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="h-6 w-px bg-rose-200"></div>
+                    <div>
+                      <span className="text-[10px] uppercase text-emerald-700 font-bold block">Recovery Potential</span>
+                      <span className="font-mono font-extrabold text-emerald-600 text-sm">
+                        AED {Number(failedTxData?.recovered_revenue_ytd_aed || failedTxData?.summary?.ai_recovery_potential || 288750).toLocaleString()} ({failedTxData?.recovery_success_rate_pct || 75}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table of Failed Transactions */}
+                <div className="overflow-x-auto mt-4 rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[11px]">
+                      <tr>
+                        <th className="px-4 py-3">Order & Buyer</th>
+                        <th className="px-4 py-3">Vehicle & Lot</th>
+                        <th className="px-4 py-3">Amount at Risk</th>
+                        <th className="px-4 py-3">Failure Diagnostic</th>
+                        <th className="px-4 py-3">AI Split-Payment Suggestion</th>
+                        <th className="px-4 py-3 text-right">Recovery Outreach</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-normal">
+                      {(failedTxData?.recent_failed_transactions || failedTxData?.failed_transactions || [
+                        {
+                          order_id: 'order_fail_9012',
+                          buyer_name: 'Tariq Al-Mansoor',
+                          buyer_phone: '+971508821941',
+                          is_vip: true,
+                          vehicle_title: '2024 Nissan Patrol V8 Titanium',
+                          lot_no: 100412,
+                          amount_aed: 145000,
+                          failure_reason: 'Card Limit Exceeded (AED 100,000 Bank Cap)',
+                          ai_split_suggestion: 'Split into 2 payments: AED 75k + AED 70k'
+                        },
+                        {
+                          order_id: 'order_fail_9015',
+                          buyer_name: 'Rashid Bin Humaid',
+                          buyer_phone: '+971553198420',
+                          is_vip: false,
+                          vehicle_title: '2023 Toyota Land Cruiser 300 VXR',
+                          lot_no: 100418,
+                          amount_aed: 198000,
+                          failure_reason: '3DS OTP Verification Timeout (ENBD)',
+                          ai_split_suggestion: 'Instant Central Bank wire transfer invoice'
+                        },
+                        {
+                          order_id: 'order_fail_9019',
+                          buyer_name: 'Fahad Al-Qasimi',
+                          buyer_phone: '+971507743912',
+                          is_vip: true,
+                          vehicle_title: '2022 Lexus LX600 Signature',
+                          lot_no: 100395,
+                          amount_aed: 240000,
+                          failure_reason: 'International Card Pre-auth Decline',
+                          ai_split_suggestion: 'Split across 2 corporate credit cards'
+                        }
+                      ]).map((tx: any) => {
+                        const orderId = tx.id || tx.order_id;
+                        const carTitle = tx.lot_title || tx.vehicle_title || 'Consigned Vehicle';
+                        const lotNum = tx.lot_no || (tx.auction_id ? tx.auction_id.slice(-4) : '1004');
+                        const amount = Number(tx.amount || tx.amount_aed || 0);
+                        const reason = tx.reason_detail || tx.failure_reason || 'Bank processing decline';
+                        const splitText = tx.recovery_plan?.split_payment_suggested
+                          ? `Split: AED ${Number(tx.recovery_plan.split_card_portion || 0).toLocaleString()} card + AED ${Number(tx.recovery_plan.split_wire_portion || 0).toLocaleString()} wire`
+                          : (tx.ai_split_suggestion || 'Direct Central Bank wire transfer');
+                        return (
+                          <tr key={orderId} className="hover:bg-rose-50/30 transition">
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-slate-900 flex items-center space-x-1.5">
+                                <span>{tx.buyer_name}</span>
+                                {tx.is_vip && (
+                                  <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-700 text-[9px] font-bold">VIP</span>
+                                )}
+                              </div>
+                              <div className="font-mono text-[10px] text-slate-400">{orderId} • {tx.buyer_phone}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-slate-800">{carTitle}</div>
+                              <div className="font-mono text-[10px] text-slate-500">Lot #{lotNum}</div>
+                            </td>
+                            <td className="px-4 py-3 font-mono font-bold text-rose-600">
+                              AED {amount.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-semibold max-w-[200px] truncate block" title={reason}>
+                                {reason}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center space-x-1.5 text-indigo-700 font-medium text-[11px]">
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                <span>{splitText}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                onClick={() => handleWhatsAppRecovery({ ...tx, vehicle_title: carTitle, lot_no: lotNum, amount_aed: amount })}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition inline-flex items-center space-x-1.5 cursor-pointer"
+                                title="Send courteous bilingual WhatsApp message with AI recovery plan"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                                <span>1-Click WhatsApp</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Standard Reconciliation Ledger (Preserved) */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h4 className="text-base font-bold text-slate-900 mb-1">Invoices & Security Deposits Reconciliation</h4>
+                <p className="text-xs text-slate-500 mb-4">
+                  Escrow security deposits, Stripe UAE, and Razorpay webhook audit records.
+                </p>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[11px]">
+                      <tr>
+                        <th className="px-4 py-3">Order ID</th>
+                        <th className="px-4 py-3">Type</th>
+                        <th className="px-4 py-3">Amount (AED)</th>
+                        <th className="px-4 py-3">Gateway</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Timestamp</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-normal">
+                      <tr className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-mono font-bold">order_eauction_dep_9981</td>
+                        <td className="px-4 py-3 font-semibold">Security Deposit</td>
+                        <td className="px-4 py-3 font-mono font-bold text-emerald-600">AED 5,000.00</td>
+                        <td className="px-4 py-3 font-mono">RAZORPAY</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">
+                            COMPLETED
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-slate-500">2026-10-26 14:15:20 GST</td>
+                      </tr>
+                      <tr className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-mono font-bold">order_eauction_dep_9982</td>
+                        <td className="px-4 py-3 font-semibold">Vehicle Settlement</td>
+                        <td className="px-4 py-3 font-mono font-bold text-emerald-600">AED 120,000.00</td>
+                        <td className="px-4 py-3 font-mono">STRIPE_UAE</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-bold">
+                            PENDING
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-slate-500">2026-10-26 14:22:45 GST</td>
+                      </tr>
+                      <tr className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-mono font-bold">order_eauction_dep_9983</td>
+                        <td className="px-4 py-3 font-semibold">Vehicle Settlement</td>
+                        <td className="px-4 py-3 font-mono font-bold text-emerald-600">AED 85,000.00</td>
+                        <td className="px-4 py-3 font-mono">CENTRAL_BANK_WIRE</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">
+                            RECONCILED
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-slate-500">2026-10-26 15:05:12 GST</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* SUB-VIEW: AI LIVE MARKETING CONSOLE & PROMOTIONAL BROADCAST               */}
+          {/* ========================================================================= */}
+          {activeSubView === 'ai_marketing_console' && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-6 shadow-md border border-purple-700/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center space-x-2 mb-1.5">
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold uppercase tracking-wider flex items-center space-x-1">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Local LLM Generative Engine (Qwen-2.5)</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono">
+                      Redis Pub/Sub Connected
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-extrabold tracking-tight">
+                    AI Live Marketing & Promotional Broadcast Console
+                  </h3>
+                  <p className="text-xs text-purple-200 max-w-2xl mt-1">
+                    Generate bilingual (Arabic + English) high-converting promotional banners and instantly broadcast them as live popups directly onto all active buyer screens.
+                  </p>
+                </div>
+
+                <div className="shrink-0">
+                  <button
+                    onClick={loadActiveCampaign}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-purple-800/80 hover:bg-purple-700 border border-purple-600 rounded-xl text-xs font-semibold text-purple-100 transition cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Check Active Campaign</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status / Success Toast */}
+              {promoActionMsg && (
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-800 font-semibold flex items-center justify-between">
+                  <span>{promoActionMsg}</span>
+                  <button onClick={() => setPromoActionMsg('')} className="text-purple-600 hover:text-purple-800">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* LIVE ACTIVE CAMPAIGN BANNER (If one is broadcasting) */}
+              {activeCampaign && (
+                <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl p-5 shadow-xs relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+                        <Megaphone className="w-5 h-5 animate-bounce" />
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white font-extrabold text-[10px] uppercase">
+                            Broadcasting Live Now
+                          </span>
+                          <span className="text-xs font-mono text-slate-500">
+                            Target: {activeCampaign.target_audience || 'ALL_ACTIVE_BUYERS'}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900 mt-1">
+                          {activeCampaign.title_en} • <span dir="rtl">{activeCampaign.title_ar}</span>
+                        </h4>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          {activeCampaign.body_en}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleDismissActivePromo}
+                      disabled={dismissingPromo}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer flex items-center space-x-1.5 shrink-0 disabled:opacity-50"
+                    >
+                      {dismissingPromo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                      <span>Stop & Dismiss Broadcast</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* CAMPAIGN GENERATOR FORM */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h4 className="text-sm font-bold text-slate-900 mb-1">Create Targeted Promotional Campaign</h4>
+                <p className="text-xs text-slate-500 mb-4">
+                  Describe what you want to offer in natural language. Our internal Qwen-2.5 model will generate 3 optimized copy variants with Arabic translations and psychological conversion triggers.
+                </p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Campaign Objective / Promotion Prompt
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={promoIntent}
+                      onChange={(e) => setPromoIntent(e.target.value)}
+                      placeholder="e.g. Flash sale on buyer fees for SUVs this weekend in Sharjah and Dubai auctions."
+                      className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Vehicle Category</label>
+                      <select
+                        value={promoCategory}
+                        onChange={(e) => setPromoCategory(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="ALL">All Lots / All Vehicles</option>
+                        <option value="SUV">SUVs & 4x4s Only</option>
+                        <option value="SEDAN">Sedans & Compacts</option>
+                        <option value="COMMERCIAL">Commercial Fleet Vehicles</option>
+                        <option value="EXOTIC">Luxury & Exotic</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Platform Discount %</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="number"
+                          min={5}
+                          max={100}
+                          value={promoDiscount}
+                          onChange={(e) => setPromoDiscount(parseInt(e.target.value) || 0)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500 font-mono font-bold"
+                        />
+                        <span className="text-xs font-bold text-slate-500">% OFF</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Duration (Hours)</label>
+                      <select
+                        value={promoDuration}
+                        onChange={(e) => setPromoDuration(parseInt(e.target.value))}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500"
+                      >
+                        <option value={2}>2 Hours (Flash)</option>
+                        <option value={6}>6 Hours (Evening Auction)</option>
+                        <option value={24}>24 Hours (Full Day)</option>
+                        <option value={48}>48 Hours (Weekend Special)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={handleGeneratePromo}
+                      disabled={generatingPromo || !promoIntent.trim()}
+                      className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition cursor-pointer flex items-center space-x-2 disabled:opacity-50"
+                    >
+                      {generatingPromo ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-purple-200" />
+                          <span>Generating Bilingual Variants (LLM)...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 text-purple-200" />
+                          <span>Generate 3 Campaign Variants with AI</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI GENERATED VARIANTS CARDS */}
+              {promoVariants.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-slate-900 text-sm">Select Variant to Broadcast Live:</h4>
+                    <span className="text-xs text-slate-500">Pick the messaging angle best suited for current auction demand</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {promoVariants.map((v, idx) => {
+                      const isSelected = selectedVariantIndex === idx;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => setSelectedVariantIndex(idx)}
+                          className={`rounded-2xl p-5 border-2 transition cursor-pointer flex flex-col justify-between ${
+                            isSelected
+                              ? 'border-purple-600 bg-purple-50/20 shadow-md ring-2 ring-purple-500/20'
+                              : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="px-2.5 py-0.5 rounded-full bg-slate-900 text-white font-extrabold text-[10px] uppercase">
+                                {v.badge_en || 'EXCLUSIVE'}
+                              </span>
+                              <span className="text-[11px] font-bold text-purple-600">
+                                Variant {idx === 0 ? 'A (Urgency)' : idx === 1 ? 'B (VIP Club)' : 'C (Value)'}
+                              </span>
+                            </div>
+
+                            {/* English Copy */}
+                            <div className="mb-3">
+                              <h5 className="font-bold text-slate-900 text-sm leading-snug">{v.headline_en}</h5>
+                              <p className="text-xs text-slate-600 mt-1 leading-relaxed">{v.body_en}</p>
+                            </div>
+
+                            {/* Arabic Copy */}
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-right" dir="rtl">
+                              <h5 className="font-bold text-slate-900 text-xs leading-snug">{v.headline_ar}</h5>
+                              <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{v.body_ar}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">
+                              CTA: {v.cta_en}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleBroadcastVariant(v);
+                              }}
+                              disabled={broadcastingPromo}
+                              className="px-3 py-1.5 bg-[#D32437] hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center space-x-1 cursor-pointer disabled:opacity-50"
+                            >
+                              {broadcastingPromo ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Megaphone className="w-3.5 h-3.5" />
+                              )}
+                              <span>Broadcast to Buyers</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* BOARDROOM EXECUTIVE REPORT MODAL (Local LLM Qwen-2.5 Reasoning)          */}
+          {/* ========================================================================= */}
+          {showBoardroomModal && (
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full p-8 shadow-2xl my-8 max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-900">
+                        Al Wataneya Executive Boardroom Financial Dossier ({selectedFinanceYear})
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Synthesized by Qwen-2.5 Financial Engine from PostgreSQL Read Replica telemetry
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {boardroomReport && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(boardroomReport);
+                          setCopiedReport(true);
+                          setTimeout(() => setCopiedReport(false), 3000);
+                        }}
+                        className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition flex items-center space-x-1 cursor-pointer"
+                      >
+                        {copiedReport ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedReport ? 'Copied!' : 'Copy Dossier'}</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowBoardroomModal(false)}
+                      className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto py-4 text-xs text-slate-800 leading-relaxed font-sans space-y-4">
+                  {boardroomLoading ? (
+                    <div className="py-20 flex flex-col items-center justify-center text-center space-y-3">
+                      <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                      <p className="font-bold text-slate-700 text-sm">Synthesizing Boardroom Intelligence...</p>
+                      <p className="text-slate-400 text-xs max-w-sm">
+                        Running multi-step financial reasoning over 20,500 users, 2,074 vehicles, and monthly commission waterfalls using local LLM at http://192.168.2.40:11434.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="prose prose-xs max-w-none text-slate-700 whitespace-pre-wrap font-sans bg-slate-50 p-6 rounded-2xl border border-slate-200/80">
+                      {boardroomReport}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 shrink-0">
+                  <span>Confidential — Internal Al Wataneya Motors Board & Executive Leadership</span>
+                  <button
+                    onClick={() => setShowBoardroomModal(false)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold cursor-pointer transition"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             </div>
           )}

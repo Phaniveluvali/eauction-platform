@@ -17,6 +17,8 @@ import { BidModal } from './components/BidModal';
 import { VehicleDetailsPage } from './components/VehicleDetailsPage';
 import { SecurityDepositModal } from './components/SecurityDepositModal';
 import { FavoritesPage } from './components/FavoritesPage';
+import { AICustomerConcierge } from './components/AICustomerConcierge';
+import { PromotionalBroadcastModal } from './components/PromotionalBroadcastModal';
 import { initiateKeycloakLogin, handleKeycloakCallback, logoutKeycloak } from './utils/oidc';
 import { api } from './services/api';
 import { User, Vehicle, Auction } from './types';
@@ -859,6 +861,25 @@ export const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 24/7 Universal Homepage AI Assistant for Buyers & Sellers */}
+      <AICustomerConcierge
+        currentUser={currentUser}
+        onNavigateToAuction={(aucId) => {
+          const target = auctions.find((a) => a.id === aucId);
+          if (target) {
+            setSelectedAuction(target);
+            navigateToView('AUCTION_ROOM', aucId);
+          }
+        }}
+        onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
+        onOpenSellCar={() => setIsCreateVehicleOpen(true)}
+      />
+
+      {/* AI Live Promotional Broadcast Modal on Buyer Screens */}
+      <PromotionalBroadcastModal
+        onNavigateToCatalog={() => navigateToView('ONLINE_AUCTIONS')}
+      />
     </div>
   );
 };
