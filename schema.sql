@@ -89,6 +89,19 @@ CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
 -- -----------------------------------------------------------------------------
+-- TABLE: otp_verifications
+-- Purpose: Ephemeral verification tokens for email/SMS multi-pod OTP workflows
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS otp_verifications (
+    destination VARCHAR(255) PRIMARY KEY,
+    code VARCHAR(16) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_otp_expires_at ON otp_verifications(expires_at);
+
+-- -----------------------------------------------------------------------------
 -- TABLE: vehicles
 -- Purpose: Vehicle & Inventory domain (Commercial Trucks and Passenger Cars)
 -- -----------------------------------------------------------------------------

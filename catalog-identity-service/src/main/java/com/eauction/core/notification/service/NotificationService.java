@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.sql.Timestamp;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -20,12 +22,20 @@ public class NotificationService {
 
     private final List<NotificationChannel> channels;
     private final NotificationTemplateEngine templateEngine;
+    private final JdbcTemplate jdbcTemplate;
     private final SecureRandom random = new SecureRandom();
     private final Map<String, OtpRecord> otpStore = new ConcurrentHashMap<>();
 
-    public NotificationService(List<NotificationChannel> channels, NotificationTemplateEngine templateEngine) {
+    public NotificationService(List<NotificationChannel> channels,
+                               NotificationTemplateEngine templateEngine,
+                               @org.springframework.beans.factory.annotation.Autowired(required = false) JdbcTemplate jdbcTemplate) {
         this.channels = channels;
         this.templateEngine = templateEngine;
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public NotificationService(List<NotificationChannel> channels, NotificationTemplateEngine templateEngine) {
+        this(channels, templateEngine, null);
     }
 
     private static class OtpRecord {
@@ -45,17 +55,56 @@ public class NotificationService {
     public String generateAndStoreOtp(String destination) {
         String code = String.format("%06d", random.nextInt(1_000_000));
         Instant expiresAt = Instant.now().plus(Duration.ofMinutes(10));
-        otpStore.put(destination.toLowerCase().trim(), new OtpRecord(code, expiresAt));
+        String key = destination.toLowerCase().trim();
+
+        if (jdbcTemplate != null) {
+            try {
+                jdbcTemplate.update(
+                        "INSERT INTO otp_verifications (destination, code, expires_at, created_at) " +
+                        "VALUES (?, ?, ?, NOW()) " +
+                        "ON CONFLICT (destination) DO UPDATE SET code = EXCLUDED.code, expires_at = EXCLUDED.expires_at, created_at = NOW()",
+                        key, code, Timestamp.from(expiresAt)
+                );
+            } catch (Exception e) {
+                log.warn("Failed to persist OTP to database, falling back to memory: {}", e.getMessage());
+            }
+        }
+
+        otpStore.put(key, new OtpRecord(code, expiresAt));
         return code;
     }
 
     public boolean verifyOtp(String destination, String code) {
         if (destination == null || code == null) return false;
         String key = destination.toLowerCase().trim();
+        String cleanCode = code.trim();
+
+        // 1. Try DB lookup first across all pods
+        if (jdbcTemplate != null) {
+            try {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                        "SELECT code, expires_at FROM otp_verifications WHERE destination = ?", key
+                );
+                if (!rows.isEmpty()) {
+                    String dbCode = (String) rows.get(0).get("code");
+                    Timestamp expiresAt = (Timestamp) rows.get(0).get("expires_at");
+                    if (expiresAt != null && expiresAt.toInstant().isAfter(Instant.now()) && cleanCode.equals(dbCode)) {
+                        jdbcTemplate.update("DELETE FROM otp_verifications WHERE destination = ?", key);
+                        otpStore.remove(key);
+                        log.info("[OTP VERIFIED] Destination {} successfully authenticated via DB", key);
+                        return true;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to verify OTP via database, checking memory: {}", e.getMessage());
+            }
+        }
+
+        // 2. Memory fallback
         OtpRecord record = otpStore.get(key);
-        if (record != null && record.isValid(code)) {
+        if (record != null && record.isValid(cleanCode)) {
             otpStore.remove(key);
-            log.info("[OTP VERIFIED] Destination {} successfully authenticated", key);
+            log.info("[OTP VERIFIED] Destination {} successfully authenticated via Memory", key);
             return true;
         }
         return false;

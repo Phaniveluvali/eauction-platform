@@ -219,10 +219,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
     setIsLoading(true);
     try {
-      // 1. Verify OTP
-      await authApi.verifyOtp(email.trim().toLowerCase(), fullCode);
-
-      // 2. Register User Account
+      // Register User Account (atomically validates and verifies email OTP)
       const authResp = await authApi.register({
         email: email.trim().toLowerCase(),
         password: password,
