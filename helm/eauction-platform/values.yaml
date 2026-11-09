@@ -417,7 +417,7 @@ frontend:
   # - To deploy legacy version (with old branding and old image assets): use "v1.0.0-legacy"
   image:
     repository: "krishnaveluvali/eauction-frontend"
-    tag: "v2.0.0-aj"
+    tag: "6885cd9"
     pullPolicy: "IfNotPresent"
 
   # Service networking definition
