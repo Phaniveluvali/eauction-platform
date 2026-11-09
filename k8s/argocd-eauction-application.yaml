@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Phaniveluvali/Kubernetes-deployment.git
+    repoURL: https://github.com/Phaniveluvali/eauction-platform.git
     targetRevision: main
     path: helm/eauction-platform
     helm:
@@ -19,8 +19,13 @@ spec:
     namespace: eauction
   syncPolicy:
     automated:
-      prune: true
+      prune: false
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

@@ -8,7 +8,9 @@ metadata:
     app: eauction-catalog-identity
     {{- include "eauction-platform.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.catalogIdentity.hpa.enabled }}
   replicas: {{ .Values.catalogIdentity.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       app: eauction-catalog-identity
