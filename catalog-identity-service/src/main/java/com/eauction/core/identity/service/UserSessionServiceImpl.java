@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -204,10 +205,12 @@ public class UserSessionServiceImpl implements UserSessionService {
             log.error("Failed to query live sessions from database", e);
         }
 
-        // If DB query yielded 0 due to interval drift, fallback to in-memory liveCache
-        if (sessions.isEmpty() && !liveCache.isEmpty()) {
-            sessions = new ArrayList<>(liveCache.values());
-        }
+        // Evict expired memory cache entries older than 120 seconds
+        long now = System.currentTimeMillis();
+        liveCache.entrySet().removeIf(e -> {
+            Object t = e.getValue().get("lastHeartbeatTime");
+            return !(t instanceof Long) || (now - (Long) t) > 120_000L;
+        });
 
         long activeBidders = sessions.stream()
                 .filter(s -> ((Number) s.getOrDefault("bidsPlacedInSession", 0)).intValue() > 0)
@@ -223,6 +226,7 @@ public class UserSessionServiceImpl implements UserSessionService {
     @Override
     public void logout(String userId, String deviceType) {
         if (userId != null && !userId.isBlank()) {
+            liveCache.values().removeIf(s -> userId.equals(s.get("userId")));
             try {
                 if (deviceType != null && !deviceType.isBlank()) {
                     jdbcTemplate.update("DELETE FROM user_sessions WHERE user_id = ? AND device_type = ?", userId, deviceType);
@@ -303,5 +307,17 @@ public class UserSessionServiceImpl implements UserSessionService {
         resp.put("packetLoss", "0.00%");
         resp.put("avgLatencyMs", 13.8);
         return resp;
+    }
+
+    @Scheduled(fixedRate = 60000)
+    public void cleanupExpiredSessions() {
+        try {
+            int deleted = jdbcTemplate.update("DELETE FROM user_sessions WHERE last_heartbeat < CURRENT_TIMESTAMP - INTERVAL '5 MINUTES'");
+            if (deleted > 0) {
+                log.info("Purged {} expired user sessions from database", deleted);
+            }
+        } catch (Exception e) {
+            log.debug("Session cleanup notice: {}", e.getMessage());
+        }
     }
 }

@@ -326,7 +326,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const fetchLiveSessionsFromBackend = async () => {
     try {
       const data = await api.getLiveSessions();
-      if (data && Array.isArray(data.sessions) && data.sessions.length > 0) {
+      if (data && Array.isArray(data.sessions)) {
         setLiveSessions(data.sessions.map((s: any) => ({
           ...s,
           isCurrentAdmin: s.userId === currentUser?.id || s.email === currentUser?.email,
