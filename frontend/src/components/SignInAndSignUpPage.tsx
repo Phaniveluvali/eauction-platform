@@ -64,11 +64,11 @@ export const SignInAndSignUpPage: React.FC<SignInAndSignUpPageProps> = ({
             </button>
 
             <button
-              onClick={() => initiateKeycloakLogin({ action: 'register' })}
+              onClick={() => onNavigate ? onNavigate('SIGNUP') : (window.location.href = '/signup')}
               className="w-full py-3 px-6 bg-white hover:bg-slate-50 text-slate-800 font-semibold rounded-xl border border-slate-300 shadow-xs transition flex items-center justify-center gap-2.5 cursor-pointer text-sm"
             >
-              <UserPlus className="w-4 h-4 text-slate-600" />
-              <span>Create New Account (Keycloak Registration)</span>
+              <UserPlus className="w-4 h-4 text-emerald-600" />
+              <span>Register New Buyer / Seller Account</span>
             </button>
           </div>
 

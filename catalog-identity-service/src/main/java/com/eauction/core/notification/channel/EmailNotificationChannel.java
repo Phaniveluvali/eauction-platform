@@ -46,7 +46,7 @@ public class EmailNotificationChannel implements NotificationChannel {
             try {
                 MimeMessage mimeMessage = mailSender.createMimeMessage();
                 MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-                helper.setFrom(effectiveFrom, "Al Wataneya Auctions");
+                helper.setFrom(effectiveFrom, "AJ Auctions");
                 helper.setTo(destination);
                 helper.setSubject(subject);
                 helper.setText(htmlContent != null ? htmlContent : messageText, htmlContent != null);

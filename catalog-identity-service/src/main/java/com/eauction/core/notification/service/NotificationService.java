@@ -44,7 +44,7 @@ public class NotificationService {
 
     public String generateAndStoreOtp(String destination) {
         String code = String.format("%06d", random.nextInt(1_000_000));
-        Instant expiresAt = Instant.now().plus(Duration.ofMinutes(5));
+        Instant expiresAt = Instant.now().plus(Duration.ofMinutes(10));
         otpStore.put(destination.toLowerCase().trim(), new OtpRecord(code, expiresAt));
         return code;
     }
@@ -72,22 +72,22 @@ public class NotificationService {
         String cleanPhone = phoneNumber.replaceAll("[^0-9+]", "");
         String otpCode = generateAndStoreOtp(cleanPhone);
 
-        String messageBody = "🚗 *AL WATANEYA AUCTIONS - EMIRATES TRANSPORT*\n\n" +
+        String messageBody = "🚗 *AJ AUCTIONS*\n\n" +
                 "Your One-Time Password (OTP) for account verification is:\n\n" +
                 "🔑 *" + otpCode + "*\n\n" +
-                "This code is valid for 5 minutes. Please do not share this code with anyone.\n" +
-                "_Secure bidding powered by Emirates Transport Government Fleet Platform._";
+                "This code is valid for 10 minutes. Please do not share this code with anyone.\n" +
+                "_Secure bidding powered by AJ Auctions Platform._";
 
         NotificationChannel waChannel = resolveChannel("WHATSAPP");
-        waChannel.send(cleanPhone, "Al Wataneya Verification OTP", messageBody, null);
+        waChannel.send(cleanPhone, "AJ Auctions Verification OTP", messageBody, null);
         return otpCode;
     }
 
     public String sendEmailOtp(String toEmail, String fullName) {
         String otpCode = generateAndStoreOtp(toEmail);
-        String subject = "🔑 Your Al Wataneya Auctions Verification Code: " + otpCode;
+        String subject = "🔑 Your AJ Auctions Verification Code: " + otpCode;
         String html = templateEngine.buildOtpEmailHtml(fullName, otpCode);
-        String text = "Hello " + fullName + ",\n\nYour Al Wataneya verification code is: " + otpCode + ".\nValid for 5 minutes.";
+        String text = "Hello " + fullName + ",\n\nYour AJ Auctions verification code is: " + otpCode + ".\nValid for 10 minutes.";
 
         NotificationChannel emailChannel = resolveChannel("EMAIL");
         emailChannel.send(toEmail, subject, text, html);

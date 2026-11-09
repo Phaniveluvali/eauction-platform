@@ -113,4 +113,81 @@ class AuthServiceTest {
         LoginRequest req = new LoginRequest("seller@eauction.in", "WrongPassword");
         assertThrows(BadCredentialsException.class, () -> authService.login(req));
     }
+
+    @Test
+    @DisplayName("Should successfully register when valid OTP verification code is provided")
+    void shouldRegisterWithValidOtpVerificationCode() {
+        com.eauction.core.notification.service.NotificationService mockNotificationService =
+                mock(com.eauction.core.notification.service.NotificationService.class);
+        when(mockNotificationService.verifyOtp("bidder@eauction.in", "123456")).thenReturn(true);
+
+        AuthService serviceWithOtp = new AuthService(
+                userRepository,
+                passwordEncoder,
+                null,
+                new com.eauction.core.identity.security.JwtTokenProvider(secretKey, 3600000L),
+                mockNotificationService,
+                3600000L
+        );
+
+        RegisterRequest req = new RegisterRequest(
+                "bidder@eauction.in",
+                "StrongPassword123!",
+                "Vikram Sharma",
+                "+919876543210",
+                "BUYER",
+                null,
+                null,
+                "123456"
+        );
+
+        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(userRepository.existsByPhoneNumber(anyString())).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(UUID.randomUUID());
+            u.setCreatedAt(Instant.now());
+            u.setUpdatedAt(Instant.now());
+            return u;
+        });
+
+        AuthResponse resp = serviceWithOtp.register(req);
+        assertNotNull(resp);
+        assertEquals("bidder@eauction.in", resp.getEmail());
+        verify(mockNotificationService).verifyOtp("bidder@eauction.in", "123456");
+    }
+
+    @Test
+    @DisplayName("Should reject registration when OTP code is invalid or missing")
+    void shouldRejectRegistrationWithInvalidOtp() {
+        com.eauction.core.notification.service.NotificationService mockNotificationService =
+                mock(com.eauction.core.notification.service.NotificationService.class);
+        when(mockNotificationService.verifyOtp("bidder@eauction.in", "999999")).thenReturn(false);
+
+        AuthService serviceWithOtp = new AuthService(
+                userRepository,
+                passwordEncoder,
+                null,
+                new com.eauction.core.identity.security.JwtTokenProvider(secretKey, 3600000L),
+                mockNotificationService,
+                3600000L
+        );
+
+        RegisterRequest req = new RegisterRequest(
+                "bidder@eauction.in",
+                "StrongPassword123!",
+                "Vikram Sharma",
+                "+919876543210",
+                "BUYER",
+                null,
+                null,
+                "999999"
+        );
+
+        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(userRepository.existsByPhoneNumber(anyString())).thenReturn(false);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> serviceWithOtp.register(req));
+        assertTrue(ex.getMessage().contains("verification code"));
+    }
 }

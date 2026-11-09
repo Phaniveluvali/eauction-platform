@@ -27,6 +27,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     private final TokenProvider tokenProvider;
+    private final com.eauction.core.notification.service.NotificationService notificationService;
     private final long expirationMs;
 
     @Autowired
@@ -35,11 +36,13 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
             TokenProvider tokenProvider,
+            @Autowired(required = false) com.eauction.core.notification.service.NotificationService notificationService,
             @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jdbcTemplate = jdbcTemplate;
         this.tokenProvider = tokenProvider;
+        this.notificationService = notificationService;
         this.expirationMs = expirationMs;
     }
 
@@ -48,7 +51,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             TokenProvider tokenProvider,
             @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
-        this(userRepository, passwordEncoder, null, tokenProvider, expirationMs);
+        this(userRepository, passwordEncoder, null, tokenProvider, null, expirationMs);
     }
 
     public AuthService(
@@ -56,16 +59,35 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             String jwtSecret,
             long expirationMs) {
-        this(userRepository, passwordEncoder, null, new com.eauction.core.identity.security.JwtTokenProvider(jwtSecret, expirationMs), expirationMs);
+        this(userRepository, passwordEncoder, null, new com.eauction.core.identity.security.JwtTokenProvider(jwtSecret, expirationMs), null, expirationMs);
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new IllegalArgumentException("Email is already registered: " + request.getEmail());
         }
-        if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new IllegalArgumentException("Phone number is already registered: " + request.getPhoneNumber());
+
+        String rawPhone = request.getPhoneNumber() != null ? request.getPhoneNumber().trim() : "";
+        String cleanPhone = rawPhone.replaceAll("[\\s\\-\\(\\)]", "");
+        if (cleanPhone.isEmpty()) {
+            throw new IllegalArgumentException("Valid phone number is required");
+        }
+        if (userRepository.existsByPhoneNumber(cleanPhone) || (!rawPhone.equals(cleanPhone) && userRepository.existsByPhoneNumber(rawPhone))) {
+            throw new IllegalArgumentException("Phone number is already registered: " + rawPhone);
+        }
+
+        // Email OTP verification check
+        if (notificationService != null) {
+            String code = request.getVerificationCode();
+            if (code == null || code.trim().isEmpty()) {
+                throw new IllegalArgumentException("Email verification code is required to complete registration");
+            }
+            boolean verified = notificationService.verifyOtp(normalizedEmail, code.trim());
+            if (!verified) {
+                throw new IllegalArgumentException("Invalid or expired email verification code. Please request a new code.");
+            }
         }
 
         String normalizedRole = request.getRole().toUpperCase().trim();
@@ -74,15 +96,15 @@ public class AuthService {
         }
 
         User user = new User();
-        user.setEmail(request.getEmail().trim().toLowerCase());
+        user.setEmail(normalizedEmail);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setFullName(request.getFullName().trim());
-        user.setPhoneNumber(request.getPhoneNumber().trim());
+        user.setPhoneNumber(cleanPhone);
         user.setRole(normalizedRole);
-        user.setPanNumber(request.getPanNumber());
-        user.setGstNumber(request.getGstNumber());
+        user.setPanNumber(request.getPanNumber() != null && !request.getPanNumber().isBlank() ? request.getPanNumber().trim() : null);
+        user.setGstNumber(request.getGstNumber() != null && !request.getGstNumber().isBlank() ? request.getGstNumber().trim() : null);
         // KYC is verified if PAN is present for compliance, otherwise pending
-        user.setKycVerified(request.getPanNumber() != null && !request.getPanNumber().isBlank());
+        user.setKycVerified(user.getPanNumber() != null && !user.getPanNumber().isBlank());
         user.setIsActive(true);
 
         User savedUser = userRepository.saveAndFlush(user);

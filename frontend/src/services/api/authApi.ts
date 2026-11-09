@@ -21,6 +21,7 @@ export const authApi = {
     fullName: string;
     phoneNumber: string;
     role: string;
+    verificationCode?: string;
     panNumber?: string;
     gstNumber?: string;
   }): Promise<AuthResponse> {

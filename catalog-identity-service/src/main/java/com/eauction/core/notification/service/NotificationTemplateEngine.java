@@ -25,20 +25,20 @@ public class NotificationTemplateEngine {
                 "</style></head><body>" +
                 "<div class='container'>" +
                 "<div class='header'>" +
-                "<h1>AL WATANEYA AUCTIONS</h1>" +
-                "<p>EMIRATES TRANSPORT DIGITAL PLATFORM</p>" +
+                "<h1>AJ AUCTIONS</h1>" +
+                "<p>ENTERPRISE FLEET AUCTION PLATFORM</p>" +
                 "</div>" +
                 "<div class='content'>" +
                 "<div class='greeting'>Hello " + name + ",</div>" +
-                "<div class='text'>You requested a secure One-Time Password (OTP) to authenticate with the Al Wataneya Auctions fleet bidding platform. Use the verification PIN below to proceed:</div>" +
+                "<div class='text'>You requested a secure One-Time Password (OTP) to create or verify your account on the AJ Auctions platform. Use the verification PIN below to proceed:</div>" +
                 "<div class='otp-card'>" +
                 "<div class='otp-label'>Verification PIN</div>" +
                 "<div class='otp-code'>" + otpCode + "</div>" +
-                "<div class='otp-expiry'>⏱ Expires in 5 minutes (One-Time Use Only)</div>" +
+                "<div class='otp-expiry'>⏱ Expires in 10 minutes (One-Time Use Only)</div>" +
                 "</div>" +
-                "<div class='text' style='font-size: 12px; color: #64748B;'>If you did not initiate this request, please disregard this email or contact support immediately. Never disclose this code to anyone.</div>" +
+                "<div class='text' style='font-size: 12px; color: #64748B;'>If you did not initiate this registration request, please disregard this email or contact support immediately. Never disclose this code to anyone.</div>" +
                 "</div>" +
-                "<div class='footer'>© 2026 Al Wataneya Auctions | Emirates Transport. All Rights Reserved.</div>" +
+                "<div class='footer'>© 2026 AJ Auctions Platform. All Rights Reserved.</div>" +
                 "</div></body></html>";
     }
 

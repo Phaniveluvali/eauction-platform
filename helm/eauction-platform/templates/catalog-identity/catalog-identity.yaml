@@ -113,25 +113,13 @@ spec:
                   name: eauction-secret
                   key: JWT_SECRET
             - name: SPRING_MAIL_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: eauction-config
-                  key: SPRING_MAIL_HOST
+              value: {{ (.Values.catalogIdentity.mail | default dict).host | default "172.16.6.9" | quote }}
             - name: SPRING_MAIL_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: eauction-config
-                  key: SPRING_MAIL_PORT
+              value: {{ (.Values.catalogIdentity.mail | default dict).port | default "5433" | quote }}
             - name: SPRING_MAIL_FROM
-              valueFrom:
-                configMapKeyRef:
-                  name: eauction-config
-                  key: SPRING_MAIL_FROM
+              value: {{ (.Values.catalogIdentity.mail | default dict).from | default "phani_veluvali@tecnics.com" | quote }}
             - name: SPRING_MAIL_USERNAME
-              valueFrom:
-                configMapKeyRef:
-                  name: eauction-config
-                  key: SPRING_MAIL_USERNAME
+              value: {{ (.Values.catalogIdentity.mail | default dict).username | default "phani_veluvali@tecnics.com" | quote }}
             - name: NOTIFICATION_WHATSAPP_URL
               valueFrom:
                 configMapKeyRef:

@@ -16,6 +16,7 @@ interface SignInPageProps {
 
 export const SignInPage: React.FC<SignInPageProps> = ({
   onBackHome,
+  onNavigate,
   oidcError,
   securityNotice,
 }) => {
@@ -101,10 +102,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
             <button
               type="button"
-              onClick={handleKeycloakRegister}
+              onClick={() => onNavigate ? onNavigate('SIGNUP') : (window.location.href = '/signup')}
               className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer border border-slate-200"
             >
-              <span>Don't have an account? Sign Up with Keycloak</span>
+              <span>Don't have an account? Sign Up</span>
             </button>
           </div>
 

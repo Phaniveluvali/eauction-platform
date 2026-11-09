@@ -902,7 +902,7 @@ export const App: React.FC = () => {
       ) : currentView === 'SIGNIN_SIGNUP' ? (
         <SignInAndSignUpPage
           onGoSignIn={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
-          onGoSignUp={() => initiateKeycloakLogin({ action: 'register' })}
+          onGoSignUp={() => navigateToView('SIGNUP')}
           onBackHome={() => navigateToView('HOME')}
           onNavigate={(view) => navigateToView(view)}
         />
@@ -933,7 +933,7 @@ export const App: React.FC = () => {
             }
             loadInventory();
           }}
-          onGoSignUp={() => initiateKeycloakLogin({ action: 'register' })}
+          onGoSignUp={() => navigateToView('SIGNUP')}
           onBackHome={() => navigateToView('HOME')}
           onNavigate={(view) => navigateToView(view)}
         />

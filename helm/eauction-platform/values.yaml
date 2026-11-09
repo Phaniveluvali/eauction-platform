@@ -260,6 +260,13 @@ catalogIdentity:
   service:
     port: 8080
 
+  # Postfix host mail server configuration
+  mail:
+    host: "172.16.6.9"
+    port: 5433
+    from: "phani_veluvali@tecnics.com"
+    username: "phani_veluvali@tecnics.com"
+
   # Compute resource allocation
   resources:
     requests:

@@ -514,11 +514,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* Vertical Divider */}
                 <div className="h-4 w-[1px] bg-[#D1D5DB] mx-2" />
 
-                {/* Sign Up with red person icon -> Direct Keycloak OIDC Registration */}
+                {/* Sign Up with person icon -> Direct In-App Registration Page */}
                 <button
-                  onClick={() => initiateKeycloakLogin({ action: 'register' })}
+                  onClick={() => onNavigate ? onNavigate('SIGNUP') : (window.location.href = '/signup')}
                   className="flex items-center space-x-1.5 px-2.5 py-1 text-[#231F20] hover:text-emerald-700 transition font-medium cursor-pointer"
-                  title="Sign up with Keycloak Secure SSO"
+                  title="Sign up as a Buyer or Seller"
                 >
                   <span className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700">
                     <UserIcon className="w-3.5 h-3.5 text-emerald-700" />
@@ -650,9 +650,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    initiateKeycloakLogin({ action: 'register' });
+                    if (onNavigate) {
+                      onNavigate('SIGNUP');
+                    } else {
+                      window.location.href = '/signup';
+                    }
                   }}
-                  className="py-2.5 text-center text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded transition shadow-xs"
+                  className="py-2.5 text-center text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded transition shadow-xs cursor-pointer"
                 >
                   Sign Up
                 </button>
