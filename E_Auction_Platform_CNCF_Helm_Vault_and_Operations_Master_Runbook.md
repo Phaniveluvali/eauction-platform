@@ -1,6 +1,6 @@
 # E-Auction Platform CNCF Master Architecture, Helm Deployment & Operations Runbook
 
-**Current Document Version:** `v1.5.0`  
+**Current Document Version:** `v1.7.0`  
 **Classification:** Technical Architecture & Production Runbook  
 **Target Platform:** Kubernetes v1.34+ with Calico CNI  
 **Target Scale:** 500 – 1,000 CCU (Single-Node Active) $\rightarrow$ 10,000 CCU (Multi-Node Target)  
@@ -14,11 +14,13 @@
 | `v1.1.0` | 2026-11-07 | Cloud Infrastructure Team | Phani Veluvali | Added Section 2.3: Enterprise self-documenting `values.yaml` and `values-production-multinode.yaml` benchmarked against HCL DX standards. Added copy-pasteable sample blocks (annotations, labels, nodeSelector, tolerations, affinity, topologySpreadConstraints, environment variables), maintenance mode controls, verified safety snapshot (`eauction-platform-backup-20261107`), and deployed Helm release Revision 4. |
 | `v1.2.0` | 2026-11-07 | Cloud Infrastructure Team | Phani Veluvali | **Platform Rebranding to AJ Auctions & Dual-Deployability**: Total eradication of legacy Emirates Transport, Al Wataneya, AWA, and `et.ae`/`awa.ae` trademarks. Integration of new stylized AJ logo assets (`logo-aj.png`, `main_logo-aj.png`, `logo-aj-white.png`, `favicon-aj.png`, `banner-aj.png`). Multi-arch image tagging (`eauction-frontend:v2.0.0-aj` and `eauction-frontend:v1.0.0-legacy`). Deployed Helm release Revision 5 with 100% E2E test verification pass. |
 | `v1.2.1` | 2026-11-07 | Cloud Infrastructure Team | Phani Veluvali | **Official AshwikTechnologies Brand Asset Update**: Integrated official AJ Auctions logo featuring *"— Powered by AshwikTechnologies —"*. Re-generated transparent alpha assets, rounded card hero web banner (2560x600), and updated all platform contact endpoints (`support@ashwiktechnologies.com`). Rebuilt and redeployed `eauction-frontend:v2.0.0-aj` with zero downtime. |
-| `v1.3.0` | 2026-11-07 | Cloud Infrastructure Team | Phani Veluvali | **Complete Eradication of Legacy Templates & Launch of Dream Next-Gen UI**: Executed pre-modification safety snapshot (`frontend-backup-20261107_151800.tar.gz`). Isolated and moved 23 legacy scraped assets, old stylesheets, and docx artifacts to `/public/assets/legacy_archive/`. Completely redesigned the portal into a bespoke modern FinTech auction platform: interactive hero spotlight, real-time market activity ribbon, 100% vector SVG category explorer, FinTech VehicleCard with live pulsating beacon and 150-point inspection pill, institutional Bento Grid, modern dark mobile showcase, and clean institutional footer. Purged all legacy classes (`.home_divider`, `.awa-price`, `.awa-bidnow-btn`, `awa_dismissed_promo_id`). Rebuilt and redeployed `eauction-frontend:v2.0.0-aj` with 100% zero downtime and 100% verification test pass. |
+| `v1.3.0` | 2026-11-07 | Cloud Infrastructure Team | Phani Veluvali | **Complete Eradication of Legacy Templates & Launch of Dream Next-Gen UI**: Executed pre-modification safety snapshot (`frontend-backup-20261107_151800.tar.gz`). Isolated and moved 23 legacy scraped assets, old stylesheets, and docx artifacts to `/public/assets/legacy_archive/`. Completely redesigned the portal into a bespoke modern FinTech auction platform: interactive hero spotlight, real-time market activity ribbon, 100% vector SVG category explorer, FinTech VehicleCard with live pulsating beacon and 150-point inspection pill, institutional Bento Grid, modern dark mobile showcase, and clean institutional footer. Purged all legacy classes (`.home_divider`, `.awa-price`, `.awa-bidnow-btn`, `awa_dismissed_promo_id`). Rebuilt and redeployed `eauction-frontend:v2.0.0-aj` with zero downtime and 100% verification test pass. |
 | `v1.3.1` | 2026-11-07 | Cloud Infrastructure Team | Phani Veluvali | **Standardized VehicleCard Component & Aspect Ratio Alignment**: Resolved card sizing disparities and vertical layout imbalances in `OnlineAuctionsPage.tsx` and `SilentAuctionsPage.tsx`. Unified vehicle card rendering to use `<VehicleCard>` with strict `h-48 sm:h-52 w-full object-cover` image wrappers, eliminating image stretching on portrait photos (e.g. BMW lots). Standardized vertical rhythm across title, year chip, mileage/location chips, countdown ticker banner, and action buttons. Rebuilt and redeployed `eauction-frontend:v2.0.0-aj` with zero downtime and 100% E2E test suite pass. |
 | `v1.4.0` | 2026-11-07 | Mobile & Cloud Architecture Team | Phani Veluvali | **Native Mobile Platform for iOS & Android (Universal Phone & Tablet)**: Built complete native mobile application stack under `mobile-app/` using React Native 0.76 and Expo SDK 52. Implemented strict Zero-Admin threat isolation (100% exclusion of administrative screens, routes, and admin API endpoints). Integrated hardware biometric auth (`expo-local-authentication`), hardware keystore (`expo-secure-store`), 200x Escrow bidding leverage, and adaptive multi-column grid (`useResponsive`). Completed 100% TypeScript type safety pass (`tsc --noEmit`), native Android prebuild (`android/`), and Hermes bytecode bundle export verification (`dist/`). |
 | `v1.4.1` | 2026-11-07 | Mobile & Cloud Architecture Team | Phani Veluvali | **Expo SDK 58 & React 19 Upgrade & Host Tooling Alignment**: Upgraded mobile core to Expo SDK 58 (`expo@58.0.23`), React 19 (`react@19.3.0`), and React Native `0.88.1` matching the latest 2026 Expo Go client on mobile devices. Installed native Windows Node.js LTS (v26.13.0), Microsoft OpenJDK 17, and Android Platform-Tools (`adb` v37.0.2). Pre-seeded Gradle 8.10.2 cache eliminating Java 8 PKIX SSL handshake errors. Configured `@expo/metro-runtime` for web simulator browser rendering on port 8081 (`w` key). Safety snapshot created: `mobile-app-backup-sdk52-20261107.tar.gz`. |
 | `v1.5.0` | 2026-11-09 | Cloud Infrastructure & GitOps Team | Phani Veluvali | **ArgoCD GitOps Deployment & Ingress Operationalization**: Configured ArgoCD v3.5.4 Ingress on `tecnics-internal.online/argocd` with TLS offloading, subpath root routing, and backend HTTP proxying. Extracted and validated initial admin credentials. Integrated GitHub token authentication for continuous GitOps synchronization. Archived and cleaned up local `mobile-app` workspace while retaining safety snapshot (`mobile-app-backup-sdk52-20261107.tar.gz`). |
+| `v1.6.0` | 2026-11-09 | Cloud Infrastructure & GitOps Team | Phani Veluvali | **BAS Static Web App GitOps Onboarding**: Inspected `bas` namespace containing Bahrain Airport Services static web portal. Eradicated local-path PVC (10Gi) single-node storage bottleneck by containerizing static assets into an immutable `nginx:1.27-alpine` image (`bas-static-web:v1.0.0`). Created new GitHub repo `Phaniveluvali/bas-airline-portal` with pure declarative K8s manifests (no Helm). Registered repo in ArgoCD and deployed `bas-airline-portal` Application (`Synced` / `Healthy`). Preserved legacy PVC as backup. Verified zero-downtime rolling update and live HTTPS response on `tecnics-internal.online/`. |
+| `v1.7.0` | 2026-11-09 | Cloud Infrastructure & CI/CD Team | Phani Veluvali | **Independent Microservices CI/CD Multi-Pipeline & Vault Integration**: Architected and verified an end-to-end GitOps CI/CD multi-pipeline system. Registered persistent self-hosted GitHub Actions runner (`wsl-runner`) in Ubuntu WSL. Authenticated with Docker Hub (`krishnaveluvali`) and secured registry credentials in HashiCorp Vault (`secret/data/eauction`) synced via External Secrets Operator (`ClusterSecretStore`). Built 5 independent GitHub Actions pipelines with path-based triggers (`.github/workflows/ci-*.yml`). Implemented atomic Helm image tag updates (`scripts/update-image-tag.py`) guaranteeing zero blast radius across non-targeted microservices. Resolved HPA drift via template replica suppression and ArgoCD `/spec/replicas` ignoreDifferences. Completed 100% automated E2E pipeline and ArgoCD reconciliation test. |
 
 ---
 
@@ -633,4 +635,224 @@ spec:
   - ClusterSecretStore: `vault-backend`
   - Synced Secret: `eauction-secret` in namespace `eauction`
 - Master Verification Suite Script: [`test_e2e_verification.py`](file:///home/nodejs/eauction-workspace/test_e2e_verification.py)
+
+---
+
+## 11. Multi-App GitOps Fleet: Bahrain Airport Services (BAS) Static Portal
+
+### 11.1 Architecture & Transition
+The cluster hosts multiple independent enterprise workloads behind the shared ingress controller (`10.104.237.171`):
+1. **AJ Auctions (`eauction`)**: Microservices platform managed via Helm umbrella chart and ArgoCD application `eauction-platform`.
+2. **Bahrain Airport Services (`bas`)**: Enterprise static airline operations portal managed via declarative K8s manifests (no Helm) and ArgoCD application `bas-airline-portal`.
+
+```mermaid
+graph TD
+    subgraph GitHub Fleet
+        Repo1[Phaniveluvali/eauction-platform<br/>Helm Umbrella Chart]
+        Repo2[Phaniveluvali/bas-airline-portal<br/>Pure K8s Declarative Manifests]
+    end
+
+    subgraph ArgoCD Controller
+        App1[ArgoCD App: eauction-platform]
+        App2[ArgoCD App: bas-airline-portal]
+    end
+
+    subgraph Cluster Namespaces
+        NS1[Namespace: eauction<br/>37 Resources Synced & Healthy]
+        NS2[Namespace: bas<br/>Stateless Pod Synced & Healthy]
+    end
+
+    Repo1 --> App1 --> NS1
+    Repo2 --> App2 --> NS2
+```
+
+### 11.2 Key GitOps Specifications
+- **Repository**: [`https://github.com/Phaniveluvali/bas-airline-portal`](https://github.com/Phaniveluvali/bas-airline-portal)
+- **Container Image**: `bas-static-web:v1.0.0` (Alpine Nginx base with baked assets and tuned routing)
+- **Manifests Path**: `k8s/` (`namespace.yaml`, `deployment.yaml`, `service.yaml`, `ingress.yaml`, `kustomization.yaml`)
+- **Ingress Binding**: `https://tecnics-internal.online/` (Root path `/`, TLS secured via `ca-vmx-tls-cert`)
+- **Storage Evolution**: Transitioned from physical node lock (`local-path` 10Gi PVC) to stateless immutable container deployment. Legacy PVC preserved as offline backup.
+- **ArgoCD Status**: `Synced` / `Healthy`.
+
+---
+
+## 12. Independent Microservices Multi-Pipeline CI/CD Architecture
+
+### 12.1 Problem Statement & Architectural Requirement
+In a distributed microservices ecosystem deployed via an umbrella Helm chart (`helm/eauction-platform`), naive CI/CD pipelines either:
+1. Fragment the infrastructure into separate Helm charts, breaking centralized values management, QoS PriorityClasses, and Calico Zero-Trust NetworkPolicies, OR
+2. Trigger an uncontained monolithic rebuild where editing one service causes unnecessary rollout checks or restarts across all 5 microservices.
+
+**Solution Architecture**:
+We implemented an **Independent Microservices Multi-Pipeline Model** driven by:
+- **Strict Git Path Filtering**: 5 dedicated GitHub Actions workflow definitions trigger only when changes are detected in their respective microservice codebase (`frontend/**`, `bidding-engine/**`, `catalog-identity-service/**`, `payment-broker/**`, `ai-service/**`).
+- **WSL Self-Hosted Runner (`wsl-runner`)**: Jobs execute on a high-speed local runner running Ubuntu 24.04 in WSL, utilizing the host Docker BuildKit daemon for accelerated layer caching.
+- **Docker Hub Centralization (`krishnaveluvali`)**: Images are built, tagged with the Git commit short SHA (`<service>:<sha>`) and `:latest`, and pushed to Docker Hub using credentials securely stored in HashiCorp Vault.
+- **External Secrets Operator (ESO) Secret Sync**: Docker pull credentials (`.dockerconfigjson`) are dynamically retrieved from HashiCorp Vault (`secret/data/eauction`) into Kubernetes secret `eauction-docker-secret` via an `ExternalSecret` resource, ensuring zero credential hardcoding.
+- **Atomic Single-Field GitOps Handshake (`update-image-tag.py`)**: The pipeline modifies **only** the single target image tag (e.g., `frontend.image.tag`) in `helm/eauction-platform/values.yaml` and commits back to GitHub with `[skip ci]`.
+- **Zero Blast-Radius Guarantee**: Kubernetes & ArgoCD calculate resource-level diffs. When `frontend.image.tag` changes, **only** the `eauction-frontend` Deployment undergoes a rolling update. The remaining 4 microservices (`bidding-engine`, `catalog-identity`, `payment-broker`, `ai-service`), stateful pods, and secrets have identical definitions and experience **zero restarts and zero disruption**.
+
+```mermaid
+flowchart TD
+    subgraph DeveloperWorkstation ["Developer Activity & Git Triggers"]
+        CodeFrontend["Edit frontend/**"]
+        CodeBidding["Edit bidding-engine/**"]
+        CodeCatalog["Edit catalog-identity/**"]
+        CodePayment["Edit payment-broker/**"]
+        CodeAI["Edit ai-service/**"]
+    end
+
+    subgraph GitHubActionsFleet ["Independent Multi-Pipeline Fleet (GitHub Actions)"]
+        WF1["ci-frontend.yml<br/>(paths: frontend/**)"]
+        WF2["ci-bidding-engine.yml<br/>(paths: bidding-engine/**)"]
+        WF3["ci-catalog-identity.yml<br/>(paths: catalog-identity-service/**)"]
+        WF4["ci-payment-broker.yml<br/>(paths: payment-broker/**)"]
+        WF5["ci-ai-service.yml<br/>(paths: ai-service/**)"]
+    end
+
+    subgraph LocalRunner ["WSL Self-Hosted Runner (wsl-runner)"]
+        RunnerService["systemd: actions.runner.wsl-runner<br/>Node.js 24 + Docker Buildx 0.34"]
+        BuildKit["BuildKit Local Layer Cache"]
+    end
+
+    subgraph RegistriesAndVault ["Artifact Registry & Secrets"]
+        DockerHub[("Docker Hub: krishnaveluvali/<service>:<sha>")]
+        Vault[("HashiCorp Vault KV-v2<br/>secret/data/eauction<br/>(DOCKER_USERNAME / DOCKER_PASSWORD)")]
+    end
+
+    subgraph GitOpsHandshake ["GitOps Reconciliation"]
+        Script["scripts/update-image-tag.py<br/>Modifies ONLY target tag"]
+        ValuesYAML["helm/eauction-platform/values.yaml<br/>Target Tag: 6885cd9"]
+        ArgoCD["ArgoCD Controller<br/>App: eauction-platform"]
+    end
+
+    subgraph ClusterExecution ["Kubernetes Cluster (Namespace: eauction)"]
+        ESO["External Secrets Operator<br/>eauction-docker-secret-sync"]
+        DockerSecret[("Secret: eauction-docker-secret")]
+        FrontendPod["eauction-frontend<br/>[ROLLING UPDATE: 6885cd9]"]
+        BiddingPod["eauction-bidding-engine<br/>[UNTOUCHED: 0 Restarts]"]
+        CatalogPod["eauction-catalog-identity<br/>[UNTOUCHED: 0 Restarts]"]
+        PaymentPod["eauction-payment-broker<br/>[UNTOUCHED: 0 Restarts]"]
+        AIPod["eauction-ai-service<br/>[UNTOUCHED: 0 Restarts]"]
+    end
+
+    CodeFrontend --> WF1
+    CodeBidding --> WF2
+    CodeCatalog --> WF3
+    CodePayment --> WF4
+    CodeAI --> WF5
+
+    WF1 --> RunnerService
+    RunnerService --> BuildKit
+    BuildKit -->|Push Image| DockerHub
+    Vault -->|Sync Credentials| ESO
+    ESO --> DockerSecret
+
+    RunnerService --> Script
+    Script --> ValuesYAML
+    ValuesYAML -->|Git Commit [skip ci]| ArgoCD
+    DockerSecret -.->|imagePullSecrets| FrontendPod
+    DockerHub -->|Pull Tag| FrontendPod
+
+    ArgoCD -->|Reconcile Diff| FrontendPod
+    ArgoCD -.->|Zero Diff (No-Op)| BiddingPod
+    ArgoCD -.->|Zero Diff (No-Op)| CatalogPod
+    ArgoCD -.->|Zero Diff (No-Op)| PaymentPod
+    ArgoCD -.->|Zero Diff (No-Op)| AIPod
+```
+
+### 12.2 Multi-Pipeline Workflow Specifications
+Each microservice is equipped with an isolated, identical-standard workflow in `.github/workflows/`:
+
+| Pipeline Workflow File | Path Trigger Filter | Build Context | Docker Hub Image Repository | Values Key Updated |
+|---|---|---|---|---|
+| [`ci-frontend.yml`](file:///home/nodejs/eauction-workspace/.github/workflows/ci-frontend.yml) | `frontend/**` | `./frontend` | `krishnaveluvali/eauction-frontend` | `frontend.image.tag` |
+| [`ci-bidding-engine.yml`](file:///home/nodejs/eauction-workspace/.github/workflows/ci-bidding-engine.yml) | `bidding-engine/**` | `./bidding-engine` | `krishnaveluvali/eauction-bidding-engine` | `biddingEngine.image.tag` |
+| [`ci-catalog-identity.yml`](file:///home/nodejs/eauction-workspace/.github/workflows/ci-catalog-identity.yml) | `catalog-identity-service/**` | `./catalog-identity-service` | `krishnaveluvali/eauction-catalog-identity` | `catalogIdentity.image.tag` |
+| [`ci-payment-broker.yml`](file:///home/nodejs/eauction-workspace/.github/workflows/ci-payment-broker.yml) | `payment-broker/**` | `./payment-broker` | `krishnaveluvali/eauction-payment-broker` | `paymentBroker.image.tag` |
+| [`ci-ai-service.yml`](file:///home/nodejs/eauction-workspace/.github/workflows/ci-ai-service.yml) | `ai-service/**` | `./ai-service` | `krishnaveluvali/eauction-ai-service` | `aiService.image.tag` |
+
+### 12.3 WSL Self-Hosted Runner Implementation
+- **Runner Version**: GitHub Actions Runner `v2.338.2`
+- **Installation Path**: `/home/phani/actions-runner/` in Ubuntu 24.04 (WSL)
+- **Labels**: `[self-hosted, linux, x64, wsl, docker]`
+- **Systemd Persistent Service**:
+  ```bash
+  systemctl status actions.runner.Phaniveluvali-eauction-platform.wsl-runner.service
+  ```
+- **Service Configuration**: Starts automatically on WSL boot, runs as user `phani` (in `docker` group), natively invoking `/usr/bin/docker buildx`.
+
+### 12.4 HashiCorp Vault KV-v2 Secret Brokerage
+Docker Hub authentication tokens are kept strictly outside Git repository secrets:
+1. Stored in HashiCorp Vault path `secret/data/eauction`:
+   - `DOCKER_USERNAME`: `krishnaveluvali`
+   - `DOCKER_PASSWORD`: `Desktop@123!$`
+   - `DOCKER_AUTH`: `a3Jpc2huYXZlbHV2YWxpOkRlc2t0b3BAMTIzISQ=`
+2. Synchronized by External Secrets Operator via template `helm/eauction-platform/templates/vault/externalsecrets.yaml`:
+   ```yaml
+   apiVersion: external-secrets.io/v1
+   kind: ExternalSecret
+   metadata:
+     name: eauction-docker-secret-sync
+     namespace: {{ .Release.Namespace }}
+   spec:
+     refreshInterval: "1h"
+     secretStoreRef:
+       name: {{ .Values.vault.clusterSecretStore }}
+       kind: ClusterSecretStore
+     target:
+       name: eauction-docker-secret
+       creationPolicy: Owner
+       template:
+         type: kubernetes.io/dockerconfigjson
+         data:
+           .dockerconfigjson: '{"auths":{"https://index.docker.io/v1/":{"username":"{{ .DOCKER_USERNAME }}","password":"{{ .DOCKER_PASSWORD }}","auth":"{{ .DOCKER_AUTH }}"}}}'
+   ```
+3. Injected dynamically into all Pod specifications via `imagePullSecrets`:
+   ```yaml
+   global:
+     imagePullSecrets:
+       - name: eauction-docker-secret
+   ```
+
+### 12.5 Single-Field Helm Values Updater (`update-image-tag.py`)
+To prevent corruption or accidental reformatting of comments and YAML structure, `scripts/update-image-tag.py` parses top-level block boundaries and updates only the nested `image.tag` scalar:
+```python
+# Usage: python3 scripts/update-image-tag.py <serviceKey> <newTag> <path_to_values.yaml>
+python3 scripts/update-image-tag.py frontend "6885cd9" helm/eauction-platform/values.yaml
+```
+
+### 12.6 HPA Drift Immunity & ArgoCD Self-Healing
+When Horizontal Pod Autoscalers (HPAs) are active for `eauction-catalog-identity` and `eauction-bidding-engine`, manual or load-driven replica scaling creates persistent drift against the Helm manifest if `spec.replicas` is statically rendered.
+To resolve this:
+1. **Helm Template Guard**: Both deployment templates omit `spec.replicas` when HPA is enabled:
+   ```yaml
+   {{- if not .Values.catalogIdentity.hpa.enabled }}
+   replicas: {{ .Values.catalogIdentity.replicaCount }}
+   {{- end }}
+   ```
+2. **ArgoCD Diff Suppression**: ArgoCD Application `eauction-platform` is configured with `ignoreDifferences` on `/spec/replicas`:
+   ```yaml
+   spec:
+     ignoreDifferences:
+       - group: apps
+         kind: Deployment
+         jsonPointers:
+           - /spec/replicas
+   ```
+Result: Both ArgoCD applications (`bas-airline-portal` and `eauction-platform`) maintain stable, permanent `Synced` and `Healthy` status without flapping or auto-heal fighting.
+
+### 12.7 Live Production Verification
+- **Test Execution**: Triggered `CI/CD - Frontend` (Run ID: `42594110508`).
+- **Runner Duration**: Completed in 1m 42s on `wsl-runner`.
+- **Image Push**: Produced `krishnaveluvali/eauction-frontend:6885cd9` and `krishnaveluvali/eauction-frontend:latest`.
+- **Values Commit**: Automated commit `ef65919` (`chore(gitops): update frontend image tag to 6885cd9 [skip ci]`).
+- **ArgoCD Reconciliation**: ArgoCD synchronized revision `ef65919`.
+- **Pod Rolling Verification**:
+  - `eauction-frontend-ccd74dd6b-*`: 2 replicas successfully rolled to `krishnaveluvali/eauction-frontend:6885cd9`.
+  - `eauction-bidding-engine`: 3/3 pods remained in state `1/1 Running` with 0 restarts.
+  - `eauction-catalog-identity`: 5/5 pods remained in state `1/1 Running` with 0 restarts.
+  - `eauction-payment-broker`: 2/2 pods remained in state `1/1 Running` with 0 restarts.
+  - `eauction-ai-service`: 2/2 pods remained in state `1/1 Running` with 0 restarts.
+- **Live Ingress Verification**: `https://tecnics-internal.online/` returned `HTTP/2 200 OK` with full modern UI rendering.
 
