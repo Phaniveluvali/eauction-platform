@@ -26,6 +26,7 @@ public class NotificationService {
     private final SecureRandom random = new SecureRandom();
     private final Map<String, OtpRecord> otpStore = new ConcurrentHashMap<>();
 
+    @org.springframework.beans.factory.annotation.Autowired
     public NotificationService(List<NotificationChannel> channels,
                                NotificationTemplateEngine templateEngine,
                                @org.springframework.beans.factory.annotation.Autowired(required = false) JdbcTemplate jdbcTemplate) {
