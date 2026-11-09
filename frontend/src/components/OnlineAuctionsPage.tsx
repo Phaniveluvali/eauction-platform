@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Auction, Vehicle, User } from '../types';
 import { PortalSidebar, PortalView } from './PortalSidebar';
+import { VehicleCard } from './VehicleCard';
 import { 
   X, 
   Home, 
@@ -277,7 +278,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               <select 
                 value={selectedCategory} 
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#D32437]"
+                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#059669]"
               >
                 <option value="ALL">Select</option>
                 <option value="TRUCK">Heavy Commercial</option>
@@ -290,7 +291,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               <select 
                 value={selectedMake} 
                 onChange={(e) => setSelectedMake(e.target.value)}
-                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#D32437]"
+                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#059669]"
               >
                 <option value="ALL">Select</option>
                 <option value="Tata">Tata Motors</option>
@@ -309,7 +310,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               <select 
                 value={selectedModel} 
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#D32437]"
+                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#059669]"
               >
                 <option value="ALL">Select</option>
                 <option value="Prima">Prima 5530.S</option>
@@ -324,7 +325,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               <select 
                 value={selectedYear} 
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#D32437]"
+                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#059669]"
               >
                 <option value="ALL">Select</option>
                 <option value="2024">2024</option>
@@ -340,7 +341,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               <select 
                 value={selectedBodyType} 
                 onChange={(e) => setSelectedBodyType(e.target.value)}
-                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#D32437]"
+                className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#059669]"
               >
                 <option value="ALL">Select</option>
                 <option value="Trailer">Tractor Trailer</option>
@@ -352,7 +353,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold text-[#8C8C8C] mb-1">Additional Filters</label>
-              <select className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#D32437]">
+              <select className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#059669]">
                 <option value="ALL">Select</option>
                 <option value="KYC">KYC Verified Only</option>
                 <option value="LOW_KM">Low Mileage (&lt;50K)</option>
@@ -373,7 +374,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                 placeholder="Lot No Search"
                 className="w-full text-xs px-3 py-2 text-[#231F20] placeholder-slate-400 focus:outline-none"
               />
-              <button className="px-3 text-[#D32437] hover:bg-slate-50">
+              <button className="px-3 text-[#059669] hover:bg-slate-50">
                 <Search className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -404,7 +405,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               </button>
 
               {/* Grid Toggle (Red Active Button) */}
-              <button className="p-2 bg-[#D32437] text-white rounded-md transition shadow-xs">
+              <button className="p-2 bg-[#059669] text-white rounded-md transition shadow-xs">
                 <LayoutGrid className="w-4 h-4" />
               </button>
 
@@ -419,7 +420,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
           <button 
             onClick={() => setSelectedMake('BMW')}
             className={`px-3 py-1.5 rounded-md border transition ${
-              selectedMake === 'BMW' ? 'bg-[#D32437] text-white border-[#D32437]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#D32437]'
+              selectedMake === 'BMW' ? 'bg-[#059669] text-white border-[#059669]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#059669]'
             }`}
           >
             BMW (1)
@@ -427,7 +428,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
           <button 
             onClick={() => setSelectedMake('Mitsubishi')}
             className={`px-3 py-1.5 rounded-md border transition ${
-              selectedMake === 'Mitsubishi' ? 'bg-[#D32437] text-white border-[#D32437]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#D32437]'
+              selectedMake === 'Mitsubishi' ? 'bg-[#059669] text-white border-[#059669]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#059669]'
             }`}
           >
             Mitsubishi (27)
@@ -435,7 +436,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
           <button 
             onClick={() => setSelectedMake('Nissan')}
             className={`px-3 py-1.5 rounded-md border transition ${
-              selectedMake === 'Nissan' ? 'bg-[#D32437] text-white border-[#D32437]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#D32437]'
+              selectedMake === 'Nissan' ? 'bg-[#059669] text-white border-[#059669]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#059669]'
             }`}
           >
             Nissan (68)
@@ -443,7 +444,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
           <button 
             onClick={() => setSelectedMake('Toyota')}
             className={`px-3 py-1.5 rounded-md border transition ${
-              selectedMake === 'Toyota' ? 'bg-[#D32437] text-white border-[#D32437]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#D32437]'
+              selectedMake === 'Toyota' ? 'bg-[#059669] text-white border-[#059669]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#059669]'
             }`}
           >
             Toyota (105)
@@ -451,7 +452,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
           <button 
             onClick={() => setSelectedMake('Tata')}
             className={`px-3 py-1.5 rounded-md border transition ${
-              selectedMake === 'Tata' ? 'bg-[#D32437] text-white border-[#D32437]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#D32437]'
+              selectedMake === 'Tata' ? 'bg-[#059669] text-white border-[#059669]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#059669]'
             }`}
           >
             Tata Motors ({vehicles.filter(v => v.make.toLowerCase().includes('tata')).length || 4})
@@ -459,7 +460,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
           <button 
             onClick={() => setSelectedMake('Ashok Leyland')}
             className={`px-3 py-1.5 rounded-md border transition ${
-              selectedMake === 'Ashok Leyland' ? 'bg-[#D32437] text-white border-[#D32437]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#D32437]'
+              selectedMake === 'Ashok Leyland' ? 'bg-[#059669] text-white border-[#059669]' : 'bg-white border-[#D1D5DB] text-[#231F20] hover:border-[#059669]'
             }`}
           >
             Ashok Leyland ({vehicles.filter(v => v.make.toLowerCase().includes('ashok')).length || 2})
@@ -468,8 +469,8 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
 
         {/* Red Warning Banner matching Screenshot 1 */}
         <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5 mb-6 text-center shadow-xs">
-          <div className="flex items-center justify-center space-x-2 text-xs sm:text-sm font-bold text-[#D32437]">
-            <AlertTriangle className="w-4 h-4 text-[#D32437] shrink-0" />
+          <div className="flex items-center justify-center space-x-2 text-xs sm:text-sm font-bold text-[#059669]">
+            <AlertTriangle className="w-4 h-4 text-[#059669] shrink-0" />
             <span>Bids in the last 5 minutes extend closing by 5 minutes</span>
           </div>
         </div>
@@ -480,7 +481,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
             onClick={() => setAuctionStatusFilter('ACTIVE')}
             className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center space-x-2 cursor-pointer ${
               auctionStatusFilter === 'ACTIVE'
-                ? 'bg-[#D32437] text-white shadow-xs'
+                ? 'bg-[#059669] text-white shadow-xs'
                 : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
             }`}
           >
@@ -519,7 +520,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
             <p className="text-xs text-[#8C8C8C] mt-1">Try resetting the filter selections above.</p>
             <button
               onClick={handleClearFilters}
-              className="mt-4 px-4 py-2 bg-[#D32437] text-white rounded-lg text-xs font-bold cursor-pointer"
+              className="mt-4 px-4 py-2 bg-[#059669] text-white rounded-lg text-xs font-bold cursor-pointer"
             >
               Reset Filters
             </button>
@@ -532,9 +533,6 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               if (!vehicle) return null;
 
               const isLiked = favoriteIds.includes(vehicle.id) || favoriteIds.includes(auc.id) || favorites.has(auc.id) || favorites.has(vehicle.id);
-              const currentBid = auc.currentHighestBid || auc.startPrice;
-              const priceObj = formatCurrency(currentBid);
-              const isEnded = auc.status === 'ENDED' || auc.status === 'COMPLETED' || (auc.endTime && new Date(auc.endTime).getTime() <= now);
               const isLeading = Boolean(
                 currentUser && (
                   auc.highestBidderId === currentUser.id ||
@@ -544,193 +542,20 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                 )
               );
 
-              const fallbackImg = vehicle.vehicleType === 'TRUCK'
-                ? 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&q=80&w=800'
-                : 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=800';
-
-              const displayImg = vehicle.mediaPaths && vehicle.mediaPaths.length > 0
-                ? vehicle.mediaPaths[0]
-                : fallbackImg;
-
               return (
-                <div 
-                  key={auc.id} 
-                  className={`awa-car-card group flex flex-col justify-between transition-all duration-300 ${
-                    isLeading 
-                      ? 'ring-2 ring-emerald-500 shadow-md shadow-emerald-100/50 bg-emerald-50/10' 
-                      : 'bg-white'
-                  }`}
-                >
-                  
-                  {/* Vehicle Image */}
-                  <div 
-                    onClick={() => onViewDetails ? onViewDetails(auc, vehicle) : onSelectAuction(auc)}
-                    className="relative overflow-hidden bg-slate-100 cursor-pointer"
-                  >
-                    <img 
-                      src={displayImg} 
-                      alt={`${vehicle.make} ${vehicle.model}`} 
-                      className="car-image"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = fallbackImg;
-                      }}
-                    />
-
-                    {/* Live vs Ended Badge */}
-                    {isEnded ? (
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 text-white rounded-md shadow-xs border border-slate-700">
-                        <span className="w-2 h-2 rounded-full bg-slate-400" />
-                        <span className="text-[11px] font-bold text-slate-200 tracking-wider">
-                          AUCTION ENDED
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-white/95 rounded-md shadow-xs border border-red-200">
-                        <span className="w-2 h-2 rounded-full bg-[#D32437] beacon-pulse" />
-                        <span className="text-[11px] font-bold text-[#D32437] tracking-wider">
-                          LIVE AUCTION
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Leading Bidder Badge */}
-                    {isLeading && (
-                      <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded-md shadow-md font-bold text-[10px] tracking-wide animate-pulse z-10">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        <span>YOU ARE WINNING</span>
-                      </div>
-                    )}
-
-                    {/* Registration No */}
-                    <div className="absolute bottom-2 left-3 bg-black/70 text-white font-mono text-[11px] px-2 py-0.5 rounded backdrop-blur-xs">
-                      {vehicle.registrationNumber}
-                    </div>
-                  </div>
-
-                  {/* Body Content */}
-                  <div className="p-4 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h4 
-                        onClick={() => onViewDetails ? onViewDetails(auc, vehicle) : onSelectAuction(auc)}
-                        className="awa-car-title cursor-pointer hover:text-[#D32437] transition"
-                      >
-                        {vehicle.manufacturingYear} {vehicle.make} {vehicle.model}
-                      </h4>
-
-                      <button
-                        onClick={() => onViewDetails ? onViewDetails(auc, vehicle) : onSelectAuction(auc)}
-                        className="text-xs text-[#0D74B5] font-semibold hover:underline block mb-2 cursor-pointer"
-                      >
-                        View Details & Inspection Report &rarr;
-                      </button>
-
-                      {/* Real-time Countdown or Ended Notice */}
-                      {isEnded ? (
-                        <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-bold mb-3 bg-slate-100 px-2.5 py-1.5 rounded-md border border-slate-200">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Auction Closed (00h : 00m : 00s)</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-1.5 text-xs text-[#D32437] font-bold mb-3 bg-red-50 px-2.5 py-1.5 rounded-md">
-                          <Clock className="w-3.5 h-3.5 animate-pulse" />
-                          <span>Ends in: {formatCountdown(auc.endTime)}</span>
-                        </div>
-                      )}
-
-                      <div className="space-y-1.5 text-xs border-t border-[#F0F0F0] pt-2 mb-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[#6B6B6B]">Lot#:</span>
-                          <span className="font-semibold text-[#231F20] font-mono">
-                            AWA-{auc.id.substring(0, 6).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[#6B6B6B]">Mileage:</span>
-                          <span className="font-semibold text-[#231F20]">
-                            {Number(vehicle.odometerReadingKm).toLocaleString()} KM
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[#6B6B6B]">Location:</span>
-                          <span className="font-semibold text-[#231F20]">
-                            Dubai Yard 4 / Central Hub
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Pricing & Bid Actions */}
-                    <div className="border-t border-[#F0F0F0] pt-3 mt-auto">
-                      <div className="flex items-baseline justify-between mb-3">
-                        <span className="text-[11px] font-semibold text-[#6B6B6B] uppercase tracking-wider">
-                          Current Bid
-                        </span>
-                        <div className="text-right">
-                          <div className={isLeading ? "text-lg font-extrabold text-emerald-600" : "awa-price"}>
-                            {priceObj.aed}
-                          </div>
-                          <div className="text-[11px] font-semibold text-slate-500 font-mono">
-                            ({priceObj.inr})
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3">
-                        <button
-                          type="button"
-                          onClick={(e) => toggleFavorite(vehicle.id || auc.id, e)}
-                          className={`w-10 h-10 rounded-full border flex items-center justify-center transition cursor-pointer ${
-                            isLiked 
-                              ? 'border-[#D32437] bg-red-50 text-[#D32437] shadow-xs scale-105' 
-                              : 'border-[#D1D5DB] text-slate-400 hover:border-[#D32437] hover:text-[#D32437] hover:bg-red-50/20'
-                          }`}
-                          title={
-                            !currentUser
-                              ? 'Sign in to add to favorites'
-                              : currentUser.role !== 'BUYER'
-                                ? 'Favorites are exclusive to Buyer accounts'
-                                : isLiked
-                                  ? 'Remove from favorites'
-                                  : 'Add to favorites'
-                          }
-                        >
-                          <Heart className={`w-5 h-5 transition-transform ${isLiked ? 'fill-[#D32437] text-[#D32437]' : ''}`} />
-                        </button>
-
-                        {/* BID NOW Button or Disabled AUCTION ENDED button or WINNING (RAISE) button */}
-                        {isEnded ? (
-                          <button
-                            disabled
-                            className="flex-1 bg-slate-200 text-slate-500 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 cursor-not-allowed opacity-90 text-sm"
-                            title="This auction has concluded"
-                          >
-                            <Lock className="w-4 h-4 mr-1 text-slate-500" />
-                            <span>AUCTION ENDED</span>
-                          </button>
-                        ) : isLeading ? (
-                          <button
-                            onClick={() => onOpenBidModal ? onOpenBidModal(auc) : handleBidClick(auc)}
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer transition text-sm"
-                            title="You are currently leading this auction! Click to raise your bid."
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1 text-white" />
-                            <span>WINNING (RAISE)</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => onOpenBidModal ? onOpenBidModal(auc) : handleBidClick(auc)}
-                            className="flex-1 awa-bidnow-btn flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer"
-                          >
-                            <span>BID NOW</span>
-                            <ArrowRight className="w-4 h-4 ml-1" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                  </div>
-
-                </div>
+                <VehicleCard
+                  key={auc.id}
+                  vehicle={vehicle}
+                  auction={auc}
+                  isFavorite={isLiked}
+                  onToggleFavorite={() => toggleFavorite(vehicle.id || auc.id, {} as any)}
+                  isBuyer={currentUser?.role === 'BUYER'}
+                  isLoggedIn={Boolean(currentUser)}
+                  isLeading={isLeading}
+                  onSelectAuction={onSelectAuction}
+                  onViewDetails={(a, v) => onViewDetails ? onViewDetails(a, v) : onSelectAuction(a)}
+                  onBidClick={(a) => onOpenBidModal ? onOpenBidModal(a) : handleBidClick(a)}
+                />
               );
             })}
           </div>
@@ -771,7 +596,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                       onClick={() => setCurrentPage(p)}
                       className={`min-w-[32px] h-8 px-2 text-xs font-bold rounded-md transition cursor-pointer flex items-center justify-center ${
                         currentPage === p
-                          ? 'bg-[#D32437] text-white shadow-xs'
+                          ? 'bg-[#059669] text-white shadow-xs'
                           : 'text-slate-700 hover:bg-slate-100'
                       }`}
                     >
@@ -810,7 +635,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                   onBlur={() => {
                     if (itemsPerPage <= 0) setItemsPerPage(27);
                   }}
-                  className="w-14 h-8 px-2 text-center text-xs font-bold text-slate-800 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#D32437] focus:border-[#D32437] bg-white"
+                  className="w-14 h-8 px-2 text-center text-xs font-bold text-slate-800 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#059669] focus:border-[#059669] bg-white"
                 />
               </div>
             </div>

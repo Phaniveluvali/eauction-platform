@@ -1,0 +1,117 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: eauction-ingress
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    {{- with .Values.ingress.customAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.global.domain }}
+      http:
+        paths:
+          - path: /seller-buyer
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: {{ .Values.frontend.service.port }}
+          - path: /api/v1/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-payment-broker
+                port:
+                  number: {{ .Values.paymentBroker.service.port }}
+          - path: /api/v1/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-ai-service
+                port:
+                  number: {{ .Values.aiService.service.port }}
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-catalog-identity
+                port:
+                  number: {{ .Values.catalogIdentity.service.port }}
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-keycloak
+                port:
+                  number: {{ .Values.keycloak.service.port }}
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-bidding-engine
+                port:
+                  number: {{ .Values.biddingEngine.service.port }}
+    - host: {{ .Values.global.altDomain }}
+      http:
+        paths:
+          - path: /seller-buyer
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: {{ .Values.frontend.service.port }}
+          - path: /api/v1/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-payment-broker
+                port:
+                  number: {{ .Values.paymentBroker.service.port }}
+          - path: /api/v1/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-ai-service
+                port:
+                  number: {{ .Values.aiService.service.port }}
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-catalog-identity
+                port:
+                  number: {{ .Values.catalogIdentity.service.port }}
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-keycloak
+                port:
+                  number: {{ .Values.keycloak.service.port }}
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-bidding-engine
+                port:
+                  number: {{ .Values.biddingEngine.service.port }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: {{ .Values.frontend.service.port }}
+  tls:
+    - hosts:
+        - {{ .Values.global.domain }}
+        - {{ .Values.global.altDomain }}
+      secretName: {{ .Values.global.tlsSecretName }}
+{{- end }}

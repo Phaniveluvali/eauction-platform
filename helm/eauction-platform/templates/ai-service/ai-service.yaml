@@ -1,0 +1,98 @@
+{{- if .Values.aiService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-ai-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-ai-service
+    {{- include "eauction-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.aiService.replicaCount }}
+  selector:
+    matchLabels:
+      app: eauction-ai-service
+  template:
+    metadata:
+      labels:
+        app: eauction-ai-service
+        {{- with .Values.aiService.labels.pod }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.aiService.annotations.pod }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: eauction-ai-service-sa
+      priorityClassName: auction-low-priority
+      {{- include "eauction-platform.podAntiAffinity" (dict "app" "eauction-ai-service" "soft" .Values.global.softScheduling) | nindent 6 }}
+      {{- with .Values.aiService.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.aiService.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.aiService.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ai-service
+          image: "{{ .Values.aiService.image.repository }}:{{ .Values.aiService.image.tag }}"
+          imagePullPolicy: {{ .Values.aiService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.aiService.service.port }}
+              name: http
+          env:
+            - name: REDIS_HOST
+              value: "eauction-redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: KAFKA_BROKERS
+            {{- with .Values.aiService.environment }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.aiService.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.aiService.service.port }}
+            initialDelaySeconds: {{ .Values.aiService.probes.readinessProbe.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.aiService.probes.readinessProbe.periodSeconds | default 10 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.aiService.service.port }}
+            initialDelaySeconds: {{ .Values.aiService.probes.livenessProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ .Values.aiService.probes.livenessProbe.periodSeconds | default 15 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-ai-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-ai-service
+    {{- with .Values.aiService.labels.service }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.aiService.annotations.service }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ports:
+    - port: {{ .Values.aiService.service.port }}
+      targetPort: {{ .Values.aiService.service.port }}
+      name: http
+  selector:
+    app: eauction-ai-service
+{{- end }}

@@ -1,30 +1,29 @@
 import React from 'react';
 import { PortalSidebar, PortalView } from './PortalSidebar';
-import { X } from 'lucide-react';
+import { X, Shield, Lock, ArrowRight, UserPlus } from 'lucide-react';
+import { initiateKeycloakLogin } from '../utils/oidc';
 
 interface SignInAndSignUpPageProps {
-  onGoSignIn: () => void;
-  onGoSignUp: () => void;
+  onGoSignIn?: () => void;
+  onGoSignUp?: () => void;
   onBackHome: () => void;
   onNavigate: (view: PortalView) => void;
 }
 
 export const SignInAndSignUpPage: React.FC<SignInAndSignUpPageProps> = ({
-  onGoSignIn,
-  onGoSignUp,
   onBackHome,
   onNavigate,
 }) => {
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-row font-sans">
       
-      {/* Left Sidebar matching Screenshot 4 */}
+      {/* Left Sidebar */}
       <PortalSidebar currentView="SIGNIN_SIGNUP" onNavigate={onNavigate} />
 
       {/* Main Content Area */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 flex flex-col">
         
-        {/* Header matching Screenshot 4: ✕ Sign in or Sign up */}
+        {/* Header */}
         <div className="flex items-center pb-4 border-b border-[#EBEBEB] mb-8">
           <button 
             onClick={onBackHome}
@@ -38,43 +37,47 @@ export const SignInAndSignUpPage: React.FC<SignInAndSignUpPageProps> = ({
           </h1>
         </div>
 
-        {/* Centered Auth Prompt Card matching Screenshot 4 */}
-        <div className="flex-1 flex flex-col items-center justify-center -mt-16 text-center max-w-2xl mx-auto px-4">
+        {/* Centered Auth Prompt Card */}
+        <div className="flex-1 flex flex-col items-center justify-center -mt-16 text-center max-w-xl mx-auto px-4">
           
+          <div className="w-16 h-16 rounded-2xl bg-red-50 text-[#059669] flex items-center justify-center mx-auto mb-6 shadow-sm border border-red-100">
+            <Shield className="w-8 h-8" />
+          </div>
+
           {/* Main prompt heading */}
-          <h2 className="text-xl sm:text-2xl font-bold text-[#231F20] mb-8 leading-snug">
-            You must be a registered buyer to bid in Al Wataneya Auctions.
+          <h2 className="text-xl sm:text-2xl font-bold text-[#231F20] mb-3 leading-snug">
+            Welcome to AJ Auctions
           </h2>
-
-          {/* Already registered row */}
-          <p className="text-base text-[#231F20] mb-6">
-            Already registered?{' '}
-            <button
-              onClick={onGoSignIn}
-              className="text-[#0D74B5] font-semibold hover:underline cursor-pointer"
-            >
-              Sign In
-            </button>{' '}
-            to our Al Wataneya Auctions platform.
+          <p className="text-sm text-slate-600 mb-8 max-w-md mx-auto">
+            Access live bidding, manage security deposits, and explore the vehicle catalog via secure Keycloak Single Sign-On.
           </p>
 
-          {/* Not registered yet row */}
-          <p className="text-base text-[#231F20] mb-10">
-            Not registered yet?{' '}
+          {/* Direct Keycloak SSO Options */}
+          <div className="w-full space-y-3.5 max-w-md mx-auto mb-8">
             <button
-              onClick={onGoSignUp}
-              className="text-[#0D74B5] font-semibold hover:underline cursor-pointer"
+              onClick={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+              className="w-full py-3.5 px-6 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2.5 cursor-pointer text-sm uppercase tracking-wider"
             >
-              Sign Up
+              <Lock className="w-4 h-4" />
+              <span>Sign In with Keycloak SSO</span>
+              <ArrowRight className="w-4 h-4 ml-auto" />
             </button>
-          </p>
 
-          {/* Green Go Back Button matching Screenshot 4 */}
+            <button
+              onClick={() => initiateKeycloakLogin({ action: 'register' })}
+              className="w-full py-3 px-6 bg-white hover:bg-slate-50 text-slate-800 font-semibold rounded-xl border border-slate-300 shadow-xs transition flex items-center justify-center gap-2.5 cursor-pointer text-sm"
+            >
+              <UserPlus className="w-4 h-4 text-slate-600" />
+              <span>Create New Account (Keycloak Registration)</span>
+            </button>
+          </div>
+
+          {/* Green Go Back Button */}
           <button
             onClick={onBackHome}
-            className="px-8 py-2.5 bg-[#5cb85c] hover:bg-[#4ea249] text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 cursor-pointer"
+            className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition duration-150 cursor-pointer"
           >
-            Go back to the Home Page
+            Return to Public Marketplace
           </button>
 
         </div>

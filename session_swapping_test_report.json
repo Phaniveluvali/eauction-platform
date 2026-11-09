@@ -1,0 +1,65 @@
+{
+  "scenario_1": {
+    "scenario": "Scenario 1: Idle Session Dynamic Pod Handoff",
+    "sessions_tested": 100,
+    "success_rate": "100.00%",
+    "packet_loss": "0.00%",
+    "token_integrity": "100.00%",
+    "state_corruption_count": 0,
+    "total_duration_sec": 1.35,
+    "latency_ms": {
+      "min": 8.73,
+      "avg": 13.46,
+      "p95": 18.05,
+      "max": 22.17
+    }
+  },
+  "scenario_2": {
+    "scenario": "Scenario 2: In-Flight Bidding During Pod Handoff",
+    "active_bidders": 100,
+    "bids_attempted": 100,
+    "bids_accepted": 100,
+    "bids_dropped": 0,
+    "packet_loss_rate": "0.00%",
+    "atomic_idempotency_rate": "100.00%",
+    "concurrency_level": "20 Threads",
+    "total_duration_sec": 0.178,
+    "latency_ms": {
+      "min": 10.29,
+      "avg": 17.23,
+      "p95": 23.11,
+      "max": 29.23
+    }
+  },
+  "scenario_3": {
+    "scenario": "Scenario 3: 500 Live User Sessions Mass Bulk Evacuation",
+    "total_sessions": 500,
+    "successfully_migrated": 500,
+    "packet_loss_rate": "0.00%",
+    "batch_pipeline_size": 50,
+    "concurrency_workers": 10,
+    "throughput_sessions_per_sec": 873.1,
+    "total_duration_sec": 0.573,
+    "latency_ms": {
+      "min": 5.06,
+      "avg": 9.17,
+      "p95": 12.09,
+      "max": 20.88
+    },
+    "post_rebalance_distribution": {
+      "479z9": 0,
+      "kgtcj": 236,
+      "qttrc": 264
+    }
+  },
+  "scenario_4": {
+    "scenario": "Scenario 4: Graceful Degradation & Outage Recovery",
+    "outage_code_tested": "ERR_BID_ENGINE_DEGRADED_503",
+    "degradation_modal_triggered": true,
+    "security_deposit_integrity": "100.00% Preserved (Unmodified)",
+    "bidding_limit_integrity": "100.00% Preserved (Unmodified)",
+    "auto_retry_countdown_sec": 10,
+    "catalog_browsing_fallback": "Available (Zero UI lockup)",
+    "verification_status": "PASSED"
+  }
+}

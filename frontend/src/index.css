@@ -5,33 +5,44 @@
 @tailwind utilities;
 
 :root {
-  --primary-red: #D32437;
-  --primary-red-hover: #b51a2b;
-  --dark-text: #231F20;
-  --muted-text: #6B6B6B;
-  --light-bg: #F5F6F7;
-  --card-border: #E5E7EB;
-  --divider-color: #EBEBEB;
+  /* AshwikTechnologies & AJ Auctions Primary Brand Palette */
+  --brand-emerald: #00875A;
+  --brand-emerald-dark: #006644;
+  --brand-emerald-light: #E3FCEF;
+  --brand-navy: #0F172A;
+  --brand-navy-surface: #1E293B;
+  --brand-crimson: #E11D48;
+  --brand-amber: #D97706;
+  
+  /* Modern Neutral Gradients & Borders */
+  --surface-bg: #FFFFFF;
+  --surface-subtle: #F8FAFC;
+  --border-light: #E2E8F0;
+  --border-card: #CBD5E1;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
 }
 
 @layer base {
   body {
-    background-color: #ffffff;
-    color: #231F20;
+    background-color: #FFFFFF;
+    color: var(--text-primary);
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
   }
 }
 
-/* Custom glowing pulse for active auctions */
+/* Custom Live Beacon & Pulsing Animations */
 @keyframes beacon {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
   }
   50% {
-    opacity: 0.4;
-    transform: scale(1.15);
+    opacity: 0.35;
+    transform: scale(1.2);
   }
 }
 
@@ -39,161 +50,107 @@
   animation: beacon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Al Wataneya Signature Underline on Section Headings */
-.header-title {
-  font-size: 28px;
-  font-weight: 700;
-  position: relative;
-  color: #231F20;
-  letter-spacing: -0.02em;
-  padding-bottom: 14px;
-}
-
-@media (min-width: 768px) {
-  .header-title {
-    font-size: 32px;
+@keyframes subtle-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
   }
 }
 
-.header-title::after {
-  content: '';
-  display: block;
-  width: 50px;
-  height: 4px;
-  background-color: #d11a3b;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  border-radius: 2px;
+.float-hover:hover {
+  animation: subtle-float 2.5s ease-in-out infinite;
 }
 
-.header-title::before {
-  content: '';
-  display: block;
-  width: 20px;
-  height: 4px;
-  background: #F4C2C2;
-  position: absolute;
-  bottom: 0;
-  left: 55px;
-  border-radius: 2px;
+/* Modern Gradient Text */
+.text-gradient-emerald {
+  background: linear-gradient(135deg, #00875A 0%, #059669 50%, #10B981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-/* Section Divider */
-.home_divider {
-  height: 10px;
-  background-color: #EBEBEB;
-  width: 100%;
+.text-gradient-navy {
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 70%, #334155 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-/* Category Box Hover */
-.category-box-card {
-  border: 1px solid #C7C7C7;
-  border-radius: 8px;
-  padding: 24px 16px;
-  text-align: center;
-  transition: all 0.3s ease;
-  background-color: #ffffff;
-  display: flex;
-  flex-direction: column;
+/* Modern AJ Card System */
+.aj-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
+
+.aj-card:hover {
+  transform: translateY(-4px);
+  border-color: #10B981;
+  box-shadow: 0 16px 32px -8px rgba(0, 135, 90, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Modern Section Badge Pills */
+.aj-section-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.category-box-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.08);
-  border-color: #D32437;
-}
-
-/* Car Card styling matching Al Wataneya specifications */
-.awa-car-card {
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  background: #ffffff;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  display: flex;
-  flex-direction: column;
-}
-
-.awa-car-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.12);
-  border-color: #D32437;
-}
-
-.awa-car-card .car-image {
-  height: 210px;
-  width: 100%;
-  object-fit: cover;
-  transition: transform 0.4s ease;
-}
-
-.awa-car-card:hover .car-image {
-  transform: scale(1.03);
-}
-
-.awa-car-title {
-  color: #231F20;
-  font-size: 18px;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.3;
-  margin-bottom: 6px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background-color: #E3FCEF;
+  color: #006644;
+  border: 1px solid rgba(0, 135, 90, 0.2);
 }
 
-.awa-timer {
-  color: #D32437;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.awa-price {
-  font-size: 22px;
+/* Modern Section Header */
+.aj-section-heading {
+  font-size: 28px;
   font-weight: 800;
-  color: #D32437;
-  line-height: 1.1;
-  font-family: 'Outfit', sans-serif;
+  color: #0F172A;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
 }
 
-/* Green BID NOW CTA */
-.awa-bidnow-btn {
-  background-color: #61B35C;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  padding: 8px 18px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
+@media (min-width: 768px) {
+  .aj-section-heading {
+    font-size: 34px;
+  }
 }
 
-.awa-bidnow-btn:hover {
-  background-color: #4ea249;
-  transform: scale(1.02);
+/* Glassmorphism Surface */
+.aj-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
-/* Process connector step line */
-.awa-step-line {
-  position: absolute;
-  top: 45px;
-  left: 75%;
-  width: 50%;
-  height: 1px;
-  border-top: 2px dashed #f8d7da;
-  z-index: 0;
+/* Live Countdown Bar */
+.aj-timer-bar {
+  background: linear-gradient(90deg, #E3FCEF 0%, #D1FAE5 100%);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #065F46;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
 }
 
-.awa-dot {
-  width: 10px;
-  height: 10px;
-  background-color: #D32437;
-  border-radius: 50%;
-  position: absolute;
-  top: -6px;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }

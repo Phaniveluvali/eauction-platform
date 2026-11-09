@@ -3,6 +3,7 @@ import { ArrowLeft, Clock, Zap, AlertTriangle, CheckCircle2, ShieldAlert, Radio,
 import { Auction, Bid, BidResponse, User } from '../types';
 import { AuctionSocket } from '../services/websocket';
 import { api } from '../services/api';
+import { ServiceDegradedModal } from './ServiceDegradedModal';
 
 interface AuctionRoomProps {
   auction: Auction;
@@ -116,6 +117,7 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
   const [showSelfOutbidModal, setShowSelfOutbidModal] = useState(false);
   const [selfOutbidConfirmed, setSelfOutbidConfirmed] = useState(false);
   const [pendingBidAmount, setPendingBidAmount] = useState<number | null>(null);
+  const [showDegradedModal, setShowDegradedModal] = useState(false);
 
   const isAuctionEnded = auction.status === 'ENDED' || auction.status === 'COMPLETED' || (new Date(auction.endTime).getTime() <= Date.now());
 
@@ -166,6 +168,10 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
    * and network retransmissions.
    */
   const executeBidSubmission = (proposedAmount: number) => {
+    if (socketStatus !== 'CONNECTED' || !socketRef.current) {
+      setShowDegradedModal(true);
+      return;
+    }
     try {
       if (socketRef.current) {
         // Unique idempotency key (timestamp + random nonce)
@@ -176,7 +182,7 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
         setPendingBidAmount(null);
       }
     } catch (err: any) {
-      setAlertNotice({ type: 'ERROR', message: err.message || 'Transmission failed' });
+      setShowDegradedModal(true);
     }
   };
 
@@ -558,6 +564,22 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
           </div>
         </div>
       )}
+
+      {/* Graceful Degradation Modal for Live Bidding Outages */}
+      <ServiceDegradedModal
+        isOpen={showDegradedModal}
+        serviceName="Gorilla WebSocket Bidding Engine"
+        onClose={() => setShowDegradedModal(false)}
+        onRetry={() => {
+          setShowDegradedModal(false);
+          socketRef.current?.connect();
+          if (pendingBidAmount) {
+            executeBidSubmission(pendingBidAmount);
+          }
+        }}
+        onBrowseVehicles={onBack}
+        errorCode="ERR_WSS_BID_DISCONNECTED_503"
+      />
     </div>
   );
 };

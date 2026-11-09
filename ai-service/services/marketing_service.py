@@ -146,6 +146,7 @@ Return a JSON array containing exactly 3 objects with the following schema:
         return {
             "status": "SUCCESS",
             "campaign_id": campaign_id,
+            "campaign": campaign_payload,
             "message": "Promotion successfully published to all active buyer screens",
             "ttl_seconds": ttl_seconds,
             "payload": campaign_payload

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWA Technical Vehicle Inspection Certificate</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: #f1f5f9;
+      color: #1e293b;
+      padding: 24px;
+    }
+    .cert-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      padding: 36px;
+      position: relative;
+    }
+    .cert-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    .cert-title-group h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+    .cert-title-group p {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .badge-passed {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .grid-info {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 24px;
+    }
+    .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .info-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .info-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-top: 2px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .section-heading {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .checklist-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 28px;
+      font-size: 13px;
+    }
+    .checklist-table th {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 700;
+      text-align: left;
+      padding: 10px 14px;
+      border: 1px solid #e2e8f0;
+    }
+    .checklist-table td {
+      padding: 10px 14px;
+      border: 1px solid #e2e8f0;
+    }
+    .checklist-table tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .status-passed {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .footer-stamp {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 20px;
+      margin-top: 24px;
+    }
+    .stamp-box {
+      border: 2px dashed #0070ba;
+      border-radius: 12px;
+      padding: 12px 20px;
+      text-align: center;
+      color: #0070ba;
+    }
+    .stamp-box .stamp-title {
+      font-weight: 800;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .stamp-box .stamp-sub {
+      font-size: 10px;
+      margin-top: 2px;
+    }
+    .action-bar {
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      max-width: 900px;
+      margin: 0 auto 16px auto;
+    }
+    .btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-print {
+      background: #0070ba;
+      color: #ffffff;
+    }
+    .btn-print:hover {
+      background: #005a96;
+    }
+    .btn-close {
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .btn-close:hover {
+      background: #cbd5e1;
+    }
+    @media print {
+      body {
+        padding: 0;
+        background: #ffffff;
+      }
+      .action-bar {
+        display: none;
+      }
+      .cert-container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="action-bar">
+    <button class="btn btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <button class="btn btn-close" onclick="window.close()">Close Tab</button>
+  </div>
+
+  <div class="cert-container">
+    <div class="cert-header">
+      <div class="cert-title-group">
+        <h1>Al Wataneya Vehicle Technical Inspection Certificate</h1>
+        <p>Official RTO & Emirates Transport Technical Testing Center | UAE</p>
+      </div>
+      <div>
+        <span class="badge-passed">✓ PASSED CERTIFICATION</span>
+      </div>
+    </div>
+
+    <div class="grid-info">
+      <div class="info-item">
+        <span class="info-label">Chassis No / VIN</span>
+        <span class="info-value" id="vinDisplay">030726153107858</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Vehicle Make & Model</span>
+        <span class="info-value" id="modelDisplay">Toyota Land Cruiser 2020</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Year of Manufacture</span>
+        <span class="info-value" id="yearDisplay">2020</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Inspection Hub Location</span>
+        <span class="info-value" id="locationDisplay">Abu Dhabi - Al Ajban Hub</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Report Number</span>
+        <span class="info-value" id="reportNoDisplay">AWA-TR-100918-2026</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Testing Date & Time</span>
+        <span class="info-value" id="dateDisplay">July 3, 2026 15:31:08 GST</span>
+      </div>
+    </div>
+
+    <div class="section-heading">Detailed 8-Point Multi-Diagnostic Audit</div>
+    <table class="checklist-table">
+      <thead>
+        <tr>
+          <th>System & Component</th>
+          <th>Inspection Criteria</th>
+          <th>Measured Metric / Diagnosis</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Engine & Powertrain</strong></td>
+          <td>Cylinder compression, idle stability, fluid leaks</td>
+          <td>Oil level optimal, zero oil seepage, smooth RPM</td>
+          <td><span class="status-badge status-passed">PASSED (Grade A)</span></td>
+        </tr>
+        <tr>
+          <td><strong>Transmission & Driveline</strong></td>
+          <td>Gear shift engagement, clutch, 4WD transfer case</td>
+          <td>Electronic actuation responsive, transmission oil clean</td>
+          <td><span class="status-badge status-passed">PASSED</span></td>
+        </tr>
+        <tr>
+          <td><strong>Braking Performance</strong></td>
+          <td>Front & rear pad thickness, hydraulic line pressure</td>
+          <td>Front: 8.5mm, Rear: 7.8mm, ABS module OK</td>
+          <td><span class="status-badge status-passed">100% PASSED</span></td>
+        </tr>
+        <tr>
+          <td><strong>Chassis & Structure</strong></td>
+          <td>Unibody / chassis rail alignment, weld seams</td>
+          <td>Zero deformation, factory spot welds intact</td>
+          <td><span class="status-badge status-passed">PASSED (No Damage)</span></td>
+        </tr>
+        <tr>
+          <td><strong>Suspension & Steering</strong></td>
+          <td>Struts, control arms, steering rack play</td>
+          <td>Zero ball-joint play, bushes in good condition</td>
+          <td><span class="status-badge status-passed">PASSED</span></td>
+        </tr>
+        <tr>
+          <td><strong>OBD-II Electronics</strong></td>
+          <td>Full computer ECU fault code scan</td>
+          <td>0 Diagnostic Trouble Codes (DTCs) logged</td>
+          <td><span class="status-badge status-passed">PASSED</span></td>
+        </tr>
+        <tr>
+          <td><strong>Tyres & Wheels</strong></td>
+          <td>Tread depth, tyre pressure, rim balance</td>
+          <td>Even wear, tread depth: 6.5mm across all 4 tyres</td>
+          <td><span class="status-badge status-passed">PASSED</span></td>
+        </tr>
+        <tr>
+          <td><strong>Safety & Restraints</strong></td>
+          <td>Airbag modules, seatbelt tensioners, horn, lamps</td>
+          <td>All safety SRS modules active, headlamps calibrated</td>
+          <td><span class="status-badge status-passed">PASSED</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer-stamp">
+      <div>
+        <p style="font-size: 11px; color: #64748b; font-weight: 600;">CERTIFIED BY:</p>
+        <p style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px;">Eng. Tariq Al Mansoori</p>
+        <p style="font-size: 11px; color: #64748b;">Chief Technical Examiner, Emirates Transport</p>
+      </div>
+      <div class="stamp-box">
+        <div class="stamp-title">AWA VERIFIED</div>
+        <div class="stamp-sub">TECHNICAL TEST PASSED</div>
+        <div class="stamp-sub">DIGITAL SEAL 2026</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('vin')) document.getElementById('vinDisplay').textContent = params.get('vin');
+    if (params.get('model')) document.getElementById('modelDisplay').textContent = params.get('model');
+    const loc = params.get('location') || params.get('loc');
+    if (loc) document.getElementById('locationDisplay').textContent = loc;
+    if (params.get('lot')) document.getElementById('reportNoDisplay').textContent = 'AWA-TR-' + params.get('lot') + '-2026';
+    if (params.get('date')) document.getElementById('dateDisplay').textContent = params.get('date');
+  </script>
+</body>
+</html>

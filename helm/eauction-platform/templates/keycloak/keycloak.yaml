@@ -1,0 +1,118 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-keycloak
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-keycloak
+    {{- include "eauction-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.keycloak.replicaCount }}
+  selector:
+    matchLabels:
+      app: eauction-keycloak
+  template:
+    metadata:
+      labels:
+        app: eauction-keycloak
+        {{- with .Values.keycloak.labels.pod }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.keycloak.annotations.pod }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: eauction-keycloak-sa
+      priorityClassName: auction-high-priority
+      {{- include "eauction-platform.podAntiAffinity" (dict "app" "eauction-keycloak" "soft" .Values.global.softScheduling) | nindent 6 }}
+      {{- with .Values.keycloak.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.keycloak.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.keycloak.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: keycloak
+          image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
+          imagePullPolicy: {{ .Values.keycloak.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+          args: ["start-dev", "--http-relative-path=/auth"]
+          env:
+            - name: KEYCLOAK_ADMIN
+              value: "admin"
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              value: "adminpassword"
+            - name: KC_DB
+              value: "postgres"
+            - name: KC_DB_URL
+              value: "jdbc:postgresql://eauction-postgres:5432/keycloak_db"
+            - name: KC_DB_USERNAME
+              value: "keycloak"
+            - name: KC_DB_PASSWORD
+              value: "keycloakpassword"
+            - name: KC_PROXY
+              value: "edge"
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            {{- with .Values.keycloak.environment }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.keycloak.service.port }}
+          resources:
+            {{- toYaml .Values.keycloak.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /auth/health/ready
+              port: {{ .Values.keycloak.service.port }}
+            initialDelaySeconds: {{ .Values.keycloak.probes.readinessProbe.initialDelaySeconds | default 30 }}
+            periodSeconds: {{ .Values.keycloak.probes.readinessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.keycloak.probes.readinessProbe.timeoutSeconds | default 2 }}
+          livenessProbe:
+            httpGet:
+              path: /auth/health/live
+              port: {{ .Values.keycloak.service.port }}
+            initialDelaySeconds: {{ .Values.keycloak.probes.livenessProbe.initialDelaySeconds | default 45 }}
+            periodSeconds: {{ .Values.keycloak.probes.livenessProbe.periodSeconds | default 15 }}
+            timeoutSeconds: {{ .Values.keycloak.probes.livenessProbe.timeoutSeconds | default 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-keycloak
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-keycloak
+    {{- with .Values.keycloak.labels.service }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.keycloak.annotations.service }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.keycloak.service.port }}
+      targetPort: {{ .Values.keycloak.service.port }}
+      name: http
+  selector:
+    app: eauction-keycloak
+{{- end }}

@@ -1,0 +1,34 @@
+{{- if .Values.podDisruptionBudgets.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: eauction-bidding-engine-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: {{ if eq .Values.global.environment "production-multinode" }}6{{ else }}2{{ end }}
+  selector:
+    matchLabels:
+      app: eauction-bidding-engine
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: eauction-catalog-identity-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: {{ if eq .Values.global.environment "production-multinode" }}6{{ else }}1{{ end }}
+  selector:
+    matchLabels:
+      app: eauction-catalog-identity
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: eauction-keycloak-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: eauction-keycloak
+{{- end }}

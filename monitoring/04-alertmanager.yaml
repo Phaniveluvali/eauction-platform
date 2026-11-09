@@ -8,7 +8,7 @@ data:
     global:
       resolve_timeout: 5m
       smtp_smarthost: '172.16.6.9:5433'
-      smtp_from: 'venkatesh_vangala@tecnics.com'
+      smtp_from: 'phani_veluvali@tecnics.com'
       smtp_require_tls: false
 
     route:
@@ -30,9 +30,11 @@ data:
     receivers:
       - name: 'email-alert-notifications'
         email_configs:
-          - to: 'myset2014@gmail.com'
+          - to: 'phani_veluvali@tecnics.com'
+            from: 'phani_veluvali@tecnics.com'
             send_resolved: true
             headers:
+              From: 'phani_veluvali@tecnics.com'
               Subject: '🚨 [{{ .Status | toUpper }}] Al Wataneya E-Auction Alert: {{ .GroupLabels.alertname }}'
             html: |
               <h2>🚨 Al Wataneya Infrastructure & Microservices Alert</h2>

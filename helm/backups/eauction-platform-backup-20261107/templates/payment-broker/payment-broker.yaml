@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-payment-broker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-payment-broker
+    {{- include "eauction-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.paymentBroker.replicaCount }}
+  selector:
+    matchLabels:
+      app: eauction-payment-broker
+  template:
+    metadata:
+      labels:
+        app: eauction-payment-broker
+    spec:
+      serviceAccountName: eauction-payment-broker-sa
+      priorityClassName: auction-high-priority
+      {{- include "eauction-platform.podAntiAffinity" (dict "app" "eauction-payment-broker" "soft" .Values.global.softScheduling) | nindent 6 }}
+      containers:
+        - name: payment-broker
+          image: "{{ .Values.paymentBroker.image.repository }}:{{ .Values.paymentBroker.image.tag }}"
+          imagePullPolicy: {{ .Values.paymentBroker.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.paymentBroker.service.port }}
+              name: http
+          env:
+            - name: SERVER_PORT
+              value: "{{ .Values.paymentBroker.service.port }}"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: KAFKA_BROKERS
+            - name: RAZORPAY_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: RAZORPAY_WEBHOOK_SECRET
+            - name: CASHFREE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: CASHFREE_WEBHOOK_SECRET
+          resources:
+            {{- toYaml .Values.paymentBroker.resources | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.paymentBroker.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.paymentBroker.service.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-payment-broker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-payment-broker
+spec:
+  ports:
+    - port: {{ .Values.paymentBroker.service.port }}
+      targetPort: {{ .Values.paymentBroker.service.port }}
+      name: http
+  selector:
+    app: eauction-payment-broker

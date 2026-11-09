@@ -31,7 +31,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({
 
   const faqs = [
     {
-      q: 'How do I register and place a bid on Al Wataneya Auctions?',
+      q: 'How do I register and place a bid on AJ Auctions?',
       a: 'To bid, create a Buyer Account through the Sign Up page, verify your contact information, and ensure your account has a registered security deposit. Once registered, navigate to any Live or Silent auction and click "BID NOW".'
     },
     {
@@ -104,7 +104,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({
           <div 
             onClick={() => setActiveTab(activeTab === 'ABOUT' ? 'NONE' : 'ABOUT')}
             className={`bg-white border rounded-xl p-5 shadow-xs hover:shadow-md transition cursor-pointer flex items-center space-x-4 ${
-              activeTab === 'ABOUT' ? 'border-[#D32437] ring-2 ring-red-100' : 'border-[#E5E7EB]'
+              activeTab === 'ABOUT' ? 'border-[#059669] ring-2 ring-red-100' : 'border-[#E5E7EB]'
             }`}
           >
             <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
@@ -112,7 +112,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({
             </div>
             <div>
               <h4 className="font-bold text-[#231F20] text-base">About Us</h4>
-              <p className="text-xs text-[#8C8C8C]">Our story, mission & Emirates Transport backing</p>
+              <p className="text-xs text-[#8C8C8C]">Our story, mission & AshwikTechnologies backing</p>
             </div>
           </div>
 
@@ -120,7 +120,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({
           <div 
             onClick={() => setActiveTab(activeTab === 'CONTACT' ? 'NONE' : 'CONTACT')}
             className={`bg-white border rounded-xl p-5 shadow-xs hover:shadow-md transition cursor-pointer flex items-center space-x-4 ${
-              activeTab === 'CONTACT' ? 'border-[#D32437] ring-2 ring-red-100' : 'border-[#E5E7EB]'
+              activeTab === 'CONTACT' ? 'border-[#059669] ring-2 ring-red-100' : 'border-[#E5E7EB]'
             }`}
           >
             <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
@@ -136,7 +136,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({
           <div 
             onClick={() => setActiveTab(activeTab === 'FAQS' ? 'NONE' : 'FAQS')}
             className={`bg-white border rounded-xl p-5 shadow-xs hover:shadow-md transition cursor-pointer flex items-center space-x-4 ${
-              activeTab === 'FAQS' ? 'border-[#D32437] ring-2 ring-red-100' : 'border-[#E5E7EB]'
+              activeTab === 'FAQS' ? 'border-[#059669] ring-2 ring-red-100' : 'border-[#E5E7EB]'
             }`}
           >
             <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
@@ -152,7 +152,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({
           <div 
             onClick={() => setActiveTab(activeTab === 'BRANCHES' ? 'NONE' : 'BRANCHES')}
             className={`bg-white border rounded-xl p-5 shadow-xs hover:shadow-md transition cursor-pointer flex items-center space-x-4 ${
-              activeTab === 'BRANCHES' ? 'border-[#D32437] ring-2 ring-red-100' : 'border-[#E5E7EB]'
+              activeTab === 'BRANCHES' ? 'border-[#059669] ring-2 ring-red-100' : 'border-[#E5E7EB]'
             }`}
           >
             <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
@@ -173,13 +173,13 @@ export const HelpPage: React.FC<HelpPageProps> = ({
           {(activeTab === 'NONE' || activeTab === 'CONTACT') && (
             <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-xs">
               <h3 className="text-lg font-bold text-[#231F20] mb-4 flex items-center gap-2">
-                <Headphones className="w-5 h-5 text-[#D32437]" />
+                <Headphones className="w-5 h-5 text-[#059669]" />
                 Customer Support & Helpdesk
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
                 <div className="p-4 bg-slate-50 rounded-xl">
                   <div className="flex items-center gap-2 font-bold text-[#231F20] mb-1">
-                    <Phone className="w-4 h-4 text-[#D32437]" />
+                    <Phone className="w-4 h-4 text-[#059669]" />
                     Toll Free Hotline
                   </div>
                   <p className="text-xs text-slate-600">800 6006 / +971 8006006</p>
@@ -188,16 +188,16 @@ export const HelpPage: React.FC<HelpPageProps> = ({
 
                 <div className="p-4 bg-slate-50 rounded-xl">
                   <div className="flex items-center gap-2 font-bold text-[#231F20] mb-1">
-                    <Mail className="w-4 h-4 text-[#D32437]" />
+                    <Mail className="w-4 h-4 text-[#059669]" />
                     Support Email
                   </div>
-                  <p className="text-xs text-slate-600">etcares@et.ae / auctions@awa.ae</p>
+                  <p className="text-xs text-slate-600">support@ashwiktechnologies.com / auctions@ashwiktechnologies.com</p>
                   <span className="text-[10px] text-slate-500 block mt-1">Response within 2 hours</span>
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-xl">
                   <div className="flex items-center gap-2 font-bold text-[#231F20] mb-1">
-                    <Clock className="w-4 h-4 text-[#D32437]" />
+                    <Clock className="w-4 h-4 text-[#059669]" />
                     Auction Yard Hours
                   </div>
                   <p className="text-xs text-slate-600">Sat - Thu: 8:00 AM - 6:00 PM</p>
@@ -211,7 +211,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({
           {(activeTab === 'NONE' || activeTab === 'BRANCHES') && (
             <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-xs">
               <h3 className="text-lg font-bold text-[#231F20] mb-4 flex items-center gap-2">
-                <Building className="w-5 h-5 text-[#D32437]" />
+                <Building className="w-5 h-5 text-[#059669]" />
                 Our Yard & Branch Locations
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
@@ -226,7 +226,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({
                 <div className="border border-slate-200 p-4 rounded-xl">
                   <span className="font-bold text-[#231F20] text-sm block mb-1">Abu Dhabi Yard (Musaffah)</span>
                   <p className="text-[#6B6B6B] leading-relaxed">
-                    Musaffah Industrial Area M-14, Behind Emirates Transport Heavy Maintenance Hub, Abu Dhabi.
+                    Musaffah Industrial Area M-14, Commercial Asset & Fleet Hub, Abu Dhabi.
                   </p>
                   <span className="text-emerald-600 font-bold block mt-2">Capacity: 800+ Commercial Fleets</span>
                 </div>
@@ -246,7 +246,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({
           {(activeTab === 'NONE' || activeTab === 'FAQS') && (
             <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-xs">
               <h3 className="text-lg font-bold text-[#231F20] mb-4 flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-[#D32437]" />
+                <HelpCircle className="w-5 h-5 text-[#059669]" />
                 Frequently Asked Questions
               </h3>
               <div className="space-y-3">
@@ -277,11 +277,11 @@ export const HelpPage: React.FC<HelpPageProps> = ({
           {(activeTab === 'NONE' || activeTab === 'ABOUT') && (
             <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-xs text-xs text-[#525252] leading-relaxed space-y-3">
               <h3 className="text-lg font-bold text-[#231F20] mb-2 flex items-center gap-2">
-                <Info className="w-5 h-5 text-[#D32437]" />
-                About Al Wataneya Auctions
+                <Info className="w-5 h-5 text-[#059669]" />
+                About AJ Auctions
               </h3>
               <p>
-                Established in 2010 as a dedicated subsidiary of Emirates Transport (ET), Al Wataneya Auctions has evolved into the UAE’s and region's foremost institutional vehicle auction portal. We specialize in transparent commercial fleet remarketing, passenger vehicle remarketing, and heavy machinery auctions.
+                Established as the digital auction flagship powered by AshwikTechnologies, AJ Auctions is the region's foremost institutional vehicle and machinery auction portal. We specialize in transparent commercial fleet remarketing, corporate asset liquidation, and certified multi-point vehicle auctions backed by next-generation real-time bidding technology.
               </p>
               <p>
                 Every vehicle listed on our platform undergoes rigorous documentation verification, chassis and engine physical audit, and condition grading to guarantee peace of mind for corporate fleet buyers, dealers, and private individuals.

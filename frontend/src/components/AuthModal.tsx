@@ -63,7 +63,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     const flow = 'b2c_1_etsusi';
     const clientId = 'b407464f-b9ea-4c5d-a5d4-ee97320a424b';
     const scope = encodeURIComponent('openid offline_access https://etdevconsumeraccess.onmicrosoft.com/api/demo.read');
-    const redirectUri = encodeURIComponent('https://dev-alwataneya.et.ae:443/oidcclient/etdx1');
+    const redirectUri = encodeURIComponent('https://ajauctions.ashwiktechnologies.com:443/oidcclient/callback');
     const state = 'b2c_modal_' + Date.now();
 
     window.location.href = `https://${host}/${tenant}/${flow}/oauth2/v2.0/authorize?response_type=code&client_id=${clientId}&scope=${scope}&state=${state}&redirect_uri=${redirectUri}`;
@@ -74,10 +74,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     setLoading(true);
     try {
       const resp = await api.azureB2cLogin({
-        email: 'awabuyer@gmail.com',
-        fullName: 'AWA Azure B2C Buyer',
+        email: 'ajbuyer@ashwiktechnologies.com',
+        fullName: 'AJ Corporate B2C Buyer',
         phoneNumber: '+971-50-1982736',
-        b2cObjectId: 'b2c_user_awabuyer',
+        b2cObjectId: 'b2c_user_ajbuyer',
       });
       localStorage.setItem('token', resp.token);
       const profile = await api.getMe();
@@ -283,7 +283,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <rect x="1" y="11" width="9" height="9" />
               <rect x="11" y="11" width="9" height="9" />
             </svg>
-            <span>Sign In with Emirates Transport (Azure B2C)</span>
+            <span>Sign In with AshwikTechnologies Corporate SSO</span>
           </button>
           <button
             type="button"

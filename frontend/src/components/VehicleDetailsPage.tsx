@@ -104,7 +104,7 @@ export const VehicleDetailsPage: React.FC<VehicleDetailsPageProps> = ({
 
   const downloadReport = () => {
     const reportContent = `
-AL WATANEYA VEHICLE INSPECTION REPORT
+AJ AUCTIONS VEHICLE INSPECTION REPORT
 --------------------------------------
 Vehicle: ${vehicle.make} ${vehicle.model} (${vehicle.manufacturingYear})
 Lot Number: ${lotNumber}
@@ -117,14 +117,14 @@ Location: ${vehicle.location || 'Abu Dhabi'}
 Inspection Status: 150-Point Certified Pass
 Condition: Excellent Mechanical & Body Condition
 --------------------------------------
-Al Wataneya Auctions LLC - Official Digital Certificate
+AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
     `.trim();
 
     const blob = new Blob([reportContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `AWA_Inspection_Report_Lot_${lotNumber}.txt`;
+    a.download = `AJ_Inspection_Report_Lot_${lotNumber}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -138,7 +138,7 @@ Al Wataneya Auctions LLC - Official Digital Certificate
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-slate-700 hover:text-[#D32437] font-bold text-sm transition"
+            className="flex items-center gap-2 text-slate-700 hover:text-[#059669] font-bold text-sm transition"
           >
             <X className="w-5 h-5 text-slate-500" />
             <span>Vehicle Details</span>
@@ -162,17 +162,17 @@ Al Wataneya Auctions LLC - Official Digital Certificate
               }
               className={`p-2 rounded-full border transition cursor-pointer ${
                 isFavorite 
-                  ? 'border-[#D32437] bg-red-50 text-[#D32437] shadow-xs' 
-                  : 'border-slate-200 text-slate-400 hover:text-[#D32437] hover:border-[#D32437]/40 hover:bg-red-50/20 bg-white'
+                  ? 'border-[#059669] bg-red-50 text-[#059669] shadow-xs' 
+                  : 'border-slate-200 text-slate-400 hover:text-[#059669] hover:border-[#059669]/40 hover:bg-red-50/20 bg-white'
               }`}
             >
-              <Heart className={`w-4 h-4 transition-transform ${isFavorite ? 'fill-[#D32437] text-[#D32437]' : ''}`} />
+              <Heart className={`w-4 h-4 transition-transform ${isFavorite ? 'fill-[#059669] text-[#059669]' : ''}`} />
             </button>
             <button
               onClick={() => {
                 if (navigator.share) {
                   navigator.share({
-                    title: `${vehicle.make} ${vehicle.model} - Al Wataneya Auction`,
+                    title: `${vehicle.make} ${vehicle.model} - AJ Auctions`,
                     url: window.location.href,
                   });
                 } else {
@@ -231,7 +231,7 @@ Al Wataneya Auctions LLC - Official Digital Certificate
                   onClick={() => setSelectedImageIndex(idx)}
                   className={`relative w-28 h-20 rounded-xl overflow-hidden shrink-0 border-2 transition ${
                     selectedImageIndex === idx
-                      ? 'border-[#D32437] ring-2 ring-[#D32437]/20 scale-105'
+                      ? 'border-[#059669] ring-2 ring-[#059669]/20 scale-105'
                       : 'border-slate-200 opacity-70 hover:opacity-100'
                   }`}
                 >
@@ -244,7 +244,7 @@ Al Wataneya Auctions LLC - Official Digital Certificate
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
               <div className="border-b border-slate-100 pb-4 mb-5">
                 <h2 className="text-xl font-bold text-slate-900">Vehicle Specifications</h2>
-                <div className="w-12 h-1 bg-[#D32437] rounded-full mt-1.5" />
+                <div className="w-12 h-1 bg-[#059669] rounded-full mt-1.5" />
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 text-sm">
@@ -293,7 +293,7 @@ Al Wataneya Auctions LLC - Official Digital Certificate
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="font-bold text-emerald-950 text-sm">Al Wataneya Certified Vehicle</h4>
+                <h4 className="font-bold text-emerald-950 text-sm">AJ Certified Vehicle</h4>
                 <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
                   This vehicle has completed a comprehensive 150-point technical inspection. Comprehensive diagnostics covering engine, transmission, bodywork, and electronics have been verified.
                 </p>
@@ -310,7 +310,7 @@ Al Wataneya Auctions LLC - Official Digital Certificate
                 <h1 className="text-2xl font-extrabold text-slate-900">
                   {vehicle.make} {vehicle.model}
                 </h1>
-                <div className="w-10 h-1 bg-[#D32437] rounded-full mt-2 mb-3" />
+                <div className="w-10 h-1 bg-[#059669] rounded-full mt-2 mb-3" />
                 
                 {/* Lot Number Pill Badge */}
                 <div className="inline-block bg-slate-100 text-slate-700 text-xs font-semibold px-3 py-1 rounded-md">
@@ -333,7 +333,7 @@ Al Wataneya Auctions LLC - Official Digital Certificate
               }`}>
                 <div className="flex items-center gap-2.5">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    isLeadingBidder ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-[#D32437]'
+                    isLeadingBidder ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-[#059669]'
                   }`}>
                     <Gavel className="w-4 h-4" />
                   </div>
@@ -348,7 +348,7 @@ Al Wataneya Auctions LLC - Official Digital Certificate
                 </div>
                 <div className="text-right">
                   <span className={`text-base font-extrabold ${
-                    isLeadingBidder ? 'text-emerald-700' : 'text-[#D32437]'
+                    isLeadingBidder ? 'text-emerald-700' : 'text-[#059669]'
                   }`}>
                     AED {currentBid.toLocaleString()}
                   </span>

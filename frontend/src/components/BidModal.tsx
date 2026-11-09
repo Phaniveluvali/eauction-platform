@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Shield, ArrowUpRight, Award } from 'lucide-react';
 import { Auction, Vehicle, User } from '../types';
-import { api } from '../services/api';
+import { api, isServiceDegraded } from '../services/api';
+import { ServiceDegradedModal } from './ServiceDegradedModal';
 
 interface BidModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export const BidModal: React.FC<BidModalProps> = ({
   const [successMsg, setSuccessMsg] = useState<string>('');
   const [showLimitExceededModal, setShowLimitExceededModal] = useState<boolean>(false);
   const [showSelfOutbidWarning, setShowSelfOutbidWarning] = useState<boolean>(false);
+  const [showDegradedModal, setShowDegradedModal] = useState<boolean>(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -135,6 +137,8 @@ export const BidModal: React.FC<BidModalProps> = ({
     } catch (err: any) {
       if (err.code === 'ALREADY_HIGHEST_BIDDER') {
         setShowSelfOutbidWarning(true);
+      } else if (isServiceDegraded(err)) {
+        setShowDegradedModal(true);
       } else {
         setErrorMsg(err.message || 'Failed to place bid. Please try again.');
       }
@@ -235,7 +239,7 @@ export const BidModal: React.FC<BidModalProps> = ({
                   onClose();
                   onOpenDeposit();
                 }}
-                className="w-full py-3 bg-[#D32437] hover:bg-[#b51f30] text-white font-bold rounded-xl text-sm transition shadow-sm cursor-pointer"
+                className="w-full py-3 bg-[#059669] hover:bg-[#b51f30] text-white font-bold rounded-xl text-sm transition shadow-sm cursor-pointer"
               >
                 Increase Security Deposit
               </button>
@@ -274,7 +278,7 @@ export const BidModal: React.FC<BidModalProps> = ({
                       onClick={() => handleSelectIncrement(inc)}
                       className={`whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                         isSelected
-                          ? 'border-[#D32437] bg-red-50 text-[#D32437] shadow-sm'
+                          ? 'border-[#059669] bg-red-50 text-[#059669] shadow-sm'
                           : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
                       }`}
                     >
@@ -294,7 +298,7 @@ export const BidModal: React.FC<BidModalProps> = ({
             </div>
 
             {/* Input Row with Integrated Red "BID NOW" Button (Matching Screenshot 2) */}
-            <div className="relative flex items-center rounded-xl border-2 border-slate-200 focus-within:border-[#D32437] bg-slate-50 transition overflow-hidden mb-4">
+            <div className="relative flex items-center rounded-xl border-2 border-slate-200 focus-within:border-[#059669] bg-slate-50 transition overflow-hidden mb-4">
               <input
                 type="number"
                 value={customBidAmount || ''}
@@ -311,7 +315,7 @@ export const BidModal: React.FC<BidModalProps> = ({
                 type="submit"
                 disabled={isSubmitting}
                 className={`text-white font-extrabold px-5 sm:px-6 py-3.5 text-xs sm:text-sm uppercase tracking-wider transition shrink-0 cursor-pointer disabled:opacity-50 ${
-                  isLeadingBidder ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#D32437] hover:bg-[#b51f30]'
+                  isLeadingBidder ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#059669] hover:bg-[#b51f30]'
                 }`}
               >
                 {isSubmitting ? 'Submitting...' : isLeadingBidder ? 'RAISE BID' : 'BID NOW'}
@@ -335,7 +339,7 @@ export const BidModal: React.FC<BidModalProps> = ({
                 type="checkbox"
                 checked={termsAccepted}
                 onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-0.5 rounded border-slate-300 text-[#D32437] focus:ring-[#D32437] w-4 h-4 cursor-pointer"
+                className="mt-0.5 rounded border-slate-300 text-[#059669] focus:ring-[#059669] w-4 h-4 cursor-pointer"
               />
               <span className="leading-relaxed">
                 I acknowledge that I have inspected the vehicle, accept its current condition, and agree to the{' '}
@@ -363,6 +367,22 @@ export const BidModal: React.FC<BidModalProps> = ({
           </form>
         )}
       </div>
+
+      {/* Graceful Degradation Modal for Microservice Outages */}
+      <ServiceDegradedModal
+        isOpen={showDegradedModal}
+        serviceName="Live Bidding Microservice"
+        onClose={() => setShowDegradedModal(false)}
+        onRetry={() => {
+          setShowDegradedModal(false);
+          executeBidSubmission(showSelfOutbidWarning);
+        }}
+        onBrowseVehicles={() => {
+          setShowDegradedModal(false);
+          onClose();
+        }}
+        errorCode="ERR_BID_ENGINE_DEGRADED_503"
+      />
     </div>
   );
 };

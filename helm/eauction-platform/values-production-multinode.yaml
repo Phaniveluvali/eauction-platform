@@ -1,0 +1,460 @@
+# ********************************************************************************
+# * E-AUCTION ENTERPRISE CLOUD PLATFORM - HELM VALUES SPECIFICATION             *
+# *                                                                              *
+# * Target Platform: Multi-Node Kubernetes (EKS / GKE / Bare Metal)              *
+# * Architecture: Zero-Trust Multi-AZ Microservices with Vault Secrets Brokerage *
+# * Target Concurrency: 10,000 Concurrent Users (15,000 Peak Headroom)          *
+# * Active Profile: Production Multi-Node High Availability Profile              *
+# * Chart Version: 1.0.0                                                         *
+# ********************************************************************************
+
+# ==============================================================================
+# SECTION 1: GLOBAL PLATFORM CONFIGURATION
+# ==============================================================================
+global:
+  # Environment identifier
+  environment: "production-multinode"
+
+  # Primary production FQDN for REST APIs and IAM services
+  domain: "tecnics-internal.online"
+
+  # Alternate production FQDN for Frontend UI and WebSocket gateway
+  altDomain: "eauction.tecnics-internal.online"
+
+  # Production wildcard TLS certificate secret (issued via Let's Encrypt / DigiCert)
+  tlsSecretName: "ca-vmx-tls-cert"
+
+  # Strict anti-affinity across availability zones and physical failure domains
+  # Enforces requiredDuringSchedulingIgnoredDuringExecution and DoNotSchedule
+  softScheduling: false
+
+  # Private production registry pull secrets (e.g. AWS ECR, Azure ACR, Harbor)
+  imagePullSecrets:
+    - name: "registry-prod-secret"
+
+# ==============================================================================
+# SECTION 2: WORKLOAD PRIORITY CLASSES (CNCF QoS)
+# ==============================================================================
+priorityClasses:
+  enabled: true
+
+# ==============================================================================
+# SECTION 3: ZERO-TRUST NETWORK POLICIES (CALICO CNI)
+# ==============================================================================
+networkPolicies:
+  enabled: true
+  monitoringNamespace: "monitoring"
+  ingressNamespace: "ingress-nginx"
+  clusterCidr: "172.16.0.0/16"
+
+# ==============================================================================
+# SECTION 4: POD DISRUPTION BUDGETS (HIGH AVAILABILITY)
+# ==============================================================================
+podDisruptionBudgets:
+  enabled: true
+
+# ==============================================================================
+# SECTION 5: CENTRALIZED SECRETS MANAGEMENT (HASHICORP VAULT & ESO)
+# ==============================================================================
+vault:
+  enabled: true
+  clusterSecretStore: "vault-backend"
+  secretPath: "secret/data/eauction"
+  targetSecretName: "eauction-secret"
+  refreshInterval: "1h"
+
+# ==============================================================================
+# SECTION 6: BIDDING ENGINE MICROSERVICE (10,000 CCU PRODUCTION SIZING)
+# ==============================================================================
+# Sized to sustain 10,000 concurrent bid WebSocket streams with <5ms broadcast latency.
+# Replicas distributed evenly across 3 Availability Zones (AZ-a, AZ-b, AZ-c).
+biddingEngine:
+  enabled: true
+  # Production baseline replicas (4 per AZ across 3 AZs = 12 replicas)
+  replicaCount: 12
+
+  image:
+    repository: "eauction-bidding-engine"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+
+  service:
+    port: 8081
+    nodePort: 30381
+
+  # Compute resource allocation for high concurrency
+  resources:
+    requests:
+      cpu: "1000m"     # 1 dedicated vCPU core
+      memory: "512Mi"  # 512MB RAM
+    limits:
+      cpu: "2000m"     # 2 vCPUs ceiling
+      memory: "1536Mi" # 1.5GB RAM ceiling
+
+  # High-concurrency HPA autoscaling
+  hpa:
+    enabled: true
+    minReplicas: 10
+    maxReplicas: 25
+    targetCPUUtilization: 65
+
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 3
+    livenessProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+
+  annotations:
+    service:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "8081"
+    pod: {}
+
+  labels:
+    service: {}
+    pod:
+      tier: "realtime-websocket"
+
+  nodeSelector:
+    workloadType: "compute-optimized"
+
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  environment: []
+
+# ==============================================================================
+# SECTION 7: CATALOG & IDENTITY MICROSERVICE (10,000 CCU PRODUCTION SIZING)
+# ==============================================================================
+catalogIdentity:
+  enabled: true
+  # Baseline 10 replicas (3+ per AZ) supporting 1,500 - 3,000 HTTP QPS
+  replicaCount: 10
+
+  image:
+    repository: "eauction-catalog-identity"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+
+  service:
+    port: 8080
+
+  resources:
+    requests:
+      cpu: "1500m"     # 1.5 vCPUs
+      memory: "2048Mi" # 2GB RAM for JVM heap (Xms1g, Xmx1.5g)
+    limits:
+      cpu: "3000m"     # 3 vCPUs ceiling
+      memory: "3072Mi" # 3GB RAM ceiling
+
+  hpa:
+    enabled: true
+    minReplicas: 8
+    maxReplicas: 20
+    targetCPUUtilization: 75
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+  probes:
+    startupProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 5
+      failureThreshold: 20
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      timeoutSeconds: 3
+
+  annotations:
+    service:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "8080"
+    pod: {}
+
+  labels:
+    service: {}
+    pod:
+      tier: "application-core"
+
+  nodeSelector:
+    workloadType: "general-compute"
+
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  environment: []
+
+# ==============================================================================
+# SECTION 8: KEYCLOAK IDENTITY & ACCESS MANAGEMENT (CLUSTERED PRODUCTION)
+# ==============================================================================
+keycloak:
+  enabled: true
+  # 4 clustered replicas with JGroups distributed Infinispan cache
+  replicaCount: 4
+
+  image:
+    repository: "quay.io/keycloak/keycloak"
+    tag: "24.0.5"
+    pullPolicy: "IfNotPresent"
+
+  service:
+    port: 8080
+
+  resources:
+    requests:
+      cpu: "1500m"
+      memory: "2048Mi"
+    limits:
+      cpu: "3000m"
+      memory: "3072Mi"
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 2
+    livenessProbe:
+      initialDelaySeconds: 45
+      periodSeconds: 15
+      timeoutSeconds: 2
+
+  annotations:
+    service: {}
+    pod: {}
+
+  labels:
+    service: {}
+    pod:
+      tier: "security-iam"
+
+  nodeSelector:
+    workloadType: "general-compute"
+
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  environment: []
+
+# ==============================================================================
+# SECTION 9: FRONTEND WEB PRESENTATION LAYER (PRODUCTION SIZING)
+# ==============================================================================
+frontend:
+  enabled: true
+  # 6 static NGINX replicas placed behind Cloud CDN / Global Load Balancer
+  replicaCount: 6
+
+  # Dual-deployability note:
+  # - To deploy AJ Auctions (modern clean UI with AJ logo powered by AJTechnologies): use "v2.0.0-aj"
+  # - To deploy legacy version (with old branding and old image assets): use "v1.0.0-legacy"
+  image:
+    repository: "eauction-frontend"
+    tag: "v2.0.0-aj"
+    pullPolicy: "IfNotPresent"
+
+  service:
+    port: 80
+
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  securityContext:
+    allowPrivilegeEscalation: false
+
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 3
+      periodSeconds: 5
+    livenessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+
+  annotations:
+    service: {}
+    pod: {}
+
+  labels:
+    service: {}
+    pod:
+      tier: "web-presentation"
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  environment: []
+
+# ==============================================================================
+# SECTION 10: AI PROMOTIONS & INTELLIGENCE MICROSERVICE (PRODUCTION SIZING)
+# ==============================================================================
+aiService:
+  enabled: true
+  replicaCount: 4
+
+  image:
+    repository: "eauction-ai-service"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+
+  service:
+    port: 8000
+
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "1024Mi"
+    limits:
+      cpu: "2000m"
+      memory: "2048Mi"
+
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    livenessProbe:
+      initialDelaySeconds: 20
+      periodSeconds: 15
+
+  annotations:
+    service: {}
+    pod: {}
+
+  labels:
+    service: {}
+    pod:
+      tier: "ai-analytics"
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  environment: []
+
+# ==============================================================================
+# SECTION 11: PAYMENT BROKER & RECONCILIATION MICROSERVICE (PRODUCTION SIZING)
+# ==============================================================================
+paymentBroker:
+  enabled: true
+  replicaCount: 4
+
+  image:
+    repository: "eauction-payment-broker"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+
+  service:
+    port: 8082
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1024Mi"
+
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+    livenessProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 15
+
+  annotations:
+    service: {}
+    pod: {}
+
+  labels:
+    service: {}
+    pod:
+      tier: "financial-broker"
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  environment: []
+
+# ==============================================================================
+# SECTION 12: INGRESS ROUTING & TLS TERMINATION
+# ==============================================================================
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "eauction-bidding-engine"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "15"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
+  customAnnotations: {}
+
+# ==============================================================================
+# SECTION 13: LOGGING CONFIGURATION
+# ==============================================================================
+logging:
+  biddingEngine: "WARN"
+  catalogIdentity: "INFO"
+  keycloak: "INFO"
+  aiService: "INFO"
+  paymentBroker: "INFO"
+
+# ==============================================================================
+# SECTION 14: METRICS & OBSERVABILITY
+# ==============================================================================
+metrics:
+  enabled: true
+  discoveryType: "serviceMonitor"
+  endpoints:
+    catalogIdentity: "/actuator/prometheus"
+    aiService: "/metrics"
+    keycloak: "/auth/metrics"
+
+# ==============================================================================
+# SECTION 15: MAINTENANCE MODE
+# ==============================================================================
+maintenanceMode:
+  biddingEngine: false
+  catalogIdentity: false
+  keycloak: false
+  frontend: false
+  aiService: false
+  paymentBroker: false

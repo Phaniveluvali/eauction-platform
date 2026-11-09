@@ -8,9 +8,10 @@ import {
   HelpCircle, 
   MessageSquare, 
   Info, 
-  Headphones 
+  Headphones,
+  ShieldCheck,
+  Truck
 } from 'lucide-react';
-
 import { getAssetUrl } from '../utils/assets';
 
 export type PortalView = 
@@ -37,139 +38,135 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   onNavigate,
 }) => {
   return (
-    <aside className="w-56 sm:w-64 bg-white border-r border-[#EBEBEB] min-h-screen flex flex-col shrink-0 select-none">
+    <aside className="w-56 sm:w-64 bg-white border-r border-slate-200 min-h-screen flex flex-col shrink-0 select-none">
       
-      {/* Top AWA Logo */}
+      {/* Top AJ Logo */}
       <div 
         onClick={() => onNavigate('HOME')}
-        className="p-5 border-b border-[#F0F0F0] cursor-pointer hover:opacity-90 transition flex items-center justify-start"
+        className="p-5 border-b border-slate-100 cursor-pointer hover:opacity-90 transition flex items-center justify-start"
       >
         <img 
-          src={getAssetUrl('/assets/logoawa.svg')} 
-          alt="AWA Logo" 
-          className="h-7 w-auto object-contain"
+          src={getAssetUrl('/assets/logo-aj.png')} 
+          alt="AJ Auctions • Powered by AshwikTechnologies" 
+          className="h-10 w-auto object-contain"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = getAssetUrl('/assets/main_logo.svg');
+            (e.target as HTMLImageElement).src = getAssetUrl('/assets/main_logo-aj.png');
           }}
         />
       </div>
 
-      {/* Navigation List matching reference screenshots */}
+      {/* Navigation List */}
       <nav className="p-4 space-y-6 flex-1 text-xs sm:text-sm">
         
         {/* Home */}
         <div>
           <button
             onClick={() => onNavigate('HOME')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium transition cursor-pointer ${
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
               currentView === 'HOME'
-                ? 'text-[#D32437] bg-red-50 font-bold'
-                : 'text-[#525252] hover:text-[#231F20] hover:bg-slate-50'
+                ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            <Home className="w-4 h-4 text-slate-500" />
+            <Home className="w-4 h-4 text-emerald-600" />
             <span>Home</span>
           </button>
         </div>
 
         {/* Section: Vehicle Finder */}
         <div className="space-y-1">
-          <div className="px-3 text-[11px] font-bold text-[#8C8C8C] uppercase tracking-wider">
+          <div className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Vehicle Finder
           </div>
           <button
             onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium transition cursor-pointer ${
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
               currentView === 'ONLINE_AUCTIONS'
-                ? 'text-[#D32437] bg-red-50 font-bold'
-                : 'text-[#525252] hover:text-[#231F20] hover:bg-slate-50'
+                ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            <Search className="w-4 h-4 text-slate-500" />
-            <span>Search</span>
+            <Search className="w-4 h-4 text-slate-400" />
+            <span>Search Catalog</span>
           </button>
         </div>
 
         {/* Section: Auctions */}
         <div className="space-y-1">
-          <div className="px-3 text-[11px] font-bold text-[#8C8C8C] uppercase tracking-wider">
-            Auctions
+          <div className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Marketplaces
           </div>
 
           <button
             onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium transition cursor-pointer ${
-              currentView === 'ONLINE_AUCTIONS'
-                ? 'text-[#D32437] bg-red-50 font-bold'
-                : 'text-[#525252] hover:text-[#231F20] hover:bg-slate-50'
-            }`}
+            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
           >
-            <Gavel className="w-4 h-4 text-slate-500" />
-            <span>My Bids</span>
+            <Gavel className="w-4 h-4 text-slate-400" />
+            <span>Live Bidding</span>
           </button>
 
           <button
             onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium transition cursor-pointer ${
-              currentView === 'ONLINE_AUCTIONS'
-                ? 'text-[#D32437] bg-red-50 font-bold'
-                : 'text-[#525252] hover:text-[#231F20] hover:bg-slate-50'
-            }`}
+            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
           >
-            <Zap className="w-4 h-4 text-slate-500" />
-            <span>Today's Auctions</span>
+            <Zap className="w-4 h-4 text-amber-500" />
+            <span>Today's Drops</span>
           </button>
 
           <button
-            onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-[#525252] hover:text-[#231F20] hover:bg-slate-50 transition cursor-pointer"
+            onClick={() => onNavigate('SILENT_AUCTIONS')}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
+              currentView === 'SILENT_AUCTIONS'
+                ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
           >
-            <Calendar className="w-4 h-4 text-slate-500" />
-            <span>Auctions Calendar</span>
+            <Calendar className="w-4 h-4 text-slate-400" />
+            <span>Silent Auctions</span>
           </button>
 
           <button
             onClick={() => onNavigate('HELP')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium transition cursor-pointer ${
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
               currentView === 'HELP'
-                ? 'text-[#D32437] bg-red-50 font-bold'
-                : 'text-[#525252] hover:text-[#231F20] hover:bg-slate-50'
+                ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            <HelpCircle className="w-4 h-4 text-slate-500" />
-            <span>Help</span>
+            <HelpCircle className="w-4 h-4 text-slate-400" />
+            <span>150-Point Inspection</span>
           </button>
 
           <button
             onClick={() => onNavigate('HELP')}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-[#525252] hover:text-[#231F20] hover:bg-slate-50 transition cursor-pointer"
+            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
           >
-            <MessageSquare className="w-4 h-4 text-slate-500" />
-            <span>FAQs</span>
+            <MessageSquare className="w-4 h-4 text-slate-400" />
+            <span>Buyer FAQs</span>
           </button>
 
           <button
             onClick={() => onNavigate('HELP')}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-[#525252] hover:text-[#231F20] hover:bg-slate-50 transition cursor-pointer"
+            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
           >
-            <Info className="w-4 h-4 text-slate-500" />
-            <span>About Us</span>
+            <Info className="w-4 h-4 text-slate-400" />
+            <span>About AJ Auctions</span>
           </button>
 
           <button
             onClick={() => onNavigate('HELP')}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-[#525252] hover:text-[#231F20] hover:bg-slate-50 transition cursor-pointer"
+            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
           >
-            <Headphones className="w-4 h-4 text-slate-500" />
-            <span>Contact Us</span>
+            <Headphones className="w-4 h-4 text-emerald-600" />
+            <span>Contact 24/7</span>
           </button>
         </div>
 
       </nav>
 
       {/* Footer Branding in Sidebar */}
-      <div className="p-4 border-t border-[#F0F0F0] text-[11px] text-slate-400">
-        Al Wataneya Auctions © 2026
+      <div className="p-4 border-t border-slate-100 text-[10px] text-slate-400">
+        AJ Auctions • Powered by AshwikTechnologies © 2026
       </div>
 
     </aside>

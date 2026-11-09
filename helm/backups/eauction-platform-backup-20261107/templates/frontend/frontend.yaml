@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-frontend
+    {{- include "eauction-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: eauction-frontend
+  template:
+    metadata:
+      labels:
+        app: eauction-frontend
+    spec:
+      serviceAccountName: eauction-frontend-sa
+      priorityClassName: auction-low-priority
+      {{- include "eauction-platform.podAntiAffinity" (dict "app" "eauction-frontend" "soft" .Values.global.softScheduling) | nindent 6 }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontend.service.port }}
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.service.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-frontend
+spec:
+  ports:
+    - port: {{ .Values.frontend.service.port }}
+      targetPort: {{ .Values.frontend.service.port }}
+      name: http
+  selector:
+    app: eauction-frontend

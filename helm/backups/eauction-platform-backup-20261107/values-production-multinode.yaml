@@ -1,0 +1,121 @@
+global:
+  environment: "production-multinode"
+  domain: "tecnics-internal.online"
+  altDomain: "eauction.tecnics-internal.online"
+  tlsSecretName: "ca-vmx-tls-cert"
+  softScheduling: false
+
+priorityClasses:
+  enabled: true
+
+networkPolicies:
+  enabled: true
+  monitoringNamespace: "monitoring"
+  ingressNamespace: "ingress-nginx"
+
+podDisruptionBudgets:
+  enabled: true
+
+vault:
+  enabled: true
+  clusterSecretStore: "vault-backend"
+  secretPath: "secret/data/eauction"
+  targetSecretName: "eauction-secret"
+
+biddingEngine:
+  replicaCount: 8
+  image:
+    repository: "eauction-bidding-engine"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+  service:
+    port: 8081
+    nodePort: 30381
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "512Mi"
+    limits:
+      cpu: "2000m"
+      memory: "1536Mi"
+  hpa:
+    enabled: true
+    minReplicas: 8
+    maxReplicas: 16
+    targetCPUUtilization: 65
+
+catalogIdentity:
+  replicaCount: 8
+  image:
+    repository: "eauction-catalog-identity"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+  service:
+    port: 8080
+  resources:
+    requests:
+      cpu: "1500m"
+      memory: "2048Mi"
+    limits:
+      cpu: "3000m"
+      memory: "3072Mi"
+  hpa:
+    enabled: true
+    minReplicas: 8
+    maxReplicas: 14
+    targetCPUUtilization: 75
+
+keycloak:
+  replicaCount: 4
+  image:
+    repository: "quay.io/keycloak/keycloak"
+    tag: "24.0.5"
+    pullPolicy: "IfNotPresent"
+  service:
+    port: 8080
+  resources:
+    requests:
+      cpu: "1500m"
+      memory: "2048Mi"
+    limits:
+      cpu: "3000m"
+      memory: "3072Mi"
+
+frontend:
+  replicaCount: 4
+  image:
+    repository: "eauction-frontend"
+    tag: "latest"
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+aiService:
+  replicaCount: 4
+  image:
+    repository: "eauction-ai-service"
+    tag: "latest"
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "1024Mi"
+    limits:
+      cpu: "2000m"
+      memory: "2048Mi"
+
+paymentBroker:
+  replicaCount: 3
+  image:
+    repository: "eauction-payment-broker"
+    tag: "latest"
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1024Mi"

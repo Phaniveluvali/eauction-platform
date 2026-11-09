@@ -1,0 +1,156 @@
+{{- if .Values.biddingEngine.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-bidding-engine
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-bidding-engine
+    {{- include "eauction-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.biddingEngine.replicaCount }}
+  selector:
+    matchLabels:
+      app: eauction-bidding-engine
+  template:
+    metadata:
+      labels:
+        app: eauction-bidding-engine
+        {{- with .Values.biddingEngine.labels.pod }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.biddingEngine.annotations.pod }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: eauction-bidding-engine-sa
+      priorityClassName: auction-high-priority
+      {{- include "eauction-platform.podAntiAffinity" (dict "app" "eauction-bidding-engine" "soft" .Values.global.softScheduling) | nindent 6 }}
+      {{- with .Values.biddingEngine.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.biddingEngine.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.biddingEngine.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: bidding-engine
+          image: "{{ .Values.biddingEngine.image.repository }}:{{ .Values.biddingEngine.image.tag }}"
+          imagePullPolicy: {{ .Values.biddingEngine.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: {{ .Values.biddingEngine.service.port }}
+              name: ws
+          env:
+            - name: SERVER_PORT
+              value: "{{ .Values.biddingEngine.service.port }}"
+            - name: REDIS_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: REDIS_ADDR
+            - name: REDIS_SENTINEL_ADDRS
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: REDIS_SENTINEL_ADDRS
+            - name: REDIS_MASTER_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: REDIS_MASTER_NAME
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: KAFKA_BROKERS
+            - name: KAFKA_BID_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: KAFKA_BID_TOPIC
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: JWT_SECRET
+            {{- with .Values.biddingEngine.environment }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.biddingEngine.resources | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.biddingEngine.service.port }}
+            initialDelaySeconds: {{ .Values.biddingEngine.probes.readinessProbe.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.biddingEngine.probes.readinessProbe.periodSeconds | default 5 }}
+            timeoutSeconds: {{ .Values.biddingEngine.probes.readinessProbe.timeoutSeconds | default 2 }}
+            failureThreshold: {{ .Values.biddingEngine.probes.readinessProbe.failureThreshold | default 3 }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.biddingEngine.service.port }}
+            initialDelaySeconds: {{ .Values.biddingEngine.probes.livenessProbe.initialDelaySeconds | default 15 }}
+            periodSeconds: {{ .Values.biddingEngine.probes.livenessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.biddingEngine.probes.livenessProbe.timeoutSeconds | default 2 }}
+            failureThreshold: {{ .Values.biddingEngine.probes.livenessProbe.failureThreshold | default 3 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-bidding-engine
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-bidding-engine
+    {{- with .Values.biddingEngine.labels.service }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.biddingEngine.annotations.service }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: NodePort
+  ports:
+    - port: {{ .Values.biddingEngine.service.port }}
+      targetPort: {{ .Values.biddingEngine.service.port }}
+      nodePort: {{ .Values.biddingEngine.service.nodePort }}
+      name: ws
+  selector:
+    app: eauction-bidding-engine
+---
+{{- if .Values.biddingEngine.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: eauction-bidding-engine-hpa
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: eauction-bidding-engine
+  minReplicas: {{ .Values.biddingEngine.hpa.minReplicas }}
+  maxReplicas: {{ .Values.biddingEngine.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.biddingEngine.hpa.targetCPUUtilization }}
+{{- end }}
+{{- end }}

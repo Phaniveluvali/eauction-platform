@@ -87,21 +87,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <>
       {/* 96px Height Main Navbar */}
-      <header className="sticky top-0 z-40 w-full bg-white border-b border-[#EBEBEB] shadow-[0px_2px_8px_rgba(0,0,0,0.06)] transition-all">
+      <header className="sticky top-0 z-40 w-full bg-white border-b border-slate-200 shadow-xs backdrop-blur-md bg-white/95 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 flex items-center justify-between">
           
-          {/* Al Wataneya Brand Logo */}
+          {/* AJ Auctions Brand Logo */}
           <div className="flex items-center space-x-6">
             <button 
               onClick={onHomeClick}
               className="flex items-center text-left focus:outline-none transition hover:opacity-90 cursor-pointer"
             >
               <img 
-                src={getAssetUrl('/assets/main_logo.svg')} 
-                alt="Al Wataneya Auctions" 
-                className="h-12 sm:h-13 w-auto object-contain" 
+                src={getAssetUrl('/assets/logo-aj.png')} 
+                alt="AJ Auctions" 
+                className="h-14 sm:h-16 w-auto object-contain" 
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = getAssetUrl('/assets/logoawa.svg');
+                  (e.target as HTMLImageElement).src = getAssetUrl('/assets/main_logo-aj.png');
                 }}
               />
             </button>
@@ -113,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* 1. LIVE NOW Indicator */}
             <button
               onClick={onLiveNowClick}
-              className="flex items-center space-x-1.5 px-2.5 py-1 text-[#E15B64] hover:text-[#D32437] font-bold text-sm tracking-wide transition cursor-pointer"
+              className="flex items-center space-x-1.5 px-2.5 py-1 text-emerald-700 hover:text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-full px-3 font-bold text-sm tracking-wide transition cursor-pointer"
               title="Click to view live bidding auctions"
             >
               <img 
@@ -132,7 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <>
                 <button
                   onClick={onOpenAdmin}
-                  className="px-2.5 py-1 text-[#231F20] font-medium hover:text-[#D32437] transition cursor-pointer flex items-center gap-1.5"
+                  className="px-2.5 py-1 text-[#231F20] font-medium hover:text-emerald-700 transition cursor-pointer flex items-center gap-1.5"
                   title="Open Admin Module"
                 >
                   <span>Admin</span>
@@ -149,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* 2. Home */}
             <button
               onClick={onHomeClick}
-              className="px-2.5 py-1 text-[#231F20] font-medium hover:text-[#D32437] transition cursor-pointer"
+              className="px-2.5 py-1 text-[#231F20] font-medium hover:text-emerald-700 transition cursor-pointer"
             >
               Home
             </button>
@@ -164,7 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onMouseLeave={() => setIsAuctionsDropdownOpen(false)}
             >
               <button 
-                className="flex items-center space-x-1 px-2.5 py-1 text-[#231F20] font-medium hover:text-[#D32437] transition cursor-pointer"
+                className="flex items-center space-x-1 px-2.5 py-1 text-[#231F20] font-medium hover:text-emerald-700 transition cursor-pointer"
                 onClick={() => setIsAuctionsDropdownOpen(!isAuctionsDropdownOpen)}
               >
                 <span>All Auctions</span>
@@ -172,17 +172,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {isAuctionsDropdownOpen && (
-                <div className="absolute top-full left-0 w-60 bg-white border border-[#E5E7EB] rounded-b-xl shadow-xl py-2 z-50 animate-fadeIn">
+                <div className="absolute top-full left-0 w-60 bg-white border border-slate-200 rounded-b-xl shadow-xl py-2 z-50 animate-fadeIn">
                   <button
                     onClick={() => {
                       if (onNavigate) onNavigate('ONLINE_AUCTIONS');
                       setIsAuctionsDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-[#FFF5F5] hover:text-[#D32437] border-b border-[#F3F4F6] transition flex items-center justify-between cursor-pointer"
+                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-emerald-50/60 hover:text-emerald-700 border-b border-slate-100 transition flex items-center justify-between cursor-pointer"
                   >
                     <span>Online Auctions</span>
                     {onlineAuctionsCount > 0 && (
-                      <span className="text-[11px] font-bold bg-red-100 text-[#D32437] px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
                         {onlineAuctionsCount}
                       </span>
                     )}
@@ -193,7 +193,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       if (onNavigate) onNavigate('SILENT_AUCTIONS');
                       setIsAuctionsDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-[#FFF5F5] hover:text-[#D32437] border-b border-[#F3F4F6] transition flex items-center justify-between cursor-pointer"
+                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-emerald-50/60 hover:text-emerald-700 border-b border-slate-100 transition flex items-center justify-between cursor-pointer"
                   >
                     <span>Silent Auctions</span>
                     {silentAuctionsCount > 0 && (
@@ -208,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       if (onSelectCategory) onSelectCategory('PLATES');
                       setIsAuctionsDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-[#FFF5F5] hover:text-[#D32437] border-b border-[#F3F4F6] transition flex items-center justify-between cursor-pointer"
+                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-emerald-50/60 hover:text-emerald-700 border-b border-slate-100 transition flex items-center justify-between cursor-pointer"
                   >
                     <span>UAE VIP Plates</span>
                     {uaePlatesCount > 0 && (
@@ -223,7 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       if (onSelectCategory) onSelectCategory('MACHINERY');
                       setIsAuctionsDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-[#FFF5F5] hover:text-[#D32437] border-b border-[#F3F4F6] transition flex items-center justify-between cursor-pointer"
+                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-emerald-50/60 hover:text-emerald-700 border-b border-slate-100 transition flex items-center justify-between cursor-pointer"
                   >
                     <span>Equipment & Machinery</span>
                     {machineryCount > 0 && (
@@ -238,9 +238,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       if (onSelectCategory) onSelectCategory('EMIRATES_MOTO');
                       setIsAuctionsDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-[#FFF5F5] hover:text-[#D32437] transition flex items-center justify-between cursor-pointer"
+                    className="w-full text-left px-5 py-3 text-sm text-[#231F20] hover:bg-emerald-50/60 hover:text-emerald-700 transition flex items-center justify-between cursor-pointer"
                   >
-                    <span>Emirates Moto</span>
+                    <span>AJ Commercial Fleet</span>
                     {emiratesMotoCount > 0 && (
                       <span className="text-[11px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
                         {emiratesMotoCount}
@@ -257,7 +257,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* 4. Sell Your Car */}
             <button
               onClick={onOpenCreateVehicle}
-              className="px-2.5 py-1 text-[#231F20] font-medium hover:text-[#D32437] transition cursor-pointer"
+              className="px-2.5 py-1 text-[#231F20] font-medium hover:text-emerald-700 transition cursor-pointer"
             >
               Sell Your Car
             </button>
@@ -272,13 +272,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => {
                     if (onNavigate) onNavigate('FAVORITES');
                   }}
-                  className="flex items-center space-x-1.5 px-2.5 py-1 text-[#231F20] hover:text-[#D32437] font-semibold transition cursor-pointer"
+                  className="flex items-center space-x-1.5 px-2.5 py-1 text-[#231F20] hover:text-emerald-700 font-semibold transition cursor-pointer"
                   title="View your saved favorites"
                 >
-                  <Heart className="w-4 h-4 text-[#D32437] fill-[#D32437]" />
+                  <Heart className="w-4 h-4 text-emerald-700 fill-rose-500 text-rose-500" />
                   <span>Favorites</span>
                   {Number(favoriteCount) > 0 && (
-                    <span className="text-[11px] font-bold bg-[#D32437] text-white px-2 py-0.5 rounded-full ml-0.5">
+                    <span className="text-[11px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full ml-0.5">
                       {favoriteCount}
                     </span>
                   )}
@@ -294,7 +294,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onMouseLeave={() => setIsHelpDropdownOpen(false)}
             >
               <button 
-                className="flex items-center space-x-1 px-2.5 py-1 text-[#231F20] font-medium hover:text-[#D32437] transition cursor-pointer"
+                className="flex items-center space-x-1 px-2.5 py-1 text-[#231F20] font-medium hover:text-emerald-700 transition cursor-pointer"
                 onClick={() => {
                   if (onNavigate) onNavigate('HELP');
                 }}
@@ -304,13 +304,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {isHelpDropdownOpen && (
-                <div className="absolute top-full left-0 w-52 bg-white border border-[#E5E7EB] rounded-b-xl shadow-xl py-2 z-50 animate-fadeIn">
+                <div className="absolute top-full left-0 w-52 bg-white border border-slate-200 rounded-b-xl shadow-xl py-2 z-50 animate-fadeIn">
                   <button 
                     onClick={() => {
                       if (onNavigate) onNavigate('HELP');
                       setIsHelpDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-2.5 text-sm text-[#231F20] hover:bg-[#FFF5F5] hover:text-[#D32437] border-b border-[#F3F4F6] transition cursor-pointer"
+                    className="w-full text-left px-5 py-2.5 text-sm text-[#231F20] hover:bg-emerald-50/60 hover:text-emerald-700 border-b border-slate-100 transition cursor-pointer"
                   >
                     Help Center & Branches
                   </button>
@@ -319,7 +319,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       if (onNavigate) onNavigate('HELP');
                       setIsHelpDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-2.5 text-sm text-[#231F20] hover:bg-[#FFF5F5] hover:text-[#D32437] border-b border-[#F3F4F6] transition cursor-pointer"
+                    className="w-full text-left px-5 py-2.5 text-sm text-[#231F20] hover:bg-emerald-50/60 hover:text-emerald-700 border-b border-slate-100 transition cursor-pointer"
                   >
                     FAQs
                   </button>
@@ -328,7 +328,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       if (onNavigate) onNavigate('HELP');
                       setIsHelpDropdownOpen(false);
                     }}
-                    className="w-full text-left px-5 py-2.5 text-sm text-[#231F20] hover:bg-[#FFF5F5] hover:text-[#D32437] transition cursor-pointer"
+                    className="w-full text-left px-5 py-2.5 text-sm text-[#231F20] hover:bg-emerald-50/60 hover:text-emerald-700 transition cursor-pointer"
                   >
                     Contact Us (+971 8006006)
                   </button>
@@ -380,7 +380,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                             SUPER ADMIN
                           </span>
                         )}
-                        <span className="text-[10px] font-bold bg-red-100 text-[#D32437] px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
                           ROLE: {currentUser.role}
                         </span>
                         {currentUser.kycVerified && (
@@ -397,7 +397,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               setIsProfileMenuOpen(false);
                               if (onOpenAdmin) onOpenAdmin();
                             }}
-                            className="py-2 px-3 bg-red-50 border border-red-200 rounded-md text-[#D32437] font-bold hover:bg-red-100 transition cursor-pointer col-span-2"
+                            className="py-2 px-3 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-700 font-bold hover:bg-emerald-100 transition cursor-pointer col-span-2"
                           >
                             Go to Admin Portal
                           </button>
@@ -409,9 +409,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                               setIsProfileMenuOpen(false);
                               if (onNavigate) onNavigate('FAVORITES');
                             }}
-                            className="py-2 px-3 bg-red-50/80 border border-red-200 rounded-md text-[#D32437] font-bold hover:bg-red-100 transition cursor-pointer col-span-2 flex items-center justify-center gap-1.5"
+                            className="py-2 px-3 bg-emerald-50/80 border border-emerald-200 rounded-md text-emerald-700 font-bold hover:bg-emerald-100 transition cursor-pointer col-span-2 flex items-center justify-center gap-1.5"
                           >
-                            <Heart className="w-3.5 h-3.5 fill-[#D32437]" />
+                            <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
                             <span>My Saved Favorites ({favoriteCount})</span>
                           </button>
                         )}
@@ -448,7 +448,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsProfileMenuOpen(false);
                             onLogout();
                           }}
-                          className="py-2 px-3 border border-slate-300 rounded-md text-[#231F20] font-semibold hover:bg-red-50 hover:text-[#D32437] transition cursor-pointer"
+                          className="py-2 px-3 border border-slate-300 rounded-md text-[#231F20] font-semibold hover:bg-emerald-50 hover:text-emerald-700 transition cursor-pointer"
                         >
                           Sign Out
                         </button>
@@ -467,26 +467,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                       setIsNotificationsOpen(!isNotificationsOpen);
                       setIsProfileMenuOpen(false);
                     }}
-                    className="p-1 text-[#231F20] hover:text-[#D32437] transition cursor-pointer relative"
+                    className="p-1 text-[#231F20] hover:text-emerald-700 transition cursor-pointer relative"
                     title="Notifications"
                   >
                     <Bell className="w-4 h-4 stroke-[2]" />
-                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-[#D32437]" />
+                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-emerald-600" />
                   </button>
 
                   {isNotificationsOpen && (
                     <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 p-4 z-50 animate-fadeIn text-left">
                       <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
                         <span className="text-xs font-bold text-[#231F20] uppercase tracking-wider">Notifications</span>
-                        <span className="text-[10px] bg-red-100 text-[#D32437] font-bold px-2 py-0.5 rounded-full">Live Alerts</span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">Live Alerts</span>
                       </div>
                       <div className="space-y-2 text-xs text-slate-600">
-                        <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 hover:bg-red-50/50 transition cursor-pointer">
+                        <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 hover:bg-emerald-50/50 transition cursor-pointer">
                           <p className="font-semibold text-slate-800">Tata Signa 4825.TK Heavy Tipper</p>
                           <p className="text-[11px] text-slate-500">Live auction active at ₹28,00,000</p>
                           <span className="text-[10px] text-slate-400">2 mins ago</span>
                         </div>
-                        <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 hover:bg-red-50/50 transition cursor-pointer">
+                        <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 hover:bg-emerald-50/50 transition cursor-pointer">
                           <p className="font-semibold text-slate-800">Enterprise RBAC Session</p>
                           <p className="text-[11px] text-slate-500">
                             {Boolean(currentUser.isSuperAdmin || (currentUser as any)?.superAdmin)
@@ -505,7 +505,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* 6. Language Switch: العربية */}
                 <button
                   onClick={() => setLanguage(language === 'EN' ? 'AR' : 'EN')}
-                  className="px-2.5 py-1 text-[#231F20] font-medium hover:text-[#D32437] transition cursor-pointer font-sans"
+                  className="px-2.5 py-1 text-[#231F20] font-medium hover:text-emerald-700 transition cursor-pointer font-sans"
                   title="Switch language"
                 >
                   {language === 'EN' ? 'العربية' : 'English'}
@@ -517,11 +517,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* Sign Up with red person icon -> Direct Keycloak OIDC Registration */}
                 <button
                   onClick={() => initiateKeycloakLogin({ action: 'register' })}
-                  className="flex items-center space-x-1.5 px-2.5 py-1 text-[#231F20] hover:text-[#D32437] transition font-medium cursor-pointer"
+                  className="flex items-center space-x-1.5 px-2.5 py-1 text-[#231F20] hover:text-emerald-700 transition font-medium cursor-pointer"
                   title="Sign up with Keycloak Secure SSO"
                 >
-                  <span className="w-5 h-5 rounded-full bg-red-50 flex items-center justify-center text-[#D32437]">
-                    <UserIcon className="w-3.5 h-3.5 text-[#D32437]" />
+                  <span className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700">
+                    <UserIcon className="w-3.5 h-3.5 text-emerald-700" />
                   </span>
                   <span>Sign Up</span>
                 </button>
@@ -532,11 +532,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* Log In with red door/arrow icon -> Direct Keycloak OIDC Authentication */}
                 <button
                   onClick={() => initiateKeycloakLogin({ action: 'login' })}
-                  className="flex items-center space-x-1.5 px-2.5 py-1 text-[#231F20] hover:text-[#D32437] transition font-medium cursor-pointer"
+                  className="flex items-center space-x-1.5 px-2.5 py-1 text-[#231F20] hover:text-emerald-700 transition font-medium cursor-pointer"
                   title="Log in with Keycloak Secure SSO"
                 >
                   <span>Log In</span>
-                  <LogIn className="w-4 h-4 text-[#D32437]" />
+                  <LogIn className="w-4 h-4 text-emerald-700" />
                 </button>
               </>
             )}
@@ -547,10 +547,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* 8. Search Icon Trigger in Red */}
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="p-1.5 text-[#D32437] hover:opacity-80 transition cursor-pointer"
+              className="p-1.5 text-emerald-700 hover:opacity-80 transition cursor-pointer"
               title="Search Auctions"
             >
-              <Search className="w-4 h-4 text-[#D32437] stroke-[2.5]" />
+              <Search className="w-4 h-4 text-emerald-700 stroke-[2.5]" />
             </button>
 
           </nav>
@@ -558,7 +558,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Mobile Hamburger Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-slate-700 hover:text-[#D32437] focus:outline-none"
+            className="lg:hidden p-2 text-slate-700 hover:text-emerald-700 focus:outline-none"
           >
             <div className="space-y-1.5 w-6">
               <span className="block h-0.5 w-6 bg-[#231F20]" />
@@ -571,19 +571,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-[#E5E7EB] px-6 py-4 space-y-3 shadow-lg">
+          <div className="lg:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-3 shadow-lg">
             <button
               onClick={() => {
                 if (onNavigate) onNavigate('ONLINE_AUCTIONS');
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full flex items-center justify-between p-3 bg-red-50 text-[#D32437] rounded-lg font-bold text-sm"
+              className="w-full flex items-center justify-between p-3 bg-emerald-50 text-emerald-700 rounded-lg font-bold text-sm"
             >
               <span className="flex items-center gap-2">
                 <img src={getAssetUrl('/assets/hammer.svg')} alt="Auction" className="w-4 h-4" />
                 ONLINE AUCTIONS {onlineAuctionsCount > 0 && `(${onlineAuctionsCount})`}
               </span>
-              <span className="w-2 h-2 rounded-full bg-[#D32437] beacon-pulse" />
+              <span className="w-2 h-2 rounded-full bg-emerald-600 beacon-pulse" />
             </button>
 
             <button
@@ -614,13 +614,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                       if (onNavigate) onNavigate('FAVORITES');
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full flex items-center justify-between p-2.5 bg-red-50/70 text-[#D32437] rounded-lg font-bold text-xs"
+                    className="w-full flex items-center justify-between p-2.5 bg-emerald-50/70 text-emerald-700 rounded-lg font-bold text-xs"
                   >
                     <span className="flex items-center gap-2">
-                      <Heart className="w-4 h-4 fill-[#D32437]" />
+                      <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
                       <span>My Saved Favorites</span>
                     </span>
-                    <span className="bg-[#D32437] text-white text-[10px] px-2 py-0.5 rounded-full">
+                    <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full">
                       {favoriteCount}
                     </span>
                   </button>
@@ -631,7 +631,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onLogout();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="w-full text-left py-2 font-bold text-[#D32437]"
+                  className="w-full text-left py-2 font-bold text-emerald-700"
                 >
                   Sign Out ({currentUser.fullName})
                 </button>
@@ -652,7 +652,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setIsMobileMenuOpen(false);
                     initiateKeycloakLogin({ action: 'register' });
                   }}
-                  className="py-2.5 text-center text-xs font-bold bg-[#D32437] hover:bg-[#b81d2f] text-white rounded transition shadow-xs"
+                  className="py-2.5 text-center text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded transition shadow-xs"
                 >
                   Sign Up
                 </button>
@@ -692,7 +692,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </form>
             <button
               onClick={() => setIsSearchOpen(false)}
-              className="p-2.5 bg-white text-slate-600 hover:text-[#D32437] rounded-lg shadow-md transition"
+              className="p-2.5 bg-white text-slate-600 hover:text-emerald-700 rounded-lg shadow-md transition"
               title="Close Search"
             >
               <X className="w-5 h-5" />

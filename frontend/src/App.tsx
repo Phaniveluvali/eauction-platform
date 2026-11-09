@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { HomePage } from './components/HomePage';
 import { AuctionRoom } from './components/AuctionRoom';
-import { AuthModal } from './components/AuthModal';
 import { PaymentModal } from './components/PaymentModal';
 import { CreateVehicleModal } from './components/CreateVehicleModal';
 import { AdminPortal } from './components/AdminPortal';
@@ -22,6 +21,7 @@ import { PromotionalBroadcastModal } from './components/PromotionalBroadcastModa
 import { initiateKeycloakLogin, handleKeycloakCallback, logoutKeycloak } from './utils/oidc';
 import { api } from './services/api';
 import { User, Vehicle, Auction } from './types';
+import { AccessDeniedSecurityScreen } from './components/AccessDeniedSecurityScreen';
 import { Clock } from 'lucide-react';
 
 // Helper to determine initial view and auction ID from URL path
@@ -40,6 +40,7 @@ const getRouteFromPath = (): { view: PortalView; auctionId?: string; vehicleId?:
   if (path.includes('/online-auctions')) return { view: 'ONLINE_AUCTIONS' };
   if (path.includes('/silent-auctions')) return { view: 'SILENT_AUCTIONS' };
   if (path.includes('/favorites')) return { view: 'FAVORITES' };
+  if (path.includes('/security-deposit')) return { view: 'SECURITY_DEPOSIT' };
   if (path.includes('/help')) return { view: 'HELP' };
   if (path.includes('/signin-signup')) return { view: 'SIGNIN_SIGNUP' };
   if (path.includes('/signin')) return { view: 'SIGNIN' };
@@ -83,6 +84,74 @@ const getPathForView = (view: PortalView, auctionId?: string): string => {
   }
 };
 
+interface RouteSecurityRule {
+  requiresAuth: boolean;
+  allowedRoles?: Array<'ADMIN' | 'BUYER' | 'SELLER'>;
+  redirectUnauthTo?: PortalView;
+  description: string;
+}
+
+const ROUTE_SECURITY_RULES: Record<PortalView, RouteSecurityRule> = {
+  ADMIN: {
+    requiresAuth: true,
+    allowedRoles: ['ADMIN'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'Administrator Console',
+  },
+  FAVORITES: {
+    requiresAuth: true,
+    allowedRoles: ['BUYER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'Buyer Watchlist',
+  },
+  SECURITY_DEPOSIT: {
+    requiresAuth: true,
+    allowedRoles: ['BUYER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'Security Deposit Management',
+  },
+  HOME: { requiresAuth: false, description: 'Marketplace Home' },
+  ONLINE_AUCTIONS: { requiresAuth: false, description: 'Online Auctions' },
+  SILENT_AUCTIONS: { requiresAuth: false, description: 'Silent Auctions' },
+  HELP: { requiresAuth: false, description: 'Help Center' },
+  SIGNIN_SIGNUP: { requiresAuth: false, description: 'Sign In / Sign Up' },
+  SIGNIN: { requiresAuth: false, description: 'Sign In' },
+  SIGNUP: { requiresAuth: false, description: 'Sign Up' },
+  VEHICLE_DETAILS: { requiresAuth: false, description: 'Vehicle Inspection & Details' },
+  AUCTION_ROOM: { requiresAuth: false, description: 'Live Auction Room' },
+};
+
+function evaluateRouteSecurity(targetView: PortalView, user: User | null): {
+  allowed: boolean;
+  reason?: 'UNAUTHENTICATED' | 'FORBIDDEN_ROLE';
+  fallbackView?: PortalView;
+} {
+  const rule = ROUTE_SECURITY_RULES[targetView];
+  if (!rule || !rule.requiresAuth) return { allowed: true };
+
+  if (!user) {
+    return {
+      allowed: false,
+      reason: 'UNAUTHENTICATED',
+      fallbackView: rule.redirectUnauthTo || 'SIGNIN',
+    };
+  }
+
+  if (rule.allowedRoles && rule.allowedRoles.length > 0) {
+    const isSuperAdmin = Boolean(user.isSuperAdmin || (user as any).superAdmin);
+    const isAllowed = rule.allowedRoles.includes(user.role as any) || (isSuperAdmin && rule.allowedRoles.includes('ADMIN'));
+    if (!isAllowed) {
+      return {
+        allowed: false,
+        reason: 'FORBIDDEN_ROLE',
+        fallbackView: 'HOME',
+      };
+    }
+  }
+
+  return { allowed: true };
+}
+
 const detectDeviceInfo = () => {
   const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua) || (typeof window !== 'undefined' && window.innerWidth < 768);
@@ -106,6 +175,7 @@ const detectDeviceInfo = () => {
 
 export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const currentUserRef = useRef<User | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null);
@@ -118,6 +188,12 @@ export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<PortalView>(initialRoute.view);
   const [pendingAuctionId, setPendingAuctionId] = useState<string | undefined>(initialRoute.auctionId);
   const [pendingVehicleId, setPendingVehicleId] = useState<string | undefined>(initialRoute.vehicleId);
+
+  // Security & Authentication Gatekeeper
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(() => {
+    return Boolean(ROUTE_SECURITY_RULES[initialRoute.view]?.requiresAuth);
+  });
+  const [securityNotice, setSecurityNotice] = useState<string | null>(null);
 
   // Global Modals
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -135,8 +211,33 @@ export const App: React.FC = () => {
   const clientIpRef = React.useRef<string>('');
   const lastActivityRef = React.useRef<number>(Date.now());
 
-  // Route Navigator that synchronizes URL pathname with /seller-buyer/*
-  const navigateToView = (view: PortalView, auctionId?: string) => {
+  // Route Navigator with strict security guard evaluation
+  const navigateToView = (view: PortalView, auctionId?: string, overrideUser?: User | null) => {
+    const userToCheck = overrideUser !== undefined ? overrideUser : (currentUserRef.current ?? currentUser);
+    const secCheck = evaluateRouteSecurity(view, userToCheck);
+    if (!secCheck.allowed) {
+      if (secCheck.reason === 'UNAUTHENTICATED') {
+        setSecurityNotice(`Authentication required to access ${ROUTE_SECURITY_RULES[view]?.description || 'this page'}. Please sign in.`);
+        const fallback = secCheck.fallbackView || 'SIGNIN';
+        setCurrentView(fallback);
+        const targetPath = getPathForView(fallback);
+        if (window.location.pathname !== targetPath) {
+          window.history.pushState({ view: fallback }, '', targetPath);
+        }
+        return;
+      } else if (secCheck.reason === 'FORBIDDEN_ROLE') {
+        setSecurityNotice(`Access Denied: Your account role (${userToCheck?.role}) does not have permission to access the Administrator Portal.`);
+        const fallback = secCheck.fallbackView || 'HOME';
+        setCurrentView(fallback);
+        const targetPath = getPathForView(fallback);
+        if (window.location.pathname !== targetPath) {
+          window.history.pushState({ view: fallback }, '', targetPath);
+        }
+        return;
+      }
+    }
+
+    setSecurityNotice(null);
     setCurrentView(view);
     const newPath = getPathForView(view, auctionId);
     if (window.location.pathname !== newPath) {
@@ -151,10 +252,18 @@ export const App: React.FC = () => {
   });
   const [oidcError, setOidcError] = useState<string | null>(null);
 
-  // Browser Back/Forward Navigation & URL normalization
+  // Browser Back/Forward Navigation & URL normalization with Route Security Guards
   useEffect(() => {
     const handlePopState = () => {
       const { view, auctionId } = getRouteFromPath();
+      const secCheck = evaluateRouteSecurity(view, currentUser);
+      if (!secCheck.allowed) {
+        const fallback = secCheck.fallbackView || 'SIGNIN';
+        setCurrentView(fallback);
+        window.history.replaceState({ view: fallback }, '', getPathForView(fallback));
+        return;
+      }
+
       setCurrentView(view);
       if (auctionId && auctions.length > 0) {
         const found = auctions.find((a) => a.id === auctionId);
@@ -172,7 +281,7 @@ export const App: React.FC = () => {
     }
 
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [auctions]);
+  }, [auctions, currentUser]);
 
   // Buyer Favorites State persisted per account
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
@@ -217,68 +326,133 @@ export const App: React.FC = () => {
     });
   };
 
-  // 1. Initial Profile & Inventory Sync + Keycloak OIDC Callback Handler
+  // 1. Initial Profile & Inventory Sync + Keycloak OIDC Callback Handler + Strict Route Guard
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
+    const initSecurityAndAuth = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
 
-    // Primary: Keycloak OIDC SSO Authorization Code Callback Handler
-    if (code && state) {
-      setIsOidcProcessing(true);
-      setOidcError(null);
-      handleKeycloakCallback(code, state)
-        .then(async ({ returnView }) => {
-          const profile = await api.getMe();
-          setCurrentUser(profile);
-          // Strip sensitive tokens/codes from address bar
-          const targetView: PortalView = (returnView as PortalView) || 
-            (profile.role === 'ADMIN' || profile.isSuperAdmin || (profile as any).superAdmin ? 'ADMIN' : 'HOME');
-          navigateToView(targetView);
-          loadInventory();
-        })
-        .catch((err) => {
+      let resolvedUser: User | null = null;
+
+      // Primary: Keycloak OIDC SSO Authorization Code Callback Handler
+      if (code && state) {
+        setIsOidcProcessing(true);
+        setOidcError(null);
+        try {
+          const { returnView } = await handleKeycloakCallback(code, state);
+          resolvedUser = await api.getMe();
+          currentUserRef.current = resolvedUser;
+          setCurrentUser(resolvedUser);
+
+          // Route directly to respective user console based on role
+          let targetView: PortalView = 'HOME';
+          if (returnView && returnView !== 'SIGNIN' && returnView !== 'SIGNIN_SIGNUP' && returnView !== 'SIGNUP') {
+            targetView = returnView as PortalView;
+          } else if (resolvedUser.role === 'ADMIN' || resolvedUser.isSuperAdmin || (resolvedUser as any).superAdmin) {
+            targetView = 'ADMIN';
+          } else {
+            targetView = 'HOME';
+          }
+
+          setSecurityNotice(null);
+          const targetPath = getPathForView(targetView, pendingAuctionId);
+          window.history.replaceState({ view: targetView }, '', targetPath);
+          setCurrentView(targetView);
+        } catch (err: any) {
           console.error('Keycloak OIDC authentication callback error:', err);
           setOidcError(err.message || 'Keycloak authentication could not be completed.');
-          navigateToView('SIGNIN');
-        })
-        .finally(() => {
+          setCurrentView('SIGNIN');
+          window.history.replaceState({ view: 'SIGNIN' }, '', getPathForView('SIGNIN'));
+        } finally {
           setIsOidcProcessing(false);
-        });
-      return;
-    } else if (code) {
-      // Secondary Fallback: Azure AD B2C OAuth
-      api.azureB2cLogin({
-        code: code,
-        redirectUri: window.location.origin + window.location.pathname,
-      })
-        .then((resp) => {
+          setIsAuthChecking(false);
+        }
+        loadInventory();
+        return;
+      } else if (code) {
+        // Secondary Fallback: Azure AD B2C OAuth
+        try {
+          const resp = await api.azureB2cLogin({
+            code: code,
+            redirectUri: window.location.origin + window.location.pathname,
+          });
           localStorage.setItem('token', resp.token);
-          return api.getMe();
-        })
-        .then((user) => {
-          setCurrentUser(user);
-          navigateToView(user.role === 'ADMIN' ? 'ADMIN' : 'HOME');
-        })
-        .catch((err) => {
+          resolvedUser = await api.getMe();
+          setCurrentUser(resolvedUser);
+          navigateToView(resolvedUser.role === 'ADMIN' ? 'ADMIN' : 'HOME');
+        } catch (err) {
           console.error('Azure B2C callback error:', err);
-        });
-    }
+        }
+      }
 
-    const token = localStorage.getItem('token');
-    if (token && !code) {
-      api.getMe()
-        .then((user) => {
-          setCurrentUser(user);
-        })
-        .catch(() => {
+      // Cryptographic Stored Token Validation
+      const token = localStorage.getItem('token');
+      if (token && !code) {
+        try {
+          resolvedUser = await api.getMe();
+          currentUserRef.current = resolvedUser;
+          setCurrentUser(resolvedUser);
+        } catch (err) {
+          console.warn('Stored token was invalid or expired, purging credentials:', err);
           localStorage.removeItem('token');
+          localStorage.removeItem('kc_access_token');
+          localStorage.removeItem('kc_id_token');
+          resolvedUser = null;
+          currentUserRef.current = null;
           setCurrentUser(null);
-        });
-    }
+        }
+      } else if (!code) {
+        currentUserRef.current = null;
+        setCurrentUser(null);
+      }
 
-    loadInventory();
+      // Check initial route against resolved user security credentials
+      const requested = getRouteFromPath();
+      const secCheck = evaluateRouteSecurity(requested.view, resolvedUser);
+
+      if (!secCheck.allowed) {
+        if (secCheck.reason === 'UNAUTHENTICATED') {
+          setSecurityNotice(`Authentication required to access ${ROUTE_SECURITY_RULES[requested.view]?.description || 'this page'}. Please sign in.`);
+          const target = secCheck.fallbackView || 'SIGNIN';
+          setCurrentView(target);
+          window.history.replaceState({ view: target }, '', getPathForView(target));
+        } else if (secCheck.reason === 'FORBIDDEN_ROLE') {
+          setSecurityNotice(`Access Denied: Your account role (${resolvedUser?.role}) does not have permission to access the Administrator Portal.`);
+          const target = secCheck.fallbackView || 'HOME';
+          setCurrentView(target);
+          window.history.replaceState({ view: target }, '', getPathForView(target));
+        }
+      } else {
+        setCurrentView(requested.view);
+      }
+
+      setIsAuthChecking(false);
+      loadInventory();
+    };
+
+    initSecurityAndAuth();
   }, []);
+
+  // Global 401 Unauthorized event listener: purge credentials and bounce to SIGNIN
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('kc_access_token');
+      localStorage.removeItem('kc_id_token');
+      currentUserRef.current = null;
+      setCurrentUser(null);
+      setSecurityNotice('Your session has expired. Please log in with Keycloak SSO to continue.');
+      if (ROUTE_SECURITY_RULES[currentView]?.requiresAuth) {
+        initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: currentView });
+      } else {
+        navigateToView('SIGNIN');
+      }
+    };
+
+    window.addEventListener('eauction:unauthorized', handleAuthExpired);
+    return () => window.removeEventListener('eauction:unauthorized', handleAuthExpired);
+  }, [currentView]);
 
   // 2. Background Auto-Sync for Catalog Prices across windows/users
   useEffect(() => {
@@ -545,34 +719,13 @@ export const App: React.FC = () => {
     }
   };
 
-  // Quick 1-Click Demo Login with pre-generated users
-  const handleQuickLogin = async (role: 'BUYER' | 'SELLER' | 'ADMIN') => {
-    try {
-      let email = 'buyer@sharmatransport.in';
-      if (role === 'SELLER') email = 'seller@tatafleet.in';
-      if (role === 'ADMIN') email = 'admin@eauction.in';
-
-      const resp = await api.login(email, 'Password123!');
-      localStorage.setItem('token', resp.token);
-      const profile = await api.getMe();
-      setCurrentUser(profile);
-      if (role === 'ADMIN') {
-        navigateToView('ADMIN');
-      } else {
-        if (currentView === 'SIGNIN' || currentView === 'SIGNIN_SIGNUP' || currentView === 'SIGNUP') {
-          navigateToView('HOME');
-        }
-      }
-    } catch (err: any) {
-      console.warn('Quick login fallback:', err.message);
-      setIsAuthOpen(true);
-    }
-  };
 
   const handleLogout = () => {
     if (currentUser?.id) {
       api.logoutSession(currentUser.id).catch(() => {});
     }
+    currentUserRef.current = null;
+    setCurrentUser(null);
     logoutKeycloak(`${window.location.origin}/seller-buyer/`);
   };
 
@@ -600,36 +753,53 @@ export const App: React.FC = () => {
   const emiratesMotoCount = vehicles.filter((v) => (v as any).category === 'EMIRATES_MOTO').length;
 
   return (
-    <div className="min-h-screen bg-white text-[#231F20] flex flex-col font-sans selection:bg-[#D32437] selection:text-white">
+    <div className="min-h-screen bg-white text-[#231F20] flex flex-col font-sans selection:bg-[#059669] selection:text-white">
       {/* OIDC Authentication In-Progress Overlay */}
       {isOidcProcessing ? (
         <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4">
           <div className="relative w-16 h-16 mb-4">
-            <div className="absolute inset-0 rounded-full border-4 border-slate-800 border-t-[#D32437] animate-spin" />
+            <div className="absolute inset-0 rounded-full border-4 border-slate-800 border-t-[#059669] animate-spin" />
           </div>
           <h2 className="text-lg font-bold text-slate-100">Completing Keycloak Single Sign-On...</h2>
           <p className="text-xs text-slate-400 mt-1">Verifying cryptographic authorization code and syncing user session.</p>
         </div>
+      ) : isAuthChecking ? (
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4">
+          <div className="relative w-16 h-16 mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-slate-800 border-t-amber-500 animate-spin" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-100">Verifying Security Credentials...</h2>
+          <p className="text-xs text-slate-400 mt-1">Authenticating session authorization and route permissions.</p>
+        </div>
       ) : currentView === 'ADMIN' ? (
-        <main className="flex-1 bg-slate-950 text-slate-100">
-          <AdminPortal
+        !currentUser || (currentUser.role !== 'ADMIN' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
+          <AccessDeniedSecurityScreen
             currentUser={currentUser}
-            vehicles={vehicles}
-            auctions={auctions}
-            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
-            onSelectAuction={(auc) => {
-              setSelectedAuction(auc);
-              navigateToView('AUCTION_ROOM', auc.id);
-            }}
-            onRefreshInventory={loadInventory}
-            onLogout={handleLogout}
-            onSwitchToMarketplace={() => navigateToView('HOME')}
-            onUserSwitched={(user) => {
-              setCurrentUser(user);
-              loadInventory();
-            }}
+            requiredRole="ADMIN"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ADMIN' })}
+            onGoHome={() => navigateToView('HOME')}
           />
-        </main>
+        ) : (
+          <main className="flex-1 bg-slate-950 text-slate-100">
+            <AdminPortal
+              currentUser={currentUser}
+              vehicles={vehicles}
+              auctions={auctions}
+              onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+              onSelectAuction={(auc) => {
+                setSelectedAuction(auc);
+                navigateToView('AUCTION_ROOM', auc.id);
+              }}
+              onRefreshInventory={loadInventory}
+              onLogout={handleLogout}
+              onSwitchToMarketplace={() => navigateToView('HOME')}
+              onUserSwitched={(user) => {
+                setCurrentUser(user);
+                loadInventory();
+              }}
+            />
+          </main>
+        )
       ) : currentView === 'AUCTION_ROOM' && selectedAuction ? (
         <main className="flex-1 bg-slate-950 text-slate-100">
           <AuctionRoom
@@ -641,7 +811,7 @@ export const App: React.FC = () => {
               loadInventory();
             }}
             onOpenDeposit={() => setIsDepositOpen(true)}
-            onRequireAuth={() => navigateToView('SIGNIN_SIGNUP')}
+            onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
           />
         </main>
       ) : currentView === 'VEHICLE_DETAILS' && selectedVehicleDetails ? (
@@ -657,20 +827,47 @@ export const App: React.FC = () => {
           }}
           onOpenBidModal={(auc) => handleOpenBidModal(auc)}
           onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
-          onRequireAuth={() => navigateToView('SIGNIN')}
+          onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ONLINE_AUCTIONS' })}
         />
       ) : currentView === 'FAVORITES' ? (
-        <FavoritesPage
-          vehicles={vehicles}
-          auctions={auctions}
-          currentUser={currentUser}
-          favoriteIds={favoriteIds}
-          onToggleFavorite={handleToggleFavorite}
-          onOpenBidModal={handleOpenBidModal}
-          onViewDetails={handleViewDetails}
-          onBackHome={() => navigateToView('HOME')}
-          onNavigate={(view) => navigateToView(view)}
-        />
+        !currentUser ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="BUYER"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'FAVORITES' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <FavoritesPage
+            vehicles={vehicles}
+            auctions={auctions}
+            currentUser={currentUser}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={handleToggleFavorite}
+            onOpenBidModal={handleOpenBidModal}
+            onViewDetails={handleViewDetails}
+            onBackHome={() => navigateToView('HOME')}
+            onNavigate={(view) => navigateToView(view)}
+          />
+        )
+      ) : currentView === 'SECURITY_DEPOSIT' ? (
+        !currentUser ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="BUYER"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'FAVORITES' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <div className="flex-1 bg-slate-900 text-white flex flex-col items-center justify-center p-6">
+            <SecurityDepositModal
+              isOpen={true}
+              currentUser={currentUser}
+              onClose={() => navigateToView('HOME')}
+              onUpdateDeposit={handleUpdateDeposit}
+            />
+          </div>
+        )
       ) : currentView === 'ONLINE_AUCTIONS' ? (
         <OnlineAuctionsPage
           vehicles={vehicles}
@@ -682,7 +879,7 @@ export const App: React.FC = () => {
             setSelectedAuction(auc);
             navigateToView('AUCTION_ROOM', auc.id);
           }}
-          onRequireAuth={() => navigateToView('SIGNIN_SIGNUP')}
+          onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
           onNavigate={(view) => navigateToView(view)}
           onBackHome={() => navigateToView('HOME')}
           onOpenBidModal={handleOpenBidModal}
@@ -693,7 +890,7 @@ export const App: React.FC = () => {
           vehicles={vehicles}
           auctions={auctions}
           currentUser={currentUser}
-          onRequireAuth={() => navigateToView('SIGNIN_SIGNUP')}
+          onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
           onNavigate={(view) => navigateToView(view)}
           onBackHome={() => navigateToView('HOME')}
         />
@@ -704,8 +901,8 @@ export const App: React.FC = () => {
         />
       ) : currentView === 'SIGNIN_SIGNUP' ? (
         <SignInAndSignUpPage
-          onGoSignIn={() => navigateToView('SIGNIN')}
-          onGoSignUp={() => navigateToView('SIGNUP')}
+          onGoSignIn={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+          onGoSignUp={() => initiateKeycloakLogin({ action: 'register' })}
           onBackHome={() => navigateToView('HOME')}
           onNavigate={(view) => navigateToView(view)}
         />
@@ -713,6 +910,7 @@ export const App: React.FC = () => {
         <SignUpPage
           onSuccess={(user) => {
             setCurrentUser(user);
+            setSecurityNotice(null);
             navigateToView('HOME');
             loadInventory();
           }}
@@ -723,12 +921,15 @@ export const App: React.FC = () => {
       ) : currentView === 'SIGNIN' ? (
         <SignInPage
           oidcError={oidcError}
+          securityNotice={securityNotice}
           onSuccess={(user) => {
+            currentUserRef.current = user;
             setCurrentUser(user);
+            setSecurityNotice(null);
             if (user.role === 'ADMIN' || (user as any).superAdmin) {
-              navigateToView('ADMIN');
+              navigateToView('ADMIN', undefined, user);
             } else {
-              navigateToView('HOME');
+              navigateToView('HOME', undefined, user);
             }
             loadInventory();
           }}
@@ -737,17 +938,16 @@ export const App: React.FC = () => {
           onNavigate={(view) => navigateToView(view)}
         />
       ) : (
-        /* HOME View: Sticky 96px Al Wataneya Navbar + Full HomePage */
+        /* HOME View: Sticky 96px AJ Auctions Navbar + Full HomePage */
         <div className="flex-1 flex flex-col">
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
-            onOpenAuth={() => navigateToView('SIGNIN')}
+            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
             onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
             onOpenAdmin={() => navigateToView('ADMIN')}
             onLogout={handleLogout}
-            onQuickLogin={handleQuickLogin}
-            onLiveNowClick={handleLiveNowClick}
+                        onLiveNowClick={handleLiveNowClick}
             onSearchChange={(q) => setSearchQuery(q)}
             onHomeClick={() => {
               setSelectedAuction(null);
@@ -772,13 +972,12 @@ export const App: React.FC = () => {
                 setSelectedAuction(auc);
                 navigateToView('AUCTION_ROOM', auc.id);
               }}
-              onOpenAuth={() => navigateToView('SIGNIN')}
+              onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
               onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
-              onQuickLogin={handleQuickLogin}
-              onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+                            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
               searchFilter={searchQuery}
               onNavigate={(view) => navigateToView(view)}
-              onRequireAuth={() => navigateToView('SIGNIN_SIGNUP')}
+              onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
               onOpenBidModal={handleOpenBidModal}
               onViewDetails={handleViewDetails}
             />
@@ -787,14 +986,6 @@ export const App: React.FC = () => {
       )}
 
       {/* Global Modals for Deposit & Vehicle Listing */}
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        onSuccess={(user) => {
-          setCurrentUser(user);
-          loadInventory();
-        }}
-      />
 
       <PaymentModal
         isOpen={isDepositOpen}
@@ -819,7 +1010,7 @@ export const App: React.FC = () => {
         onClose={() => setIsBidModalOpen(false)}
         onSuccessBid={handleBidSuccess}
         onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
-        onRequireAuth={() => navigateToView('SIGNIN')}
+        onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ONLINE_AUCTIONS' })}
       />
 
       {/* Security Deposit & 200x Limit Modal with Bank Account Refund */}
@@ -845,11 +1036,11 @@ export const App: React.FC = () => {
               <button
                 onClick={() => {
                   setIsIdleTimedOut(false);
-                  initiateKeycloakLogin({ action: 'login', prompt: 'login' });
+                  initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: currentView });
                 }}
-                className="w-full py-3 px-4 bg-[#D32437] hover:bg-[#b51a2b] text-white font-bold rounded-xl transition cursor-pointer shadow-md"
+                className="w-full py-3 px-4 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-xl transition cursor-pointer shadow-md"
               >
-                Log In Again
+                Log In with Keycloak SSO
               </button>
               <button
                 onClick={() => setIsIdleTimedOut(false)}

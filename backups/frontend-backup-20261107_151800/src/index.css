@@ -1,0 +1,199 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-red: #D32437;
+  --primary-red-hover: #b51a2b;
+  --dark-text: #231F20;
+  --muted-text: #6B6B6B;
+  --light-bg: #F5F6F7;
+  --card-border: #E5E7EB;
+  --divider-color: #EBEBEB;
+}
+
+@layer base {
+  body {
+    background-color: #ffffff;
+    color: #231F20;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Custom glowing pulse for active auctions */
+@keyframes beacon {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.15);
+  }
+}
+
+.beacon-pulse {
+  animation: beacon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* AJ Auctions Signature Underline on Section Headings */
+.header-title {
+  font-size: 28px;
+  font-weight: 700;
+  position: relative;
+  color: #231F20;
+  letter-spacing: -0.02em;
+  padding-bottom: 14px;
+}
+
+@media (min-width: 768px) {
+  .header-title {
+    font-size: 32px;
+  }
+}
+
+.header-title::after {
+  content: '';
+  display: block;
+  width: 50px;
+  height: 4px;
+  background-color: #d11a3b;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  border-radius: 2px;
+}
+
+.header-title::before {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 4px;
+  background: #F4C2C2;
+  position: absolute;
+  bottom: 0;
+  left: 55px;
+  border-radius: 2px;
+}
+
+/* Section Divider */
+.home_divider {
+  height: 10px;
+  background-color: #EBEBEB;
+  width: 100%;
+}
+
+/* Category Box Hover */
+.category-box-card {
+  border: 1px solid #C7C7C7;
+  border-radius: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  transition: all 0.3s ease;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.category-box-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.08);
+  border-color: #D32437;
+}
+
+/* Car Card styling matching AJ Auctions specifications */
+.awa-car-card {
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+
+.awa-car-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.12);
+  border-color: #D32437;
+}
+
+.awa-car-card .car-image {
+  height: 210px;
+  width: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.awa-car-card:hover .car-image {
+  transform: scale(1.03);
+}
+
+.awa-car-title {
+  color: #231F20;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.awa-timer {
+  color: #D32437;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.awa-price {
+  font-size: 22px;
+  font-weight: 800;
+  color: #D32437;
+  line-height: 1.1;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Green BID NOW CTA */
+.awa-bidnow-btn {
+  background-color: #61B35C;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 18px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.awa-bidnow-btn:hover {
+  background-color: #4ea249;
+  transform: scale(1.02);
+}
+
+/* Process connector step line */
+.awa-step-line {
+  position: absolute;
+  top: 45px;
+  left: 75%;
+  width: 50%;
+  height: 1px;
+  border-top: 2px dashed #f8d7da;
+  z-index: 0;
+}
+
+.awa-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #D32437;
+  border-radius: 50%;
+  position: absolute;
+  top: -6px;
+}

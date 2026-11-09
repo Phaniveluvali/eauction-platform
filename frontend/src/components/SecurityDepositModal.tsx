@@ -108,7 +108,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center text-[#D32437]">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center text-[#059669]">
               <Shield className="w-5 h-5" />
             </div>
             <div>
@@ -116,7 +116,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                 Security Deposit & 200x Limit
               </h3>
               <p className="text-xs text-slate-500">
-                Al Wataneya Automated Bidding Limit Arbiter
+                AJ Auctions Automated Bidding Limit Arbiter • Powered by AshwikTechnologies
               </p>
             </div>
           </div>
@@ -147,7 +147,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
             onClick={() => setActiveTab('deposit')}
             className={`flex-1 py-3 text-xs font-bold transition flex items-center justify-center gap-2 ${
               activeTab === 'deposit'
-                ? 'border-b-2 border-[#D32437] text-[#D32437] bg-white'
+                ? 'border-b-2 border-[#059669] text-[#059669] bg-white'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -159,7 +159,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
             onClick={() => setActiveTab('refund')}
             className={`flex-1 py-3 text-xs font-bold transition flex items-center justify-center gap-2 ${
               activeTab === 'refund'
-                ? 'border-b-2 border-[#D32437] text-[#D32437] bg-white'
+                ? 'border-b-2 border-[#059669] text-[#059669] bg-white'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -184,12 +184,12 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                   onClick={() => handlePresetSelect(preset.deposit)}
                   className={`p-3 rounded-xl border text-left transition relative ${
                     selectedPreset === preset.deposit
-                      ? 'border-[#D32437] bg-red-50 text-slate-900 ring-2 ring-[#D32437]/20'
+                      ? 'border-[#059669] bg-red-50 text-slate-900 ring-2 ring-[#059669]/20'
                       : 'border-slate-200 hover:border-slate-300 bg-white'
                   }`}
                 >
                   {preset.popular && (
-                    <span className="absolute top-2 right-2 text-[10px] bg-[#D32437] text-white px-1.5 py-0.5 rounded font-bold">
+                    <span className="absolute top-2 right-2 text-[10px] bg-[#059669] text-white px-1.5 py-0.5 rounded font-bold">
                       Popular
                     </span>
                   )}
@@ -216,7 +216,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                 }}
                 min={500}
                 step={500}
-                className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-[#D32437]"
+                className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-[#059669]"
               />
               <span className="text-[11px] text-slate-500 mt-1 block">
                 Calculated 200x Limit: <strong className="text-emerald-600 font-bold">AED {(customAmount * 200).toLocaleString()}</strong>
@@ -233,7 +233,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                   type="button"
                   onClick={() => setPaymentMethod('card')}
                   className={`p-2.5 rounded-lg border text-center transition flex flex-col items-center gap-1 ${
-                    paymentMethod === 'card' ? 'border-[#D32437] bg-red-50 text-[#D32437] font-bold' : 'border-slate-200 text-slate-600'
+                    paymentMethod === 'card' ? 'border-[#059669] bg-red-50 text-[#059669] font-bold' : 'border-slate-200 text-slate-600'
                   }`}
                 >
                   <CreditCard className="w-4 h-4" />
@@ -243,7 +243,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                   type="button"
                   onClick={() => setPaymentMethod('applepay')}
                   className={`p-2.5 rounded-lg border text-center transition flex flex-col items-center gap-1 ${
-                    paymentMethod === 'applepay' ? 'border-[#D32437] bg-red-50 text-[#D32437] font-bold' : 'border-slate-200 text-slate-600'
+                    paymentMethod === 'applepay' ? 'border-[#059669] bg-red-50 text-[#059669] font-bold' : 'border-slate-200 text-slate-600'
                   }`}
                 >
                   <span className="font-bold"> Pay</span>
@@ -253,7 +253,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                   type="button"
                   onClick={() => setPaymentMethod('bank')}
                   className={`p-2.5 rounded-lg border text-center transition flex flex-col items-center gap-1 ${
-                    paymentMethod === 'bank' ? 'border-[#D32437] bg-red-50 text-[#D32437] font-bold' : 'border-slate-200 text-slate-600'
+                    paymentMethod === 'bank' ? 'border-[#059669] bg-red-50 text-[#059669] font-bold' : 'border-slate-200 text-slate-600'
                   }`}
                 >
                   <Building2 className="w-4 h-4" />
@@ -272,7 +272,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
             <button
               type="submit"
               disabled={isProcessing}
-              className="w-full bg-[#D32437] hover:bg-[#b01e2e] text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-red-500/20 disabled:opacity-50"
+              className="w-full bg-[#059669] hover:bg-[#b01e2e] text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-red-500/20 disabled:opacity-50"
             >
               {isProcessing ? 'Processing Payment...' : `Deposit AED ${customAmount.toLocaleString()}`}
             </button>
@@ -292,7 +292,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                 <select
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#D32437]"
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#059669]"
                 >
                   <option value="Emirates NBD">Emirates NBD</option>
                   <option value="First Abu Dhabi Bank (FAB)">First Abu Dhabi Bank (FAB)</option>
@@ -312,7 +312,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                   value={iban}
                   onChange={(e) => setIban(e.target.value.toUpperCase())}
                   placeholder="AE070330000000012345678"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#D32437]"
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#059669]"
                 />
               </div>
 
@@ -324,7 +324,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                   type="text"
                   value={accountHolder}
                   onChange={(e) => setAccountHolder(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#D32437]"
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#059669]"
                 />
               </div>
 
@@ -339,7 +339,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
                   max={currentDeposit}
                   min={100}
                   step={100}
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#D32437]"
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#059669]"
                 />
                 <span className="text-[11px] text-slate-500 mt-1 block">
                   Available to Refund: <strong className="text-slate-800">AED {currentDeposit.toLocaleString()}</strong>

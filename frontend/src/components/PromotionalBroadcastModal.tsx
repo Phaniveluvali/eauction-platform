@@ -12,7 +12,7 @@ export const PromotionalBroadcastModal: React.FC<PromotionalBroadcastModalProps>
 }) => {
   const [activePromo, setActivePromo] = useState<any>(null);
   const [dismissedId, setDismissedId] = useState<string | null>(() => {
-    return sessionStorage.getItem('awa_dismissed_promo_id') || null;
+    return sessionStorage.getItem('aj_dismissed_promo_id') || null;
   });
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export const PromotionalBroadcastModal: React.FC<PromotionalBroadcastModalProps>
 
   const handleDismiss = () => {
     if (activePromo?.campaign_id) {
-      sessionStorage.setItem('awa_dismissed_promo_id', activePromo.campaign_id);
+      sessionStorage.setItem('aj_dismissed_promo_id', activePromo.campaign_id);
       setDismissedId(activePromo.campaign_id);
     }
     setActivePromo(null);
@@ -59,12 +59,12 @@ export const PromotionalBroadcastModal: React.FC<PromotionalBroadcastModalProps>
       <div className="bg-gradient-to-br from-slate-900 via-[#181A1D] to-black text-white p-5 rounded-2xl shadow-2xl border border-red-500/30 backdrop-blur-md relative overflow-hidden">
         
         {/* Glow Accent */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#D32437]/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#059669]/20 rounded-full blur-2xl pointer-events-none" />
 
         {/* Header Badges & Close Button */}
         <div className="flex items-center justify-between mb-3 relative z-10">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 bg-[#D32437] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
+            <span className="px-2.5 py-0.5 bg-[#059669] text-white text-[11px] font-black rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
               <Sparkles className="w-3 h-3" />
               {activePromo.badge_en || '⚡ FLASH OFFER'}
             </span>
@@ -120,7 +120,7 @@ export const PromotionalBroadcastModal: React.FC<PromotionalBroadcastModalProps>
         {/* Action Button */}
         <button
           onClick={handleClaim}
-          className="w-full py-2.5 px-4 bg-[#D32437] hover:bg-[#b81d2f] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer relative z-10"
+          className="w-full py-2.5 px-4 bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer relative z-10"
         >
           <span>{activePromo.cta_label_en || 'Claim Discount & Start Bidding'}</span>
           <ArrowRight className="w-3.5 h-3.5" />

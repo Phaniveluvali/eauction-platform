@@ -70,7 +70,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <button
                 type="button"
                 onClick={onBackHome}
-                className="p-2 rounded-xl border border-slate-200 text-slate-700 hover:text-[#D32437] hover:border-[#D32437]/30 hover:bg-red-50/50 transition cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                className="p-2 rounded-xl border border-slate-200 text-slate-700 hover:text-[#059669] hover:border-[#059669]/30 hover:bg-red-50/50 transition cursor-pointer flex items-center gap-1.5 text-xs font-bold"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to Home</span>
@@ -81,10 +81,10 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                    <Heart className="w-6 h-6 text-[#D32437] fill-[#D32437]" />
+                    <Heart className="w-6 h-6 text-[#059669] fill-[#059669]" />
                     <span>My Saved Favorites</span>
                   </h1>
-                  <span className="bg-red-100 text-[#D32437] text-xs font-extrabold px-2.5 py-0.5 rounded-full">
+                  <span className="bg-red-100 text-[#059669] text-xs font-extrabold px-2.5 py-0.5 rounded-full">
                     {favoriteVehicles.length} {favoriteVehicles.length === 1 ? 'Vehicle' : 'Vehicles'}
                   </span>
                 </div>
@@ -125,7 +125,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
                 placeholder="Search saved vehicles by make, model, or lot..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#D32437]/20 focus:border-[#D32437] transition"
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#059669]/20 focus:border-[#059669] transition"
               />
             </div>
 
@@ -137,7 +137,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
                   onClick={() => setCategoryFilter(cat)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                     categoryFilter === cat
-                      ? 'bg-[#D32437] text-white shadow-xs'
+                      ? 'bg-[#059669] text-white shadow-xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
                   }`}
                 >
@@ -151,7 +151,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
         {/* Empty State */}
         {favoriteVehicles.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-xl mx-auto mt-10 shadow-sm">
-            <div className="w-20 h-20 rounded-full bg-red-50 text-[#D32437] flex items-center justify-center mx-auto mb-4 border border-red-100">
+            <div className="w-20 h-20 rounded-full bg-red-50 text-[#059669] flex items-center justify-center mx-auto mb-4 border border-red-100">
               <Heart className="w-10 h-10 stroke-[1.5]" />
             </div>
             
@@ -167,7 +167,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('ONLINE_AUCTIONS')}
-                className="w-full sm:w-auto px-6 py-3 bg-[#D32437] hover:bg-[#b81d2f] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow-md shadow-red-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow-md shadow-red-600/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Flame className="w-4 h-4" />
                 <span>Browse Live Auctions</span>
@@ -192,7 +192,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
                 setSearchTerm('');
                 setCategoryFilter('ALL');
               }}
-              className="text-xs text-[#D32437] font-bold hover:underline"
+              className="text-xs text-[#059669] font-bold hover:underline"
             >
               Clear Search Filter
             </button>

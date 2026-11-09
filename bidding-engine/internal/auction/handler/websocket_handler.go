@@ -65,8 +65,8 @@ func newAuctionRoom(auctionID string) *AuctionRoom {
 	}
 }
 
-func (r *AuctionRoom) subscribeRedisBackplane(ctx context.Context, redisRepo *repository.RedisLuaRepository) {
-	pubsub := redisRepo.SubscribeBroadcast(ctx, r.auctionID)
+func (r *AuctionRoom) subscribeRedisBackplane(ctx context.Context, subscriber BroadcastSubscriber) {
+	pubsub := subscriber.SubscribeBroadcast(ctx, r.auctionID)
 	defer pubsub.Close()
 
 	ch := pubsub.Channel()
@@ -138,26 +138,34 @@ func (r *AuctionRoom) run(ctx context.Context, onEmpty func(string)) {
 	}
 }
 
-// Hub manages multi-auction rooms and global message distribution
+// Hub manages multi-auction rooms and global message distribution via abstracted interfaces (DIP)
 type Hub struct {
-	rooms       map[string]*AuctionRoom
-	roomsMu     sync.RWMutex
-	redisRepo   *repository.RedisLuaRepository
-	kafkaWriter *kafka.Writer
-	jwtSecret   []byte
-	ctx         context.Context
-	cancel      context.CancelFunc
+	rooms        map[string]*AuctionRoom
+	roomsMu      sync.RWMutex
+	biddingStore BiddingStore
+	subscriber   BroadcastSubscriber
+	eventStream  EventStreamProducer
+	jwtSecret    []byte
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
+// NewHub preserves backward compatibility while injecting interface contracts
 func NewHub(redisRepo *repository.RedisLuaRepository, kafkaWriter *kafka.Writer, jwtSecret string) *Hub {
+	return NewHubWithDependencies(redisRepo, redisRepo, NewKafkaProducerAdapter(kafkaWriter), jwtSecret)
+}
+
+// NewHubWithDependencies implements Dependency Inversion Principle
+func NewHubWithDependencies(store BiddingStore, subscriber BroadcastSubscriber, eventStream EventStreamProducer, jwtSecret string) *Hub {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Hub{
-		rooms:       make(map[string]*AuctionRoom),
-		redisRepo:   redisRepo,
-		kafkaWriter: kafkaWriter,
-		jwtSecret:   []byte(jwtSecret),
-		ctx:         ctx,
-		cancel:      cancel,
+		rooms:        make(map[string]*AuctionRoom),
+		biddingStore: store,
+		subscriber:   subscriber,
+		eventStream:  eventStream,
+		jwtSecret:    []byte(jwtSecret),
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 }
 
@@ -179,7 +187,7 @@ func (h *Hub) getOrCreateRoom(auctionID string) *AuctionRoom {
 		h.rooms[auctionID] = room
 
 		// Start distributed Redis Pub/Sub subscription for multi-replica Kubernetes synchronization
-		go room.subscribeRedisBackplane(roomCtx, h.redisRepo)
+		go room.subscribeRedisBackplane(roomCtx, h.subscriber)
 
 		go room.run(roomCtx, func(id string) {
 			h.roomsMu.Lock()
@@ -346,7 +354,7 @@ func (c *Client) handleIncomingBid(msgBytes []byte, room *AuctionRoom) {
 	// Protects against accidental double-clicks, mobile network retries, and
 	// replay attacks. Atomically checks Redis SET NX with a 60-second TTL.
 	if bidReq.IdempotencyKey != "" {
-		isNew, err := c.hub.redisRepo.CheckAndSetIdempotency(ctx, bidReq.IdempotencyKey, 60*time.Second)
+		isNew, err := c.hub.biddingStore.CheckAndSetIdempotency(ctx, bidReq.IdempotencyKey, 60*time.Second)
 		if err != nil {
 			log.Printf("[Auction %s] Idempotency check error: %v", c.auctionID, err)
 		} else if !isNew {
@@ -362,7 +370,7 @@ func (c *Client) handleIncomingBid(msgBytes []byte, room *AuctionRoom) {
 	// Executes atomic Redis Lua script enforcing ACTIVE status, positive
 	// minimum increments (start_price or current_highest + min_increment), and
 	// updates current_highest_bid, highest_bidder_id, and last_bid_timestamp.
-	bidResponse, err := c.hub.redisRepo.ExecuteAtomicBidValidation(
+	bidResponse, err := c.hub.biddingStore.ExecuteAtomicBidValidation(
 		ctx,
 		c.auctionID,
 		bidReq.BidAmount,
@@ -392,21 +400,21 @@ func (c *Client) handleIncomingBid(msgBytes []byte, room *AuctionRoom) {
 	kafkaBytes, err := json.Marshal(eventPayload)
 	if err != nil {
 		log.Printf("Failed to serialize kafka bid payload: %v", err)
-	} else {
+	} else if c.hub.eventStream != nil {
 		go func(data []byte) {
 			kCtx, kCancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer kCancel()
 
-			kErr := c.hub.kafkaWriter.WriteMessages(kCtx, kafka.Message{
+			kErr := c.hub.eventStream.WriteMessages(kCtx, kafka.Message{
 				Key:   []byte(c.auctionID),
 				Value: data,
 				Time:  time.Now(),
 			})
 			if kErr != nil {
-				log.Printf("CRITICAL: Failed to push bid to Kafka topic %s: %v", c.hub.kafkaWriter.Topic, kErr)
+				log.Printf("CRITICAL: Failed to push bid to Kafka topic %s: %v", c.hub.eventStream.GetTopic(), kErr)
 			} else {
 				log.Printf("[Kafka] Produced validated bid event [%s] for auction [%s] to topic [%s]",
-					eventPayload.EventID, c.auctionID, c.hub.kafkaWriter.Topic)
+					eventPayload.EventID, c.auctionID, c.hub.eventStream.GetTopic())
 			}
 		}(kafkaBytes)
 	}
@@ -420,7 +428,7 @@ func (c *Client) handleIncomingBid(msgBytes []byte, room *AuctionRoom) {
 	broadcastBytes, err := json.Marshal(bidResponse)
 	if err == nil {
 		pCtx, pCancel := context.WithTimeout(context.Background(), 2*time.Second)
-		if pErr := c.hub.redisRepo.PublishBroadcast(pCtx, c.auctionID, broadcastBytes); pErr != nil {
+		if pErr := c.hub.biddingStore.PublishBroadcast(pCtx, c.auctionID, broadcastBytes); pErr != nil {
 			log.Printf("[Auction %s] Redis publish error: %v, falling back to local broadcast", c.auctionID, pErr)
 			room.broadcast <- broadcastBytes
 		}

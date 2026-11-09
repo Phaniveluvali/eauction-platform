@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-ai-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-ai-service
+    {{- include "eauction-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.aiService.replicaCount }}
+  selector:
+    matchLabels:
+      app: eauction-ai-service
+  template:
+    metadata:
+      labels:
+        app: eauction-ai-service
+    spec:
+      serviceAccountName: eauction-ai-service-sa
+      priorityClassName: auction-low-priority
+      {{- include "eauction-platform.podAntiAffinity" (dict "app" "eauction-ai-service" "soft" .Values.global.softScheduling) | nindent 6 }}
+      containers:
+        - name: ai-service
+          image: "{{ .Values.aiService.image.repository }}:{{ .Values.aiService.image.tag }}"
+          imagePullPolicy: {{ .Values.aiService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.aiService.service.port }}
+              name: http
+          env:
+            - name: REDIS_HOST
+              value: "eauction-redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: KAFKA_BROKERS
+          resources:
+            {{- toYaml .Values.aiService.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.aiService.service.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.aiService.service.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-ai-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-ai-service
+spec:
+  ports:
+    - port: {{ .Values.aiService.service.port }}
+      targetPort: {{ .Values.aiService.service.port }}
+      name: http
+  selector:
+    app: eauction-ai-service

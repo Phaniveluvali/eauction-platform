@@ -175,7 +175,7 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
                 placeholder="Lot No Search"
                 className="w-full text-xs px-3 py-2 text-[#231F20] placeholder-slate-400 focus:outline-none"
               />
-              <button className="px-3 text-[#D32437] hover:bg-slate-50">
+              <button className="px-3 text-[#059669] hover:bg-slate-50">
                 <Search className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -196,7 +196,7 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
                 Clear Filters
               </button>
 
-              <button className="p-2 bg-[#D32437] text-white rounded-md transition shadow-xs">
+              <button className="p-2 bg-[#059669] text-white rounded-md transition shadow-xs">
                 <LayoutGrid className="w-4 h-4" />
               </button>
             </div>
@@ -210,7 +210,7 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
           <button 
             onClick={() => setSelectedMake('Honda')}
             className={`px-3 py-1.5 rounded-md border transition ${
-              selectedMake === 'Honda' ? 'bg-[#D32437] text-white border-[#D32437]' : 'bg-white border-[#D1D5DB] text-[#231F20]'
+              selectedMake === 'Honda' ? 'bg-[#059669] text-white border-[#059669]' : 'bg-white border-[#D1D5DB] text-[#231F20]'
             }`}
           >
             Honda (1)
@@ -218,7 +218,7 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
           <button 
             onClick={() => setSelectedMake('Nissan')}
             className={`px-3 py-1.5 rounded-md border transition ${
-              selectedMake === 'Nissan' ? 'bg-[#D32437] text-white border-[#D32437]' : 'bg-white border-[#D1D5DB] text-[#231F20]'
+              selectedMake === 'Nissan' ? 'bg-[#059669] text-white border-[#059669]' : 'bg-white border-[#D1D5DB] text-[#231F20]'
             }`}
           >
             Nissan (1)
@@ -227,7 +227,7 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
 
         {/* Tab: Current Auctions */}
         <div className="flex items-center space-x-3 mb-6">
-          <button className="px-5 py-2 bg-[#D32437] text-white rounded-md text-xs sm:text-sm font-bold shadow-xs">
+          <button className="px-5 py-2 bg-[#059669] text-white rounded-md text-xs sm:text-sm font-bold shadow-xs">
             Current Auctions ({silentVehicles.length})
           </button>
         </div>
@@ -235,14 +235,14 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
         {/* Cards Grid matching Screenshot 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {silentVehicles.map((item) => (
-            <div key={item.id} className="awa-car-card group flex flex-col justify-between bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-xs hover:shadow-md transition">
+            <div key={item.id} className="aj-card h-full flex flex-col justify-between bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition">
               
               {/* Image or IMAGE NOT AVAILABLE matching Screenshot 2 */}
-              <div className="h-48 w-full bg-[#EFEFEF] flex flex-col items-center justify-center text-slate-400 p-4 border-b border-slate-200">
+              <div className="h-48 sm:h-52 w-full bg-[#EFEFEF] flex flex-col items-center justify-center text-slate-400 overflow-hidden relative shrink-0">
                 {item.image ? (
                   <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="flex flex-col items-center text-center">
+                  <div className="flex flex-col items-center text-center p-4">
                     <div className="w-20 h-16 border-2 border-slate-400 rounded-lg flex items-center justify-center mb-2 bg-slate-200/50">
                       <ImageIcon className="w-10 h-10 text-slate-400" />
                     </div>
@@ -256,7 +256,7 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
               {/* Card Body matching Screenshot 2 */}
               <div className="p-4 flex-1 flex flex-col justify-between">
                 <div>
-                  <h4 className="awa-car-title text-base sm:text-lg">
+                  <h4 className="font-extrabold text-slate-900 text-base sm:text-lg">
                     {item.title}
                   </h4>
 
@@ -267,7 +267,7 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
                     View Details
                   </button>
 
-                  <div className="text-xs text-[#D32437] font-bold mb-3">
+                  <div className="text-xs text-[#059669] font-bold mb-3">
                     {item.countdown}
                   </div>
 
@@ -291,7 +291,7 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
                 <div className="border-t border-[#F0F0F0] pt-3 mt-auto">
                   <button
                     onClick={() => handleSilentBid(item)}
-                    className="w-full awa-bidnow-btn flex items-center justify-center space-x-2"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transition text-xs uppercase tracking-wider cursor-pointer"
                   >
                     <Lock className="w-3.5 h-3.5" />
                     <span>PLACE SEALED BID</span>

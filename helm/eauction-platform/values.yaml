@@ -1,0 +1,668 @@
+# ********************************************************************************
+# * E-AUCTION ENTERPRISE CLOUD PLATFORM - HELM VALUES SPECIFICATION             *
+# *                                                                              *
+# * Target Platform: Kubernetes v1.28+ with Calico CNI                           *
+# * Architecture: Zero-Trust Microservices with HashiCorp Vault Secrets Manager  *
+# * Active Profile: Single-Node Staging / Production Readiness                   *
+# * Chart Version: 1.0.0                                                         *
+# ********************************************************************************
+
+# ==============================================================================
+# SECTION 1: GLOBAL PLATFORM CONFIGURATION
+# ==============================================================================
+# Cross-cutting platform settings shared across all services, ingress controllers,
+# scheduling policies, and TLS certificate bindings.
+global:
+  # Deployment environment profile identifier.
+  # Accepted values: "single-node", "staging", "production-multinode"
+  environment: "single-node"
+
+  # Primary Fully Qualified Domain Name (FQDN) for the platform API & IAM endpoints
+  domain: "tecnics-internal.online"
+
+  # Alternate Fully Qualified Domain Name (FQDN) for Frontend UI and WebSocket gateway
+  altDomain: "eauction.tecnics-internal.online"
+
+  # Name of the Kubernetes TLS secret containing the wildcard/SAN SSL certificate and private key.
+  # The secret must exist in the target release namespace and contain tls.crt and tls.key.
+  tlsSecretName: "ca-vmx-tls-cert"
+
+  # Soft scheduling switch for single-node vs multi-node topologies.
+  # - true: Uses preferredDuringSchedulingIgnoredDuringExecution and ScheduleAnyway.
+  #         Prevents pods from becoming stuck in 'Pending' on single-node clusters.
+  # - false: Enforces strict requiredDuringSchedulingIgnoredDuringExecution and DoNotSchedule
+  #          across availability zones and physical failure domains (Production mode).
+  softScheduling: true
+
+  # Image pull secrets used to authenticate against private container registries.
+  # Array of objects containing the secret name.
+  # Sample "imagePullSecrets" configuration:
+  #   imagePullSecrets:
+  #     - name: "regcred-azurecr"
+  #     - name: "regcred-harbor"
+  imagePullSecrets: []
+
+# ==============================================================================
+# SECTION 2: WORKLOAD PRIORITY CLASSES (CNCF QoS)
+# ==============================================================================
+# PriorityClasses ensure critical stateful and real-time pods are protected from eviction
+# during high node memory pressure or resource saturation events.
+priorityClasses:
+  # Master toggle to deploy PriorityClass manifests:
+  # - auction-critical-stateful (Value: 1000000) - For DB, Redis, Kafka
+  # - auction-high-priority (Value: 500000)     - For Bidding Engine, Catalog, Keycloak
+  # - auction-low-priority (Value: 100000)      - For AI Service, Promo jobs
+  enabled: true
+
+# ==============================================================================
+# SECTION 3: ZERO-TRUST NETWORK POLICIES (CALICO CNI)
+# ==============================================================================
+# Hardens the cluster with a default-deny baseline. Only explicitly permitted inter-tier
+# network communication is allowed. Direct ingress from web tiers to databases is blocked.
+networkPolicies:
+  # Master toggle for Calico NetworkPolicies
+  enabled: true
+
+  # Name of the namespace hosting the Prometheus / Grafana observability stack
+  monitoringNamespace: "monitoring"
+
+  # Name of the namespace hosting the Ingress-Nginx reverse proxy controller
+  ingressNamespace: "ingress-nginx"
+
+  # CIDR block representing internal cluster pod network for ingress-nginx hostNetwork matching
+  clusterCidr: "172.16.0.0/16"
+
+# ==============================================================================
+# SECTION 4: POD DISRUPTION BUDGETS (HIGH AVAILABILITY)
+# ==============================================================================
+# Guarantees that voluntary disruptions (node drains, cluster upgrades, auto-scaling events)
+# do not violate minimum quorum requirements for live bidding and user authentication.
+podDisruptionBudgets:
+  # Master toggle to enable PodDisruptionBudgets
+  enabled: true
+
+# ==============================================================================
+# SECTION 5: CENTRALIZED SECRETS MANAGEMENT (HASHICORP VAULT & ESO)
+# ==============================================================================
+# Integrates with HashiCorp Vault KV v2 secret engine via External Secrets Operator (ESO).
+# Sensitive credentials are never stored in Git or unencrypted Helm values.
+vault:
+  # Master toggle to enable automated ExternalSecret synchronization
+  enabled: true
+
+  # Name of the ClusterSecretStore resource connecting to the Vault API
+  clusterSecretStore: "vault-backend"
+
+  # KV v2 mount path and secret key inside HashiCorp Vault
+  secretPath: "secret/data/eauction"
+
+  # Target native Kubernetes Secret name created and reconciled by External Secrets Operator
+  targetSecretName: "eauction-secret"
+
+  # Reconciliation interval for polling Vault for rotated credentials (e.g. "1h", "15m")
+  refreshInterval: "1h"
+
+# ==============================================================================
+# SECTION 6: BIDDING ENGINE MICROSERVICE
+# ==============================================================================
+# Real-time WebSocket auction room server written in Go 1.22.
+# Manages active auction states, executes atomic bid updates via Redis Sentinel HA,
+# and publishes bid transaction streams to Apache Kafka.
+biddingEngine:
+  # Master toggle to deploy the bidding engine microservice
+  enabled: true
+
+  # Pod replica count (Active single-node: 3 replicas; 10k CCU target: 12 replicas)
+  replicaCount: 3
+
+  # Container image definition
+  image:
+    repository: "eauction-bidding-engine"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+
+  # Service networking definition
+  service:
+    port: 8081
+    nodePort: 30381
+
+  # Compute resource allocation per container
+  # Requests: Guaranteed CPU/Memory allocated by Kubernetes scheduler
+  # Limits: Hard ceiling enforced by Linux cgroups
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  # Horizontal Pod Autoscaling (HPA) definition
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilization: 70
+
+  # Linux container security context
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+  # Health and readiness probes
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 3
+    livenessProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+
+  # Custom annotations for Bidding Engine resources
+  # Sample "annotations" configuration:
+  # annotations:
+  #   service:
+  #     prometheus.io/scrape: "true"
+  #     prometheus.io/port: "8081"
+  #   pod:
+  #     vault.hashicorp.com/agent-inject: "false"
+  annotations:
+    service: {}
+    pod: {}
+
+  # Custom labels for Bidding Engine resources
+  # Sample "labels" configuration:
+  # labels:
+  #   pod:
+  #     app.kubernetes.io/tier: "realtime-websocket"
+  labels:
+    service: {}
+    pod: {}
+
+  # Target worker node selector
+  # Sample "nodeSelector" configuration:
+  # nodeSelector:
+  #   workloadType: "compute-optimized"
+  nodeSelector: {}
+
+  # Tolerations for tainted node groups
+  # Sample "tolerations" configuration:
+  # tolerations:
+  #   - key: "auction-realtime"
+  #     operator: "Exists"
+  #     effect: "NoSchedule"
+  tolerations: []
+
+  # Advanced affinity and anti-affinity rules
+  # Sample "affinity" configuration:
+  # affinity:
+  #   podAntiAffinity:
+  #     preferredDuringSchedulingIgnoredDuringExecution:
+  #       - weight: 100
+  #         podAffinityTerm:
+  #           labelSelector:
+  #             matchExpressions:
+  #               - key: app
+  #                 operator: In
+  #                 values:
+  #                   - eauction-bidding-engine
+  #           topologyKey: "kubernetes.io/hostname"
+  affinity: {}
+
+  # Topology spread constraints across failure domains
+  # Sample "topologySpreadConstraints" configuration:
+  # topologySpreadConstraints:
+  #   - maxSkew: 1
+  #     topologyKey: "topology.kubernetes.io/zone"
+  #     whenUnsatisfiable: "ScheduleAnyway"
+  #     labelSelector:
+  #       matchLabels:
+  #         app: eauction-bidding-engine
+  topologySpreadConstraints: []
+
+  # Custom environment variables appended to the container
+  # Sample "environment" configuration:
+  # environment:
+  #   - name: WS_READ_BUFFER_SIZE
+  #     value: "4096"
+  #   - name: BID_AUDIT_LOG_ENABLED
+  #     value: "true"
+  environment: []
+
+# ==============================================================================
+# SECTION 7: CATALOG & IDENTITY MICROSERVICE
+# ==============================================================================
+# Enterprise vehicle catalog, user lifecycle, and live auction registry written in
+# Java 17 / Spring Boot 3. Connects to PostgreSQL HA, Kafka, Keycloak, and host Postfix.
+catalogIdentity:
+  # Master toggle to deploy the catalog-identity microservice
+  enabled: true
+
+  # Pod replica count (Active single-node: 2 replicas; 10k CCU target: 10 replicas)
+  replicaCount: 2
+
+  # Container image definition
+  image:
+    repository: "eauction-catalog-identity"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+
+  # Service networking definition
+  service:
+    port: 8080
+
+  # Compute resource allocation
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1536Mi"
+
+  # Horizontal Pod Autoscaling (HPA) definition
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilization: 80
+
+  # Container security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+  # Health and readiness probes
+  probes:
+    startupProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 5
+      failureThreshold: 20
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      timeoutSeconds: 3
+
+  # Custom annotations for Catalog resources
+  annotations:
+    service: {}
+    pod: {}
+
+  # Custom labels for Catalog resources
+  labels:
+    service: {}
+    pod: {}
+
+  # Node selector constraint
+  nodeSelector: {}
+
+  # Tolerations for tainted node groups
+  tolerations: []
+
+  # Affinity and anti-affinity rules
+  affinity: {}
+
+  # Topology spread constraints
+  topologySpreadConstraints: []
+
+  # Custom environment variables
+  environment: []
+
+# ==============================================================================
+# SECTION 8: KEYCLOAK IDENTITY & ACCESS MANAGEMENT (IAM)
+# ==============================================================================
+# OpenID Connect (OIDC) and OAuth 2.0 Identity Broker running Keycloak 24 (Quarkus runtime).
+# Manages user authentication, RBAC realm roles, and token signing.
+keycloak:
+  # Master toggle to deploy the Keycloak service
+  enabled: true
+
+  # Pod replica count (Active single-node: 1 replica; 10k CCU target: 4 clustered replicas)
+  replicaCount: 1
+
+  # Container image definition
+  image:
+    repository: "quay.io/keycloak/keycloak"
+    tag: "24.0.5"
+    pullPolicy: "IfNotPresent"
+
+  # Service networking definition
+  service:
+    port: 8080
+
+  # Compute resource allocation
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "2000m"
+      memory: "1536Mi"
+
+  # Container security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+
+  # Health and readiness probes calibrated for Quarkus augmentation
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 2
+    livenessProbe:
+      initialDelaySeconds: 45
+      periodSeconds: 15
+      timeoutSeconds: 2
+
+  # Custom annotations
+  annotations:
+    service: {}
+    pod: {}
+
+  # Custom labels
+  labels:
+    service: {}
+    pod: {}
+
+  # Node selector constraint
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+  # Topology spread constraints
+  topologySpreadConstraints: []
+
+  # Custom environment variables
+  environment: []
+
+# ==============================================================================
+# SECTION 9: FRONTEND WEB PRESENTATION LAYER
+# ==============================================================================
+# Single-Page Application (SPA) built with React 18, TypeScript, Vite, and NGINX Alpine.
+# Serves static assets, routes UI consoles (buyer, seller, admin), and proxies WebSocket calls.
+frontend:
+  # Master toggle to deploy the frontend service
+  enabled: true
+
+  # Pod replica count (Active: 2 replicas; 10k CCU target: 6 replicas)
+  replicaCount: 2
+
+  # Container image definition
+  # Dual-deployability note:
+  # - To deploy AJ Auctions (modern clean UI with AJ logo powered by AJTechnologies): use "v2.0.0-aj"
+  # - To deploy legacy version (with old branding and old image assets): use "v1.0.0-legacy"
+  image:
+    repository: "eauction-frontend"
+    tag: "v2.0.0-aj"
+    pullPolicy: "IfNotPresent"
+
+  # Service networking definition
+  service:
+    port: 80
+
+  # Compute resource allocation
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
+
+  # Container security context
+  securityContext:
+    allowPrivilegeEscalation: false
+
+  # Probes
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 3
+      periodSeconds: 5
+    livenessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+
+  # Custom annotations
+  annotations:
+    service: {}
+    pod: {}
+
+  # Custom labels
+  labels:
+    service: {}
+    pod: {}
+
+  # Node selector constraint
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+  # Topology spread constraints
+  topologySpreadConstraints: []
+
+  # Custom environment variables
+  environment: []
+
+# ==============================================================================
+# SECTION 10: AI PROMOTIONS & INTELLIGENCE MICROSERVICE
+# ==============================================================================
+# AI-powered vehicle pricing estimation, marketing automation, and campaign manager
+# written in Python 3.11 with FastAPI. Connects to PostgreSQL, Redis, and Kafka.
+aiService:
+  # Master toggle to deploy the AI microservice
+  enabled: true
+
+  # Pod replica count (Active: 2 replicas; 10k CCU target: 4 replicas)
+  replicaCount: 2
+
+  # Container image definition
+  image:
+    repository: "eauction-ai-service"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+
+  # Service networking definition
+  service:
+    port: 8000
+
+  # Compute resource allocation
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+
+  # Probes
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    livenessProbe:
+      initialDelaySeconds: 20
+      periodSeconds: 15
+
+  # Custom annotations
+  annotations:
+    service: {}
+    pod: {}
+
+  # Custom labels
+  labels:
+    service: {}
+    pod: {}
+
+  # Node selector constraint
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+  # Topology spread constraints
+  topologySpreadConstraints: []
+
+  # Custom environment variables
+  environment: []
+
+# ==============================================================================
+# SECTION 11: PAYMENT BROKER & RECONCILIATION MICROSERVICE
+# ==============================================================================
+# Asynchronous payment webhook processor and gateway reconciler written in Node.js / Express.
+# Manages Razorpay & Cashfree webhook callbacks and dispatches financial events to Kafka.
+paymentBroker:
+  # Master toggle to deploy the payment broker service
+  enabled: true
+
+  # Pod replica count (Active: 2 replicas; 10k CCU target: 4 replicas)
+  replicaCount: 2
+
+  # Container image definition
+  image:
+    repository: "eauction-payment-broker"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+
+  # Service networking definition
+  service:
+    port: 8082
+
+  # Compute resource allocation
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "300m"
+      memory: "384Mi"
+
+  # Probes
+  probes:
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+    livenessProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 15
+
+  # Custom annotations
+  annotations:
+    service: {}
+    pod: {}
+
+  # Custom labels
+  labels:
+    service: {}
+    pod: {}
+
+  # Node selector constraint
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+  # Topology spread constraints
+  topologySpreadConstraints: []
+
+  # Custom environment variables
+  environment: []
+
+# ==============================================================================
+# SECTION 12: INGRESS ROUTING & TLS TERMINATION
+# ==============================================================================
+# Kubernetes Ingress configuration for Ingress-Nginx reverse proxy.
+# Manages multi-host routing, SSL termination, and real-time WebSocket protocol upgrades.
+ingress:
+  # Master toggle to create the Ingress resource
+  enabled: true
+
+  # Ingress controller class name
+  className: "nginx"
+
+  # NGINX-specific annotations for performance, timeouts, and WebSocket support
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "eauction-bidding-engine"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "15"
+
+  # Custom additional annotations for Ingress
+  # Sample "customAnnotations" configuration:
+  # customAnnotations:
+  #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  #   nginx.ingress.kubernetes.io/limit-rps: "100"
+  customAnnotations: {}
+
+# ==============================================================================
+# SECTION 13: LOGGING CONFIGURATION
+# ==============================================================================
+# Fine-grained log level configuration per microservice.
+# Supported levels: "DEBUG", "INFO", "WARN", "ERROR"
+logging:
+  biddingEngine: "INFO"
+  catalogIdentity: "INFO"
+  keycloak: "INFO"
+  aiService: "INFO"
+  paymentBroker: "INFO"
+
+# ==============================================================================
+# SECTION 14: METRICS & OBSERVABILITY
+# ==============================================================================
+# Prometheus scraping configuration for microservices metrics endpoints.
+metrics:
+  # Master toggle to enable metrics exposition annotations
+  enabled: true
+  # Discovery mode: "annotation" (default Pod annotations) or "serviceMonitor" (Prometheus Operator CRD)
+  discoveryType: "annotation"
+  endpoints:
+    catalogIdentity: "/actuator/prometheus"
+    aiService: "/metrics"
+    keycloak: "/auth/metrics"
+
+# ==============================================================================
+# SECTION 15: MAINTENANCE MODE
+# ==============================================================================
+# Starts specified microservice pods in idle sleep mode (/bin/sh -c 'sleep 3600')
+# without starting the main server binary. Enables operators to exec into containers
+# to debug database connectivity, file permissions, or network routing without crashes.
+maintenanceMode:
+  biddingEngine: false
+  catalogIdentity: false
+  keycloak: false
+  frontend: false
+  aiService: false
+  paymentBroker: false

@@ -1,0 +1,1073 @@
+
+.main_navbar {
+    height: 96px;
+    box-shadow: 0px 0px 9.142px 0px rgba(0, 0, 0, 0.10);
+}
+
+
+.main_navbar.navbar-expand-lg .navbar-nav .dropdown-menu {
+    top: 57px;
+    padding: 0;
+    border-radius: 0px 0px 8px 8px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
+}
+
+ul.dropdown-menu.custom_dropdown.show li a {
+    font-size: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #cccc;
+}
+
+.wpthemeHeaderNav ul {
+line-height:unset !important;
+}
+
+ul.dropdown-menu.custom_dropdown.show li:last-child a {
+    border-bottom: none;
+}
+
+.main_navbar .navbar-toggler-icon {
+    /* background-image: url('../images/hamberger.png'); */
+    background-repeat: no-repeat;
+    border: none;
+}
+
+.main_navbar .navbar-toggler {
+    border: none;
+}
+
+.main_navbar .navbar-toggler:focus {
+    box-shadow: none;
+    outline: 0;
+}
+
+.main_navbar .custom-navbar {
+    background-color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 0.75rem 0;
+}
+
+.main_navbar .custom-navbar.scrolled {
+    padding: 0.5rem 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.main_navbar .nav-item {
+    font-family: 'Dubai Medium';
+ 
+    color: var(--dark);
+    padding: 0px 4px!important;
+    position: relative;
+    border-right: 1.5px solid #757575;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    line-height: 10px!important;
+}
+
+.main_navbar .nav-item:last-child {
+    border-right: none;
+}
+
+.main_navbar .auth_p {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.main_navbar .nav_custom_list .nav-item:hover {
+    color: #D32437 !important;
+    text-decoration: underline;
+}
+
+.main_navbar .nav_custom_list a.nav-link:hover{
+    color: #D32437 !important;
+}
+.main_navbar a.nav-link {
+    font-size: 16px;
+    font-family: 'Dubai Regular';
+    color: #231F20;
+}
+
+.main_navbar .brand_red {
+    color: #D32437;
+    font-size: 14px;
+    font-family: 'Dubai Bold';
+}
+.row.pb-24 {
+    padding-bottom: 24px;
+}
+.main_navbar .language-btn {
+    display: flex;
+    align-items: center;
+    color: #231F20;
+    text-decoration: none;
+    font-family: 'Dubai';
+    font-family: 'Dubai Medium';
+    transition: var(--transition);
+}
+
+.main_navbar .language-btn:hover {
+    color: #231F20;
+    font-family: 'Dubai';
+    font-family: 'Dubai Bold';
+}
+
+
+
+.main_navbar .language-btn {
+    color: #231F20;
+    font-family: 'Dubai';
+    font-family: 'Dubai Bold';
+}
+
+.main_navbar .auth-buttons {
+    margin-left: 1rem;
+}
+
+.main_navbar .sign-up-btn,
+.login-btn {
+    border-radius: 4px;
+    padding: 0.375rem 1rem;
+    font-family: 'Dubai';
+    font-family: 'Dubai Medium';
+    font-size: 16px;
+}
+
+.main_navbar .lg-hide {
+    display: none;
+}
+
+.main_navbar .img_border {
+    border-radius: 30px;
+}
+
+.main_navbar .navbar-brand img {
+    width: 198px;
+}
+
+.navbar-nav .dropdown-toggle::after {
+    display: none;
+}
+
+.navbar-nav .custom-arrow {
+    padding-right: 22px !important;
+    margin-right: 10px;
+    background-repeat: no-repeat !important;
+    background-position: center right !important;
+}
+
+/* .banner_section {
+    position: relative;
+    top: 55px;
+} */
+/* Responsive styles */
+@media (max-width: 991.98px) {
+    .main_navbar div#navbarNav {
+        background: #fff;
+        padding: 10px 20px;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+        border-radius: 0px 0px 8px 8px;
+        z-index: 1;
+    }
+
+    ul.dropdown-menu.custom_dropdown.show {
+        width: 100%;
+    }
+
+    .main_navbar {
+        height: auto;
+    }
+
+    .main_navbar .nav_custom_list li {
+        flex-direction: column;
+        align-items: start;
+    }
+
+    .main_navbar .auth_p {
+        padding: 0px;
+    }
+
+    .main_navbar .lg-hide {
+        display: block;
+    }
+
+    .main_navbar .nav-item {
+        padding: 0px;
+    }
+
+    .main_navbar .mbl-hide {
+        display: none;
+    }
+
+    .main_navbar .navbar-nav {
+        gap: 12px;
+    }
+
+    .main_navbar .mb-mbl {
+        /* margin-top: 12px; */
+    }
+
+    .main_navbar .nav-item {
+        /* margin-top: 16px; */
+        border-right: none;
+    }
+
+    .main_navbar .custom-navbar {
+        padding: 0.5rem 0;
+    }
+
+    .main_navbar .hero-section {
+        padding: 6rem 0 3rem;
+    }
+
+
+    .main_navbar .auth-buttons {
+        margin-top: 1rem;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .mbl-border {
+        border: none !important;
+    }
+
+    .main_navbar div#navbarNav {
+        background: #fff;
+        padding: 10px 20px;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+        margin-top: 6px;
+        border-radius: 0px 0px 8px 8px;
+    }
+
+    .main_navbar .auth_p {
+        padding: 0px;
+    }
+
+    .main_navbar .lg-hide {
+        display: block;
+    }
+
+    .main_navbar .nav-item {
+        padding: 0px;
+    }
+
+    .main_navbar .mbl-hide {
+        display: none;
+    }
+
+    .main_navbar .navbar-nav {
+        gap: 12px;
+    }
+
+    .main_navbar .mb-mbl {
+        /* margin-top: 12px; */
+    }
+
+    .main_navbar .nav-item {
+        /* margin-top: 16px; */
+        border-right: none;
+    }
+
+    .main_navbar .custom-navbar {
+        padding: 0.5rem 0;
+    }
+
+
+    .main_navbar .auth-buttons {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .main_navbar .sign-up-btn,
+    .login-btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    .main_navbar .language-selector {
+        margin-top: 1rem;
+        margin-left: 0 !important;
+    }
+
+}
+
+@media (max-width: 576px) {
+    .dropdown-menu .dropdown-item {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+}
+
+/*---------------------------------Header end------------------*/
+
+
+.auction-home-section .category-box {
+    border: 1px solid #C7C7C7;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s;
+    height: 100%;
+}
+
+.auction-home-section .category-box:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+}
+
+.auction-home-section .category-box img {
+    /* width: 40px; */
+    margin-bottom: 10px;
+}
+
+
+/*---------------------------------Featured Auction Section start--------------------*/
+
+.auction-home-section .owl-carousel.featuredauction-carousel.owl-loaded.owl-drag {
+    position: relative;
+}
+
+.auction-home-section .owl-carousel.featuredauction-carousel .owl-nav {
+    display: none;
+}
+
+.auction-home-section .owl-carousel.featuredauction-carousel:hover .owl-nav {
+    display: block;
+}
+
+div#recommendedowl:hover .owl-nav {
+    display: block;
+}
+ 
+div#recommendedowl .owl-nav {
+    display: none;
+}
+ 
+ 
+
+.auction-home-section .owl-carousel.featuredauction-carousel button.owl-prev {
+    position: absolute;
+    left: -44px;
+    top: 50%;
+}
+
+.auction-home-section .owl-carousel.featuredauction-carousel button.owl-next {
+    position: absolute;
+    right: -44px;
+    top: 50%;
+}
+
+.auction-home-section .owl-carousel.featuredauction-carousel .car-card .car-image {
+    height: 200px;
+    object-fit: cover;
+}
+
+.auction-home-section .nav-tabs {
+    border-bottom: none;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.auction-home-section .nav-tabs .nav-link {
+    border: none;
+    border-radius: 4Px;
+    padding: 8px 24px;
+    margin: 5px 5px 10px 0;
+    background-color: #EBEBEB;
+    color: #5F5F5F;
+    font-family: 'Dubai Regular';
+    font-size: 18px;
+}
+
+.auction-home-section .nav-tabs .nav-link.active {
+    background-color: #d0202b;
+    color: #fff;
+}
+
+.auction-home-section .car-card {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 20px;
+    background: #fff;
+}
+
+
+.auction-home-section .view-all {
+    float: right;
+    color: #D32437;
+    font-size: 20px;
+    font-family: 'Dubai Medium';
+    text-decoration: none;
+}
+
+.auction-home-section .summary-title {
+    font-size: 32px;
+    font-family: 'Dubai Bold';
+    margin-bottom: 24px;
+    line-height: 24px;
+    position: relative;
+}
+
+.category-title {
+    text-align: center;
+    font-size: 20px;
+    font-style: normal;
+    font-family: 'Dubai Medium';
+    line-height: 26px;
+}
+
+.category-box svg {
+    height: 80px;
+    margin-bottom: 10px;
+}
+
+
+
+@media (max-width: 576px) {
+    .auction-home-section .category-box {
+        padding: 10px;
+    }
+
+    .auction-home-section .section-title {
+        font-size: 1.2rem;
+    }
+
+}
+
+@media (max-width: 767.98px) {
+
+    .auction-home-section .nav-tabs {
+        flex-wrap: nowrap !important;
+        white-space: nowrap;
+        overflow-x: auto;
+        width: 100%;
+    }
+}
+
+
+/*---------------------------------Footer start----------------------*/
+.custom_footer.footer {
+    background-color: #F5F6F7;
+    padding: 24px 0 10px;
+}
+
+.custom_footer .footer-logo {
+    height: 50px;
+    width: auto;
+    margin-bottom: 1rem;
+}
+
+.custom_footer .footer-text {
+    color: #6B6B6B;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.custom_footer .footer-title {
+    color: #231F20;
+    font-size: 20px;
+
+    font-family: 'Dubai Bold';
+}
+
+.custom_footer .footer-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.custom_footer .footer-links li {
+    margin-bottom: 0.75rem;
+}
+
+.custom_footer .footer-links a {
+    color: #6B6B6B;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.custom_footer .footer-links a:hover {
+    color: #6B6B6B;
+}
+
+.custom_footer .social-links {
+    display: flex;
+    gap: 1rem;
+}
+
+.custom_footer .social-link {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #231F20;
+    text-decoration: none;
+}
+
+.custom_footer .social-link:hover {
+    background-color: #231F20;
+    color: #fff;
+}
+
+.custom_footer .app-buttons {
+    display: flex;
+    flex-direction: column;
+}
+
+.custom_footer .footer-bottom {
+    margin-top: 3rem;
+    padding-top: 12px;
+    border-top: 1px solid #e4e4e4;
+    color: #6B6B6B;
+    font-size: 16px;
+}
+
+.custom_footer .footer-bottom p {
+    color: #6B6B6B;
+    font-size: 16px;
+}
+
+@media (max-width: 991.98px) {
+    .custom_footer .navbar {
+        padding: 0.5rem 0;
+    }
+
+    .custom_footer .border-item::after {
+        display: none;
+    }
+
+    .nav-item:last-child {
+        border-bottom: none !important;
+    }
+
+    .nav-item {
+        height: auto !important;
+        margin-top: 0px;
+    }
+
+    .nav-item:last-child {
+        border-bottom: none;
+    }
+
+    .auth-buttons {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .nav-item:last-child {
+        border-bottom: none !important;
+    }
+
+    .auth-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .custom_footer .auth-buttons .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    .custom_footer .footer {
+        padding: 2rem 0 1rem;
+    }
+
+    .custom_footer .footer-title {
+        margin-bottom: 1rem;
+    }
+
+    .custom_footer .social-links {
+        justify-content: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .custom_footer .app-buttons {
+        align-items: center;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .custom_footer .footer-bottom {
+        margin-top: 2rem;
+    }
+}
+
+/*---------------------------------Footer end--------------------*/
+
+
+/*---------------------------------Search Section start--------------------*/
+.home_divider {
+    height: 10px;
+    background-color: #EBEBEB;
+}
+
+
+.search-container {
+    position: relative;
+    display: none;
+    position: fixed;
+    width: 100%;
+    z-index: 999;
+    top:96px;
+  }
+
+  .search-bar .form-control {
+    box-shadow: none;
+  }
+  .search-bar {
+    /* display: none; */
+    height: 75px;
+    width: 100%;
+    margin: 0 auto;
+ 
+ left: auto;
+ right: auto;
+   
+  
+    z-index: 10;
+    padding-top: 10px;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+
+  .search-bar .input-group{
+    height: 56px;
+    width: 615px;
+    margin: 0 auto;
+  }
+
+  .search-bar .form-control {
+    border-radius: 0 4px 4px 0;
+  }
+
+ .search-container input.form-control.border-0 {
+    padding: 0px;
+  }
+
+  .search-container .input-group-text {
+    background-color: white;
+    border-radius: 4px 0 0 4px;
+    border: none;
+  }
+
+  .search-container .search-toggle {
+    cursor: pointer;
+    color: #D32437;
+    font-size: 1.3rem;
+  }
+  .search-bar .form-control::placeholder {
+    color: #231F20;
+    opacity: 1; 
+  }
+  @media (max-width: 768px) {
+    .search-bar {
+      padding: 10px 20px;
+    }
+  }
+/*---------------------------------Search Section End--------------------*/
+
+
+
+/*---------------------------------how-it-works start--------------------*/
+  .how-it-works h2 {
+    font-weight: 700;
+    font-size: 2.2rem;
+  }
+
+  .step-icon {
+    width: 90px;
+    height: 90px;
+    background-color: #D32437;
+    color: #fff;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+  }
+
+  .step-icon.light {
+    background-color: #FFF0F0;
+    border: 1px solid #D8D8D8;
+  }
+
+  .step-text h5 {
+    font-family: 'Dubai medium';
+    font-size: 22px;
+    color: #231F20;
+  }
+  .step-text p{
+    font-family: 'Dubai Regular';
+    font-size: 16px;
+    color: #333;
+  }
+  .step-text {
+    margin-top: 50px;
+}
+  .step-line {
+    position: absolute;
+    top: 45px;
+    left: 80%;
+    width: 40%;
+    height: 1px;
+    border-top: 3px dashed #f8d7da;
+    z-index: -1;
+  }
+
+  .connector-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #fff;
+  }
+
+  .dot {
+    width: 12px;
+    height: 12px;
+    background-color: #D32437; 
+    border-radius: 50%;
+    z-index: 2;
+    margin-top: -2px;
+  }
+
+  .step-wrapper {
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (max-width: 767.98px) {
+    .step-line {
+      display: none;
+    }
+
+    .step-wrapper {
+      margin-bottom: 40px;
+    }
+  }
+/*---------------------------------how-it-works end--------------------*/
+
+
+
+/*---------------------------------Testmonial start--------------------*/
+.heart-btn {
+    display: inline-block;
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .heart-btn svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: #231F20;
+    stroke-width: 1.5;
+    transition: fill 0.3s ease, transform 0.3s ease;
+  }
+
+  /* Hover effect */
+  
+.heart-btn:hover .heart-path {
+    fill: #D32437 !important;
+    stroke: #D32437 !important;
+  }
+.heart-btn:hover svg circle{
+    stroke: #D32437;
+}
+.heart-btn:hover svg path{
+    fill: #D32437 !important;
+    stroke: #D32437 !important;
+}
+
+.testimonial-section .section-title {
+    font-size: 32px;
+    font-family: 'Dubai Bold';
+}
+
+
+.testimonial-section .view-all {
+    font-size: 18px;
+    text-decoration: none;
+}
+
+.col-md-8.testimonial-content {
+    padding: 30px;
+}
+
+.testimonial-card {
+    border-radius: 8px;
+    box-shadow: 0px 0px 9.142px 0px rgba(0, 0, 0, 0.10);
+    background-color: #fff;
+    margin-bottom: 10px;
+    min-height: 355px;
+ 
+}
+
+.testimonial-img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px 0 0 8px;
+    object-fit: cover;
+}
+
+.testimonial-content .testi_date {
+    font-size: 12px;
+    color: #525252;
+    font-family: 'Dubai Regular';
+}
+
+.testimonial-content h5 {
+    color: #231F20;
+    font-size: 20px;
+    font-family: 'Dubai Bold';
+    margin-bottom: 10px;
+}
+
+.testimonial-content p {
+    font-size: 16px;
+    color: #525252;
+    margin-bottom: 8px;
+}
+
+/* Owl Nav Arrows */
+.testimonial-carousel .owl-nav {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+}
+
+.testimonial-carousel .owl-nav button.owl-prev,
+.testimonial-carousel .owl-nav button.owl-next {
+    background-color: transparent;
+    border: none;
+    font-size: 32px;
+    color: #D32437;
+}
+
+.testimonial-carousel .owl-dots {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.testimonial-carousel .owl-dot span {
+    width: 12px;
+    height: 12px;
+    background: #DFDFDF;
+    display: inline-block;
+    border-radius: 50%;
+    margin: 0 5px;
+}
+
+.testimonial-carousel .owl-dot.active span {
+    background: #D32437;
+}
+
+.testimonial-section .owl-carousel .star-rating img {
+    width: auto;
+}
+
+.testimonial-section .owl-carousel .star-rating {
+    display: flex;
+    gap: 8px;
+    padding-top: 20px;
+}
+
+.testimonial-section .owl-carousel .rating {
+    display: flex;
+}
+
+.testimonial-carousel .testmonial_body {
+    padding: 0px 20px;
+}
+
+@media (max-width: 767.98px) {
+    .testimonial-carousel .owl-nav {
+        justify-content: space-between;
+    }
+}
+
+
+
+
+
+/*---------------------------------Blog Section start--------------------*/
+
+.blog-card img {
+    border-radius: 8px;
+}
+
+.header-title {
+    font-size: 32px;
+    font-family: 'Dubai Bold';
+    position: relative;
+    color: #231F20;
+}
+
+.header-title::after {
+    content: '';
+    display: block;
+    width: 50px;
+    height: 4px;
+    background-color: #d11a3b;
+    margin-top: 8px;
+}
+
+.header-title::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 4px;
+    background: #F4C2C2;
+    position: absolute;
+    top: 92%;
+    left: 55px;
+}
+
+.blog-card .text-muted img {
+    vertical-align: middle;
+    border-radius: 50%;
+}
+
+.blog-card .card-title {
+    font-size: 18px;
+    margin-top: 12px;
+    margin-bottom: 12px;
+    font-family: 'Dubai Bold';
+}
+
+.author_txt_1 {
+    font-size: 12px;
+    font-family: 'Dubai Regular';
+    color: #231F20;
+}
+
+.author_txt_2 {
+    font-size: 12px;
+    font-family: 'Dubai Regular';
+    color: #828282;
+}
+
+.py-24 {
+    padding: 24px 0px;
+}
+
+.view-all {
+    float: right;
+    color: #D32437;
+    font-size: 20px !important;
+    font-family: 'Dubai Bold';
+    text-decoration: none;
+}
+
+
+
+/*---------------------------------Find by car Section start--------------------*/
+.find-car-section .nav-tabs .nav-link {
+    border: none;
+    border-radius: 0;
+    color: #9A9EA7;
+    font-family: 'Dubai Medium';
+    font-size: 14px;
+    background-color: transparent;
+}
+
+.find-car-section .nav-tabs .nav-link.active {
+    color: #fff;
+    background-color: #c8102e;
+    border-radius: 4px;
+}
+
+.find-car-section .popular-makes .list-group-item {
+    border: none;
+    border-radius: 8px;
+    padding: 22px 26px;
+    margin-bottom: 10px;
+    background-color: #fff;
+    box-shadow: 0px 3px 4px 0px rgba(153, 155, 168, 0.15);
+}
+
+.find-car-section .popular-makes .list-group-item.active {
+    background-color: #fff;
+    box-shadow: 0px 16px 18px 0px rgba(153, 155, 168, 0.12);
+}
+
+.find-car-section ul.list-unstyled li {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 15px;
+}
+
+.find-car-section .list-group {
+    gap: 16px;
+}
+
+.find_by_car_title {
+    font-size: 32px;
+    color: #231F20;
+}
+
+.brand_Sec {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.brand_Sec h6 {
+    font-size: 18px;
+    color: #231F20;
+    font-family: 'Dubai Medium';
+}
+
+.brand_Sec p {
+    font-size: 14px;
+    color: #9A9EA7;
+    font-family: 'Dubai Regular';
+}
+
+.centeredTextDiv {
+    margin-top: 200px !important;
+}
+
+.arrow_right {
+    margin-left: auto;
+}
+
+@media (max-width: 767px) {
+    .find-car-tabs {
+        flex-wrap: nowrap !important;
+        white-space: nowrap;
+        overflow-x: auto;
+        width: 100%;
+    }
+    .banner_section {
+        height: auto;
+    }
+     .search-bar .input-group {
+        width: 100%;
+    }
+    .search-container {
+            top: 65px;
+    }
+}
+
+@media (min-width: 991px) and (max-width: 1200px) {
+  .col-custom {
+    flex: 0 0 auto;
+    width: 25%;
+  }
+}

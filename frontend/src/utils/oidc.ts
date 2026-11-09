@@ -47,19 +47,30 @@ export async function initiateKeycloakLogin(options?: {
   // Exact canonical redirectUri
   const redirectUri = window.location.origin + '/seller-buyer/';
 
+  // Smart detect return view from current URL if not explicitly supplied
+  const currentPath = window.location.pathname;
+  let targetReturnView = options?.returnView;
+  if (!targetReturnView) {
+    if (currentPath.includes('/admin')) targetReturnView = 'ADMIN';
+    else if (currentPath.includes('/favorites')) targetReturnView = 'FAVORITES';
+    else if (currentPath.includes('/security-deposit')) targetReturnView = 'SECURITY_DEPOSIT';
+    else if (currentPath.includes('/online-auctions')) targetReturnView = 'ONLINE_AUCTIONS';
+    else if (currentPath.includes('/silent-auctions')) targetReturnView = 'SILENT_AUCTIONS';
+  }
+
   // Persist in BOTH sessionStorage and localStorage for reliability across browser security profiles
   try {
     sessionStorage.setItem('kc_auth_state', state);
     sessionStorage.setItem('kc_code_verifier', codeVerifier);
     sessionStorage.setItem('kc_redirect_uri', redirectUri);
-    if (options?.returnView) sessionStorage.setItem('kc_return_view', options.returnView);
-    if (options?.returnUrl) sessionStorage.setItem('kc_return_url', options.returnUrl);
+    if (targetReturnView) sessionStorage.setItem('kc_return_view', targetReturnView);
+    if (options?.returnUrl || currentPath) sessionStorage.setItem('kc_return_url', options?.returnUrl || currentPath);
 
     localStorage.setItem('kc_auth_state', state);
     localStorage.setItem('kc_code_verifier', codeVerifier);
     localStorage.setItem('kc_redirect_uri', redirectUri);
-    if (options?.returnView) localStorage.setItem('kc_return_view', options.returnView);
-    if (options?.returnUrl) localStorage.setItem('kc_return_url', options.returnUrl);
+    if (targetReturnView) localStorage.setItem('kc_return_view', targetReturnView);
+    if (options?.returnUrl || currentPath) localStorage.setItem('kc_return_url', options?.returnUrl || currentPath);
   } catch (err) {
     console.warn('Storage permission notice during Keycloak redirect setup:', err);
   }

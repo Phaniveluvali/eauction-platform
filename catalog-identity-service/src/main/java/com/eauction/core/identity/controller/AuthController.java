@@ -53,7 +53,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> getProfile(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+    public ResponseEntity<UserResponse> getProfile(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -77,7 +77,7 @@ public class AuthController {
 
     @PostMapping("/users/{id}/reset-password")
     public ResponseEntity<java.util.Map<String, Object>> resetPassword(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
             @org.springframework.web.bind.annotation.PathVariable UUID id,
             @RequestBody java.util.Map<String, String> body) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {

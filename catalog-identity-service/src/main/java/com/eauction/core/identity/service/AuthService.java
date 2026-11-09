@@ -6,20 +6,18 @@ import com.eauction.core.identity.dto.RegisterRequest;
 import com.eauction.core.identity.dto.UserResponse;
 import com.eauction.core.identity.model.User;
 import com.eauction.core.identity.repository.UserRepository;
+import com.eauction.core.identity.security.TokenProvider;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Date;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -28,31 +26,37 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
-    private final SecretKey signingKey;
+    private final TokenProvider tokenProvider;
     private final long expirationMs;
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
-            @Value("${jwt.secret}") String jwtSecret,
+            TokenProvider tokenProvider,
             @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jdbcTemplate = jdbcTemplate;
+        this.tokenProvider = tokenProvider;
         this.expirationMs = expirationMs;
-        // Generate HMAC-SHA key from shared secret bytes (guaranteeing >= 256 bits)
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            @Value("${jwt.secret}") String jwtSecret,
+            TokenProvider tokenProvider,
             @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
-        this(userRepository, passwordEncoder, null, jwtSecret, expirationMs);
+        this(userRepository, passwordEncoder, null, tokenProvider, expirationMs);
+    }
+
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            String jwtSecret,
+            long expirationMs) {
+        this(userRepository, passwordEncoder, null, new com.eauction.core.identity.security.JwtTokenProvider(jwtSecret, expirationMs), expirationMs);
     }
 
     @Transactional
@@ -91,8 +95,8 @@ public class AuthService {
         } catch (Exception ignored) {}
 
         String token = generateToken(savedUser);
-        java.util.List<String> roles = getUserRoles(savedUser.getId());
-        java.util.List<String> permissions = getUserPermissions(savedUser.getId());
+        List<String> roles = getUserRoles(savedUser.getId());
+        List<String> permissions = getUserPermissions(savedUser.getId());
         boolean isSuper = roles.contains("SUPER_ADMIN") || "admin@eauction.in".equalsIgnoreCase(savedUser.getEmail());
 
         AuthResponse regResp = new AuthResponse(
@@ -124,8 +128,8 @@ public class AuthService {
         }
 
         String token = generateToken(user);
-        java.util.List<String> roles = getUserRoles(user.getId());
-        java.util.List<String> permissions = getUserPermissions(user.getId());
+        List<String> roles = getUserRoles(user.getId());
+        List<String> permissions = getUserPermissions(user.getId());
         boolean isSuper = roles.contains("SUPER_ADMIN") || "admin@eauction.in".equalsIgnoreCase(user.getEmail());
 
         AuthResponse loginResp = new AuthResponse(
@@ -143,22 +147,6 @@ public class AuthService {
         return loginResp;
     }
 
-    // =========================================================================
-    // CRITICAL LOGIC: AZURE AD B2C ENTERPRISE SSO AUTHENTICATION & PROVISIONING
-    // =========================================================================
-    // Handles federated authentication for Emirates Transport Azure AD B2C users:
-    // 1. Decodes and parses OIDC ID Token payload (Base64URL JSON claims):
-    //    - Extracts 'emails' array or 'email' claim.
-    //    - Extracts 'name' / 'given_name' display name.
-    //    - Extracts custom B2C attributes like 'extension_MobileNumber'.
-    // 2. Account Resolution & Dynamic Provisioning:
-    //    - If the user already exists in PostgreSQL, authenticates them immediately.
-    //    - If new user, auto-provisions account as verified 'BUYER' with a secure random hash.
-    //    - Resolves unique phone number constraints to avoid collisions on new sign-ins.
-    // 3. Flush Ordering & RBAC Assignment:
-    //    - Uses userRepository.saveAndFlush() to ensure PostgreSQL foreign keys are
-    //      committed before executing jdbcTemplate INSERT INTO user_roles (preventing 25P02 aborts).
-    // 4. Returns canonical JWT token signed with HMAC-SHA256 containing all roles and permissions.
     @Transactional
     public AuthResponse handleAzureB2cLogin(com.eauction.core.identity.dto.AzureB2cLoginRequest request) {
         String targetEmail = null;
@@ -188,8 +176,7 @@ public class AuthService {
                         targetPhone = root.get("phone_number").asText();
                     }
                 }
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
 
         // Fallbacks if not in JWT
@@ -250,8 +237,8 @@ public class AuthService {
         }
 
         String token = generateToken(user);
-        java.util.List<String> roles = getUserRoles(user.getId());
-        java.util.List<String> permissions = getUserPermissions(user.getId());
+        List<String> roles = getUserRoles(user.getId());
+        List<String> permissions = getUserPermissions(user.getId());
         boolean isSuper = roles.contains("SUPER_ADMIN") || "admin@eauction.in".equalsIgnoreCase(user.getEmail());
 
         AuthResponse loginResp = new AuthResponse(
@@ -356,8 +343,8 @@ public class AuthService {
         }
 
         String token = generateToken(user);
-        java.util.List<String> roles = getUserRoles(user.getId());
-        java.util.List<String> permissions = getUserPermissions(user.getId());
+        List<String> roles = getUserRoles(user.getId());
+        List<String> permissions = getUserPermissions(user.getId());
         boolean isSuper = roles.contains("SUPER_ADMIN") || "admin@eauction.in".equalsIgnoreCase(user.getEmail());
 
         AuthResponse loginResp = new AuthResponse(
@@ -376,54 +363,28 @@ public class AuthService {
     }
 
     public String generateToken(User user) {
-        Instant now = Instant.now();
-        Date issuedAt = Date.from(now);
-        Date expiration = Date.from(now.plusMillis(expirationMs));
-
-        return Jwts.builder()
-                .header()
-                    .type("JWT")
-                    .and()
-                .subject(user.getEmail())
-                .claim("userId", user.getId().toString())
-                .claim("role", user.getRole())
-                .claim("kycVerified", user.getKycVerified())
-                .claim("fullName", user.getFullName())
-                .issuedAt(issuedAt)
-                .expiration(expiration)
-                .signWith(signingKey, Jwts.SIG.HS256)
-                .compact();
+        return tokenProvider.generateToken(user);
     }
 
     public Claims parseAndValidateToken(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(signingKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new BadCredentialsException("Invalid or expired JWT token: " + e.getMessage(), e);
-        }
+        return tokenProvider.parseAndValidateToken(token);
     }
 
     public UUID extractUserId(String token) {
-        Claims claims = parseAndValidateToken(token);
-        String userIdStr = claims.get("userId", String.class);
-        return UUID.fromString(userIdStr);
+        return tokenProvider.extractUserId(token);
     }
 
     public String extractEmail(String token) {
-        return parseAndValidateToken(token).getSubject();
+        return tokenProvider.extractEmail(token);
     }
 
     public String extractRole(String token) {
-        return parseAndValidateToken(token).get("role", String.class);
+        return tokenProvider.extractRole(token);
     }
 
-    public java.util.List<String> getUserRoles(UUID userId) {
+    public List<String> getUserRoles(UUID userId) {
         if (jdbcTemplate == null || userId == null) {
-            return java.util.Collections.emptyList();
+            return Collections.emptyList();
         }
         try {
             return jdbcTemplate.queryForList(
@@ -432,13 +393,13 @@ public class AuthService {
                     userId
             );
         } catch (Exception e) {
-            return java.util.Collections.emptyList();
+            return Collections.emptyList();
         }
     }
 
-    public java.util.List<String> getUserPermissions(UUID userId) {
+    public List<String> getUserPermissions(UUID userId) {
         if (jdbcTemplate == null || userId == null) {
-            return java.util.Collections.emptyList();
+            return Collections.emptyList();
         }
         try {
             return jdbcTemplate.queryForList(
@@ -450,7 +411,7 @@ public class AuthService {
                     userId
             );
         } catch (Exception e) {
-            return java.util.Collections.emptyList();
+            return Collections.emptyList();
         }
     }
 
@@ -459,8 +420,8 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
         UserResponse response = UserResponse.fromEntity(user);
-        java.util.List<String> roles = getUserRoles(userId);
-        java.util.List<String> permissions = getUserPermissions(userId);
+        List<String> roles = getUserRoles(userId);
+        List<String> permissions = getUserPermissions(userId);
         boolean isSuper = roles.contains("SUPER_ADMIN") || "admin@eauction.in".equalsIgnoreCase(user.getEmail());
         response.setRoles(roles);
         response.setPermissions(permissions);
@@ -474,7 +435,7 @@ public class AuthService {
         return userRepository.searchUsers(role, search, pageable)
                 .map(u -> {
                     UserResponse resp = UserResponse.fromEntity(u);
-                    java.util.List<String> roles = getUserRoles(u.getId());
+                    List<String> roles = getUserRoles(u.getId());
                     boolean isSuper = roles.contains("SUPER_ADMIN") || "admin@eauction.in".equalsIgnoreCase(u.getEmail());
                     resp.setRoles(roles);
                     resp.setSuperAdmin(isSuper);

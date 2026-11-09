@@ -1,0 +1,184 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eauction-catalog-identity
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-catalog-identity
+    {{- include "eauction-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.catalogIdentity.replicaCount }}
+  selector:
+    matchLabels:
+      app: eauction-catalog-identity
+  template:
+    metadata:
+      labels:
+        app: eauction-catalog-identity
+    spec:
+      serviceAccountName: eauction-catalog-identity-sa
+      priorityClassName: auction-high-priority
+      {{- include "eauction-platform.podAntiAffinity" (dict "app" "eauction-catalog-identity" "soft" .Values.global.softScheduling) | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: catalog-identity
+          image: "{{ .Values.catalogIdentity.image.repository }}:{{ .Values.catalogIdentity.image.tag }}"
+          imagePullPolicy: {{ .Values.catalogIdentity.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: {{ .Values.catalogIdentity.service.port }}
+              name: http
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: POSTGRES_PASSWORD
+            - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+            - name: SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE
+            - name: SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT
+            - name: SERVER_TOMCAT_THREADS_MAX
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SERVER_TOMCAT_THREADS_MAX
+            - name: SERVER_TOMCAT_THREADS_MIN_SPARE
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SERVER_TOMCAT_THREADS_MIN_SPARE
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_KAFKA_BOOTSTRAP_SERVERS
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-secret
+                  key: JWT_SECRET
+            - name: SPRING_MAIL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_MAIL_HOST
+            - name: SPRING_MAIL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_MAIL_PORT
+            - name: SPRING_MAIL_FROM
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_MAIL_FROM
+            - name: SPRING_MAIL_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_MAIL_USERNAME
+            - name: NOTIFICATION_WHATSAPP_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: NOTIFICATION_WHATSAPP_URL
+            - name: NOTIFICATION_WHATSAPP_INSTANCE
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: NOTIFICATION_WHATSAPP_INSTANCE
+            - name: NOTIFICATION_WHATSAPP_APIKEY
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: NOTIFICATION_WHATSAPP_APIKEY
+          resources:
+            {{- toYaml .Values.catalogIdentity.resources | nindent 12 }}
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.catalogIdentity.service.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 20
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.catalogIdentity.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.catalogIdentity.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 15"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eauction-catalog-identity
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: eauction-catalog-identity
+spec:
+  ports:
+    - port: {{ .Values.catalogIdentity.service.port }}
+      targetPort: {{ .Values.catalogIdentity.service.port }}
+      name: http
+  selector:
+    app: eauction-catalog-identity
+---
+{{- if .Values.catalogIdentity.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: eauction-catalog-identity-hpa
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: eauction-catalog-identity
+  minReplicas: {{ .Values.catalogIdentity.hpa.minReplicas }}
+  maxReplicas: {{ .Values.catalogIdentity.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.catalogIdentity.hpa.targetCPUUtilization }}
+{{- end }}

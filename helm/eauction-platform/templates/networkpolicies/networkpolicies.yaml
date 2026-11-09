@@ -1,0 +1,403 @@
+{{- if .Values.networkPolicies.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-system-dns-monitoring
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow Prometheus monitoring scrape from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicies.monitoringNamespace }}
+  egress:
+    # Allow DNS resolution universally (CoreDNS Service IP & Pods)
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: bidding-engine-policy
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: eauction-bidding-engine
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow WebSocket connections from Ingress controller (host network or cluster IP)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicies.ingressNamespace }}
+        - ipBlock:
+            cidr: 172.16.0.0/16
+        - ipBlock:
+            cidr: 127.0.0.1/32
+      ports:
+        - protocol: TCP
+          port: 8081
+  egress:
+    # Egress to Redis Master & Sentinel
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-redis-sentinel
+      ports:
+        - protocol: TCP
+          port: 26379
+    # Egress to Kafka Event Stream
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    # Egress to Keycloak for token inspection
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-keycloak
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: catalog-identity-policy
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: eauction-catalog-identity
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow HTTP from Ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicies.ingressNamespace }}
+        - ipBlock:
+            cidr: 172.16.0.0/16
+        - ipBlock:
+            cidr: 127.0.0.1/32
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Egress to PostgreSQL Database
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Egress to Kafka Event Bus
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    # Egress to Keycloak for auth validation
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-keycloak
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Egress to local Postfix on host port 5433 for email dispatch
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 5433
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: keycloak-policy
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: eauction-keycloak
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow HTTP from Ingress controller and internal services
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicies.ingressNamespace }}
+        - ipBlock:
+            cidr: 172.16.0.0/16
+        - ipBlock:
+            cidr: 127.0.0.1/32
+        - podSelector:
+            matchLabels:
+              app: eauction-bidding-engine
+        - podSelector:
+            matchLabels:
+              app: eauction-catalog-identity
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Egress to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ai-service-policy
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: eauction-ai-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicies.ingressNamespace }}
+        - ipBlock:
+            cidr: 172.16.0.0/16
+        - ipBlock:
+            cidr: 127.0.0.1/32
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: payment-broker-policy
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: eauction-payment-broker
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicies.ingressNamespace }}
+        - ipBlock:
+            cidr: 172.16.0.0/16
+        - ipBlock:
+            cidr: 127.0.0.1/32
+      ports:
+        - protocol: TCP
+          port: 8082
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: eauction-kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-policy
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: eauction-frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow HTTP from Ingress controller only
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicies.ingressNamespace }}
+        - ipBlock:
+            cidr: 172.16.0.0/16
+        - ipBlock:
+            cidr: 127.0.0.1/32
+      ports:
+        - protocol: TCP
+          port: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: stateful-tier-isolation
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - eauction-postgres
+          - eauction-redis
+          - eauction-redis-sentinel
+          - eauction-kafka
+          - eauction-zookeeper
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Postgres accepts from Catalog, Keycloak, AI service, Payment broker + replication
+    - from:
+        - podSelector:
+            matchLabels:
+              app: eauction-catalog-identity
+        - podSelector:
+            matchLabels:
+              app: eauction-keycloak
+        - podSelector:
+            matchLabels:
+              app: eauction-ai-service
+        - podSelector:
+            matchLabels:
+              app: eauction-payment-broker
+        - podSelector:
+            matchLabels:
+              app: eauction-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Redis accepts from Bidding Engine, AI service + replication
+    - from:
+        - podSelector:
+            matchLabels:
+              app: eauction-bidding-engine
+        - podSelector:
+            matchLabels:
+              app: eauction-ai-service
+        - podSelector:
+            matchLabels:
+              app: eauction-redis
+        - podSelector:
+            matchLabels:
+              app: eauction-redis-sentinel
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 26379
+    # Kafka accepts from Bidding Engine, Catalog, AI service, Payment broker, Zookeeper
+    - from:
+        - podSelector:
+            matchLabels:
+              app: eauction-bidding-engine
+        - podSelector:
+            matchLabels:
+              app: eauction-catalog-identity
+        - podSelector:
+            matchLabels:
+              app: eauction-ai-service
+        - podSelector:
+            matchLabels:
+              app: eauction-payment-broker
+        - podSelector:
+            matchLabels:
+              app: eauction-kafka
+        - podSelector:
+            matchLabels:
+              app: eauction-zookeeper
+      ports:
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 2181
+  egress:
+    # Allow replication between database & message bus instances
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - eauction-postgres
+                  - eauction-redis
+                  - eauction-redis-sentinel
+                  - eauction-kafka
+                  - eauction-zookeeper
+{{- end }}
