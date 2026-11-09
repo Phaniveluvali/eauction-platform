@@ -141,7 +141,34 @@ export const auctionApi = {
     return res.json();
   },
 
-  async initiateDeposit(auctionId: string, amount: number, gateway: string = 'STRIPE'): Promise<PaymentOrderResponse> {
+  async initiateDeposit(auctionId: string, amount: number, gateway: string = 'INTERNAL_BROKER'): Promise<PaymentOrderResponse> {
     return this.createDepositOrder(auctionId, amount, gateway);
+  },
+
+  async submitInternalDeposit(data: {
+    auctionId?: string;
+    amount: number;
+    payerId?: string;
+    paymentMethod?: string;
+  }): Promise<any> {
+    const res = await fetch(`${PAYMENT_BASE}/api/v1/payments/internal/deposit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({
+        auctionId: data.auctionId || 'GLOBAL_ESCROW_DEPOSIT',
+        amount: data.amount,
+        payerId: data.payerId,
+        paymentMethod: data.paymentMethod || 'AJ_INTERNAL_ESCROW',
+        currency: 'AED',
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to process deposit via internal broker');
+    }
+    return res.json();
   },
 };

@@ -226,7 +226,7 @@ router.post(
         auctionId: auctionId,
         payerId: req.user?.userId,
         amount: Number(amount),
-        currency: 'INR',
+        currency: 'AED',
         gateway: gateway.toUpperCase(),
         status: 'PENDING',
       });
@@ -235,5 +235,65 @@ router.post(
     }
   }
 );
+
+
+/**
+ * Direct Endpoint: AJ Auctions Internal Escrow & Security Deposit Broker
+ * Directly settles security deposits and publishes completed payment events to Kafka
+ */
+router.post('/internal/deposit', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const {
+      auctionId = 'GLOBAL_ESCROW_DEPOSIT',
+      amount,
+      payerId,
+      paymentMethod = 'AJ_INTERNAL_ESCROW',
+      currency = 'AED',
+    } = req.body;
+
+    if (!amount || Number(amount) <= 0) {
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Deposit amount must be greater than zero' });
+      return;
+    }
+
+    const paymentId = `PAY_INT_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    const orderId = `ORD_INT_${Date.now()}`;
+    const resolvedPayerId = payerId || req.user?.userId || 'buyer_direct_' + Date.now().toString().slice(-4);
+
+    const eventPayload: PaymentEventPayload = {
+      paymentId,
+      auctionId,
+      payerId: resolvedPayerId,
+      gateway: 'INTERNAL_BROKER',
+      gatewayOrderId: orderId,
+      gatewayPaymentId: paymentId,
+      amount: Number(amount),
+      currency: currency || 'AED',
+      status: 'COMPLETED',
+      timestamp: Date.now(),
+    };
+
+    console.log(`[InternalBroker] Processing internal deposit of ${eventPayload.currency} ${eventPayload.amount} for user [${resolvedPayerId}] via ${paymentMethod}...`);
+    await eventPublisher.publishPaymentEvent(eventPayload);
+    console.log(`[InternalBroker] Successfully published payment event [${paymentId}] to Kafka.`);
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Deposit authorized and settled successfully via AJ Internal Broker',
+      paymentId,
+      orderId,
+      auctionId,
+      payerId: resolvedPayerId,
+      amount: Number(amount),
+      currency: eventPayload.currency,
+      gateway: 'INTERNAL_BROKER',
+      paymentMethod,
+      timestamp: eventPayload.timestamp,
+    });
+  } catch (error: any) {
+    console.error('[InternalBroker] Failed to process internal deposit:', error);
+    res.status(500).json({ error: 'INTERNAL_SERVER_ERROR', message: error.message });
+  }
+});
 
 export default router;

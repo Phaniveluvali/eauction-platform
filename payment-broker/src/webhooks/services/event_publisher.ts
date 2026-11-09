@@ -4,7 +4,7 @@ export interface PaymentEventPayload {
   paymentId: string;
   auctionId: string;
   payerId: string;
-  gateway: 'RAZORPAY' | 'CASHFREE';
+  gateway: 'RAZORPAY' | 'CASHFREE' | 'INTERNAL_BROKER' | string;
   gatewayOrderId: string;
   gatewayPaymentId: string;
   gatewaySignature?: string;
