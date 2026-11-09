@@ -1,6 +1,6 @@
-import { Kafka, Producer, logLevel } from 'kafkajs';
+import { Kafka, Producer, logLevel, Partitioners } from 'kafkajs';
 
-const brokersString = process.env.KAFKA_BROKERS || 'localhost:9092';
+const brokersString = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'eauction-kafka:9092';
 const brokers = brokersString.split(',').map((b) => b.trim()).filter(Boolean);
 
 const kafka = new Kafka({
@@ -14,6 +14,7 @@ const kafka = new Kafka({
 });
 
 export const producer: Producer = kafka.producer({
+  createPartitioner: Partitioners.LegacyPartitioner,
   allowAutoTopicCreation: true,
   transactionTimeout: 30000,
 });

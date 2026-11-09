@@ -49,11 +49,18 @@ spec:
           env:
             - name: SERVER_PORT
               value: "{{ .Values.paymentBroker.service.port }}"
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: KAFKA_BROKERS
             - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 configMapKeyRef:
                   name: eauction-config
                   key: KAFKA_BROKERS
+            - name: KAFKAJS_NO_PARTITIONER_WARNING
+              value: "1" 
             - name: RAZORPAY_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
