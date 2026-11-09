@@ -26,6 +26,10 @@ spec:
     spec:
       serviceAccountName: eauction-payment-broker-sa
       priorityClassName: auction-high-priority
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- include "eauction-platform.podAntiAffinity" (dict "app" "eauction-payment-broker" "soft" .Values.global.softScheduling) | nindent 6 }}
       {{- with .Values.paymentBroker.nodeSelector }}
       nodeSelector:

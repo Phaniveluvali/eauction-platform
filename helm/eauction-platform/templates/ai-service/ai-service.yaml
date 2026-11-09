@@ -26,6 +26,10 @@ spec:
     spec:
       serviceAccountName: eauction-ai-service-sa
       priorityClassName: auction-low-priority
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- include "eauction-platform.podAntiAffinity" (dict "app" "eauction-ai-service" "soft" .Values.global.softScheduling) | nindent 6 }}
       {{- with .Values.aiService.nodeSelector }}
       nodeSelector:

@@ -1,0 +1,58 @@
+name: CI/CD - Bidding Engine
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'bidding-engine/**'
+  workflow_dispatch:
+
+concurrency:
+  group: cicd-bidding-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-test-deploy:
+    name: Build, Push & Deploy Bidding Engine
+    runs-on: [ self-hosted, linux, wsl ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 1
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Compute Short SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./bidding-engine
+          file: ./bidding-engine/Dockerfile
+          push: true
+          tags: |
+            krishnaveluvali/eauction-bidding-engine:${{ steps.vars.outputs.sha_short }}
+            krishnaveluvali/eauction-bidding-engine:latest
+
+      - name: Update Helm Values (GitOps Handshake)
+        run: |
+          NEW_TAG="${{ steps.vars.outputs.sha_short }}"
+          python3 scripts/update-image-tag.py biddingEngine "$NEW_TAG" helm/eauction-platform/values.yaml
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add helm/eauction-platform/values.yaml
+          if git diff --staged --quiet; then
+            echo "No changes in values.yaml to commit."
+          else
+            git commit -m "chore(gitops): update biddingEngine image tag to $NEW_TAG [skip ci]"
+            git push origin main
+          fi

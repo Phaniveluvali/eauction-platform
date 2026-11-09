@@ -39,8 +39,10 @@ global:
   # Sample "imagePullSecrets" configuration:
   #   imagePullSecrets:
   #     - name: "regcred-azurecr"
+  imagePullSecrets:
+    - name: eauction-docker-secret
   #     - name: "regcred-harbor"
-  imagePullSecrets: []
+  
 
 # ==============================================================================
 # SECTION 2: WORKLOAD PRIORITY CLASSES (CNCF QoS)
@@ -117,7 +119,7 @@ biddingEngine:
 
   # Container image definition
   image:
-    repository: "eauction-bidding-engine"
+    repository: "krishnaveluvali/eauction-bidding-engine"
     tag: "latest"
     pullPolicy: "IfNotPresent"
 
@@ -250,7 +252,7 @@ catalogIdentity:
 
   # Container image definition
   image:
-    repository: "eauction-catalog-identity"
+    repository: "krishnaveluvali/eauction-catalog-identity"
     tag: "latest"
     pullPolicy: "IfNotPresent"
 
@@ -414,7 +416,7 @@ frontend:
   # - To deploy AJ Auctions (modern clean UI with AJ logo powered by AJTechnologies): use "v2.0.0-aj"
   # - To deploy legacy version (with old branding and old image assets): use "v1.0.0-legacy"
   image:
-    repository: "eauction-frontend"
+    repository: "krishnaveluvali/eauction-frontend"
     tag: "v2.0.0-aj"
     pullPolicy: "IfNotPresent"
 
@@ -483,7 +485,7 @@ aiService:
 
   # Container image definition
   image:
-    repository: "eauction-ai-service"
+    repository: "krishnaveluvali/eauction-ai-service"
     tag: "latest"
     pullPolicy: "IfNotPresent"
 
@@ -548,7 +550,7 @@ paymentBroker:
 
   # Container image definition
   image:
-    repository: "eauction-payment-broker"
+    repository: "krishnaveluvali/eauction-payment-broker"
     tag: "latest"
     pullPolicy: "IfNotPresent"
 
