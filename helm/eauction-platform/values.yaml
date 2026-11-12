@@ -115,7 +115,7 @@ biddingEngine:
   enabled: true
 
   # Pod replica count (Active single-node: 3 replicas; 10k CCU target: 12 replicas)
-  replicaCount: 3
+  replicaCount: 0
 
   # Container image definition
   image:
@@ -141,7 +141,7 @@ biddingEngine:
 
   # Horizontal Pod Autoscaling (HPA) definition
   hpa:
-    enabled: true
+    enabled: false
     minReplicas: 3
     maxReplicas: 10
     targetCPUUtilization: 70
@@ -248,7 +248,7 @@ catalogIdentity:
   enabled: true
 
   # Pod replica count (Active single-node: 2 replicas; 10k CCU target: 10 replicas)
-  replicaCount: 2
+  replicaCount: 0
 
   # Container image definition
   image:
@@ -278,7 +278,7 @@ catalogIdentity:
 
   # Horizontal Pod Autoscaling (HPA) definition
   hpa:
-    enabled: true
+    enabled: false
     minReplicas: 2
     maxReplicas: 5
     targetCPUUtilization: 80
@@ -343,7 +343,7 @@ keycloak:
   enabled: true
 
   # Pod replica count (Active single-node: 1 replica; 10k CCU target: 4 clustered replicas)
-  replicaCount: 1
+  replicaCount: 0
 
   # Container image definition
   image:
@@ -416,7 +416,7 @@ frontend:
   enabled: true
 
   # Pod replica count (Active: 2 replicas; 10k CCU target: 6 replicas)
-  replicaCount: 2
+  replicaCount: 0
 
   # Container image definition
   # Dual-deployability note:
@@ -488,7 +488,7 @@ aiService:
   enabled: true
 
   # Pod replica count (Active: 2 replicas; 10k CCU target: 4 replicas)
-  replicaCount: 2
+  replicaCount: 0
 
   # Container image definition
   image:
@@ -553,7 +553,7 @@ paymentBroker:
   enabled: true
 
   # Pod replica count (Active: 2 replicas; 10k CCU target: 4 replicas)
-  replicaCount: 2
+  replicaCount: 0
 
   # Container image definition
   image:
