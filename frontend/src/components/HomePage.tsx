@@ -70,7 +70,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* ============================================================ */}
       <div className="w-full bg-[#020b18] overflow-hidden flex items-center justify-center">
         <img
-          src={getAssetUrl('/assets/banner-aj.png')}
+          src={getAssetUrl('/assets/banner-aj.webp')}
           alt="AJ Auctions Web Banner"
           className="w-full h-auto object-cover max-h-[380px] sm:max-h-[460px] block"
         />

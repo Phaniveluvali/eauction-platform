@@ -21,6 +21,7 @@ interface SilentAuctionsPageProps {
   vehicles: Vehicle[];
   auctions: Auction[];
   currentUser: User | null;
+  loading?: boolean;
   favoriteIds?: string[];
   onToggleFavorite?: (vehicleId: string) => void;
   onViewDetails?: (auction: Auction, vehicle: Vehicle) => void;
@@ -34,6 +35,7 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
   vehicles,
   auctions = [],
   currentUser,
+  loading = false,
   favoriteIds = [],
   onToggleFavorite,
   onViewDetails,
@@ -146,6 +148,10 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
         if (!hay.includes(q)) return false;
       }
       return true;
+    }).sort((a, b) => {
+      const tA = a.auction.endTime ? new Date(a.auction.endTime).getTime() : 0;
+      const tB = b.auction.endTime ? new Date(b.auction.endTime).getTime() : 0;
+      return (tA - tB) || a.auction.id.localeCompare(b.auction.id);
     });
   }, [tabItems, selectedMake, selectedYear, lotSearch]);
 
@@ -333,7 +339,18 @@ export const SilentAuctionsPage: React.FC<SilentAuctionsPageProps> = ({
         </div>
 
         {/* Silent Auction Cards */}
-        {filteredItems.length === 0 ? (
+        {loading && auctions.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((idx) => (
+              <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs animate-pulse">
+                <div className="w-full h-48 bg-slate-200 rounded-xl mb-3" />
+                <div className="h-4 bg-slate-200 rounded-md w-3/4 mb-2" />
+                <div className="h-3 bg-slate-100 rounded-md w-1/2 mb-4" />
+                <div className="h-10 bg-slate-200 rounded-xl w-full" />
+              </div>
+            ))}
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-2xs">
             <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
               <Lock className="w-7 h-7" />

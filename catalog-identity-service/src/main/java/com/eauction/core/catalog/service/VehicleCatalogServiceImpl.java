@@ -379,12 +379,12 @@ public class VehicleCatalogServiceImpl implements VehicleCatalogService {
     @Transactional(readOnly = true)
     public List<Vehicle> listVehicles(String type, String make) {
         if (type != null && !type.isBlank()) {
-            return vehicleRepository.findByVehicleTypeIgnoreCase(type.trim());
+            return vehicleRepository.findByVehicleTypeIgnoreCaseOrdered(type.trim());
         }
         if (make != null && !make.isBlank()) {
-            return vehicleRepository.findByMakeIgnoreCase(make.trim());
+            return vehicleRepository.findByMakeIgnoreCaseOrdered(make.trim());
         }
-        return vehicleRepository.findAll();
+        return vehicleRepository.findAllOrdered();
     }
 
     @Override

@@ -202,4 +202,34 @@ export const authApi = {
     }
     return res.json();
   },
+
+  async updateUserRole(userId: string, role: string, permissions: string[] = []): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/users/${userId}/role`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ role, permissions }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update user role');
+    }
+    return res.json();
+  },
+
+  async getAuditLogs(params?: { action?: string; email?: string; limit?: number }): Promise<any[]> {
+    const q = new URLSearchParams();
+    if (params?.action) q.set('action', params.action);
+    if (params?.email) q.set('email', params.email);
+    if (params?.limit) q.set('limit', String(params.limit));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/audit-logs${qs}`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
 };

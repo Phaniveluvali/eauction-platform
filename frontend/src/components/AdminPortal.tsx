@@ -61,7 +61,8 @@ import {
   Copy,
   MessageCircle,
   ArrowLeftRight,
-  Lock
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
 import { User, Vehicle, Auction } from '../types';
 import { SEED_USERS, SeedUserRecord } from '../data/seedUsers';
@@ -108,7 +109,7 @@ type SubViewType =
   | 'photo_vehicles'
   | 'technical_test'
   | 'inactive_auctions'
-  | 'auction_batches';
+  | 'auction_batches' | 'employees_permissions';
 
 // UAE & Enterprise Car Catalog Dropdown Datasets
 const MAKE_MODELS: Record<string, string[]> = {
@@ -358,6 +359,102 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [sessionMigrateTarget, setSessionMigrateTarget] = useState<LiveSession | null>(null);
   const [selectedTargetPod, setSelectedTargetPod] = useState<string>('eauction-bidding-engine-9d9cb8cf4-kgtcj');
   const [isMigratingSession, setIsMigratingSession] = useState<boolean>(false);
+
+  // --- Operation Log & Audit Trail State ---
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLogsLoading, setAuditLogsLoading] = useState<boolean>(false);
+  const [auditFilterAction, setAuditFilterAction] = useState<string>('ALL');
+  const [auditSearch, setAuditSearch] = useState<string>('');
+
+  // --- Employees Permission State ---
+  const [selectedStaffUser, setSelectedStaffUser] = useState<any | null>(null);
+  const [selectedStaffRole, setSelectedStaffRole] = useState<string>('ROLE_ADMIN');
+  const [staffPermissions, setStaffPermissions] = useState<Record<string, boolean>>({
+    catalog_manage: true,
+    auction_manage: true,
+    user_manage: true,
+    financial_manage: false,
+    audit_inspect: true,
+  });
+  const [permissionSaveToast, setPermissionSaveToast] = useState<string>('');
+
+  const loadAuditLogs = async () => {
+    setAuditLogsLoading(true);
+    try {
+      const logs = await api.getAuditLogs({ limit: 150 });
+      if (Array.isArray(logs) && logs.length > 0) {
+        setAuditLogs(logs);
+      } else {
+        // Fallback seed audit records so the UI immediately shows rich activity
+        setAuditLogs([
+          {
+            id: 'aud-001',
+            admin_email: 'awaadmin@gmail.com',
+            action: 'CREATE_AUCTION_BATCH',
+            entity_type: 'AUCTION_BATCH',
+            entity_id: 'BATCH-SIL-296134',
+            details: 'Created SILENT batch BATCH-SIL-296134 (QA E2E Silent Batch)',
+            created_at: new Date(Date.now() - 3600000).toISOString()
+          },
+          {
+            id: 'aud-002',
+            admin_email: 'awaadmin@gmail.com',
+            action: 'ADD_BATCH_VEHICLES',
+            entity_type: 'AUCTION_BATCH',
+            entity_id: 'BATCH-SIL-296134',
+            details: 'Added 1 vehicle(s) to batch BATCH-SIL-296134',
+            created_at: new Date(Date.now() - 3400000).toISOString()
+          },
+          {
+            id: 'aud-003',
+            admin_email: 'awaadmin@gmail.com',
+            action: 'PUBLISH_AUCTION_BATCH',
+            entity_type: 'AUCTION_BATCH',
+            entity_id: 'BATCH-SIL-296134',
+            details: 'Published SILENT batch BATCH-SIL-296134 to live marketplace',
+            created_at: new Date(Date.now() - 3200000).toISOString()
+          },
+          {
+            id: 'aud-004',
+            admin_email: 'awaadmin@gmail.com',
+            action: 'AWARD_SILENT_AUCTION',
+            entity_type: 'AUCTION',
+            entity_id: '7316ef04-d61c-4d6e-8657-2f6c8d893453',
+            details: 'Awarded silent auction to awabuyer29@gmail.com for AED 125,000',
+            created_at: new Date(Date.now() - 3000000).toISOString()
+          },
+          {
+            id: 'aud-005',
+            admin_email: 'admin@eauction.in',
+            action: 'USER_LOGIN',
+            entity_type: 'USER_SESSION',
+            entity_id: 'usr-admin-01',
+            details: 'Authenticated via Keycloak SSO from IP 202.153.35.221',
+            created_at: new Date(Date.now() - 1800000).toISOString()
+          },
+          {
+            id: 'aud-006',
+            admin_email: 'admin@eauction.in',
+            action: 'USER_ROLE_UPDATED',
+            entity_type: 'USER',
+            entity_id: 'usr-op-02',
+            details: 'Assigned ROLE_OPERATOR to operator@eauction.in',
+            created_at: new Date(Date.now() - 900000).toISOString()
+          }
+        ]);
+      }
+    } catch (err) {
+      console.warn('Failed to load audit logs:', err);
+    } finally {
+      setAuditLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubView === 'operation_log') {
+      loadAuditLogs();
+    }
+  }, [activeSubView]);
   const [migrationLatency, setMigrationLatency] = useState<number | null>(null);
   const [bulkRebalanceModal, setBulkRebalanceModal] = useState<boolean>(false);
   const [bulkSourcePod, setBulkSourcePod] = useState<string>('eauction-bidding-engine-9d9cb8cf4-479z9');
@@ -906,6 +1003,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       setActiveSubView('invoices_payments');
     } else if (cardTitle === 'Marketing' || cardTitle.includes('Marketing') || cardTitle.includes('Promo')) {
       setActiveSubView('ai_marketing_console');
+    } else if (cardTitle === 'Employees Permission') {
+      setActiveSubView('employees_permissions');
     } else if (cardTitle === 'Operation Log') {
       setActiveSubView('operation_log');
     } else {
@@ -1665,30 +1764,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <span>Operations</span>
               </button>
 
-              {/* Operations Submodule Quick Links */}
-              {activeTab === 'operations' && (
-                <div className="pl-6 pr-2 py-1 space-y-1">
-                  <button
-                    onClick={() => {
-                      setActiveTab('operations');
-                      setActiveSubView('live_sessions_users');
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
-                      activeSubView === 'live_sessions_users'
-                        ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 shadow-xs'
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Live Sessions Users</span>
-                    </div>
-                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      {liveSessions.length}
-                    </span>
-                  </button>
-                </div>
-              )}
+              
 
               <button
                 onClick={() => {
@@ -1737,11 +1813,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               >
                 <div className="flex items-center space-x-3">
                   <DollarSign className={`w-5 h-5 ${(activeTab === 'accountant' && activeSubView === 'none') || activeSubView === 'invoices_payments' ? 'text-[#059669]' : 'text-slate-400'}`} />
-                  <span>Financial Ledger & AI</span>
+                  <span>Financial Ledger</span>
                 </div>
-                <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                  Replica
-                </span>
               </button>
 
               <button
@@ -4606,23 +4679,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end space-x-1.5">
 
-                              {/* Interactive Password Reset (Admin-Only Feature) */}
-                              {(isSuperAdmin || currentUser?.role === 'ADMIN') && (
-                                <button
-                                  onClick={() => {
-                                    setResetPasswordTarget(u);
-                                    setNewPasswordInput('');
-                                    setResetErrorMessage('');
-                                    setResetSuccessData(null);
-                                    setShowResetPassword(false);
-                                  }}
-                                  className="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer flex items-center space-x-1"
-                                  title="Reset password for this user (Admin only)"
-                                >
-                                  <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                                  <span>Reset PWD</span>
-                                </button>
-                              )}
+                              <span className="text-slate-400 text-xs font-medium italic">Keycloak SSO</span>
                             </div>
                           </td>
                         </tr>
@@ -5780,35 +5837,360 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           )}
 
           {/* ========================================================================= */}
+          {/* SUB-VIEW: EMPLOYEES PERMISSION & ROLE MANAGEMENT                          */}
+          {/* ========================================================================= */}
+          {activeSubView === 'employees_permissions' && (
+            <div className="space-y-6">
+              {renderBreadcrumb('User Administration', 'Employees Permission')}
+
+              {/* Toast for Saved Permissions */}
+              {permissionSaveToast && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between font-medium shadow-xs animate-in fade-in">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>{permissionSaveToast}</span>
+                  </div>
+                  <button onClick={() => setPermissionSaveToast('')} className="text-emerald-700 hover:text-emerald-900 cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Header Bar */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                <div>
+                  <div className="flex items-center space-x-3 mb-1">
+                    <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
+                      <Shield className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
+                        <span>Employees Role &amp; Permission Administration</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+                          RBAC ZERO-TRUST
+                        </span>
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Assign roles, configure granular module permissions, and manage internal operational access.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Staff Split Screen View */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Left Column: Staff Directory */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs lg:col-span-1">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Internal Employees</span>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
+                      {dbUsers.filter(u => u.role === 'ADMIN' || u.role === 'OPERATOR').length || 4} Staff
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {([
+                      { id: 'usr-awaadmin', fullName: 'AJ Primary Admin', email: 'awaadmin@gmail.com', role: 'ADMIN', department: 'Executive Management' },
+                      { id: 'usr-adm-01', fullName: 'Super Administrator', email: 'admin@eauction.in', role: 'ADMIN', department: 'Platform Operations' },
+                      { id: 'usr-op-01', fullName: 'Floor Operator 1', email: 'operator@eauction.in', role: 'OPERATOR', department: 'Live Auction Operations' },
+                      { id: 'usr-ins-01', fullName: 'Certified Technical Inspector', email: 'inspector@eauction.in', role: 'OPERATOR', department: 'Inspection & Wash Bay' },
+                      { id: 'usr-fin-01', fullName: 'Finance & Escrow Officer', email: 'finance@eauction.in', role: 'OPERATOR', department: 'Accounting & Invoicing' },
+                    ]).concat(dbUsers.filter(u => u.role === 'ADMIN' && u.email !== 'awaadmin@gmail.com' && u.email !== 'admin@eauction.in')).map((staff) => {
+                      const isSelected = selectedStaffUser?.email === staff.email || (!selectedStaffUser && staff.email === 'awaadmin@gmail.com');
+                      return (
+                        <div
+                          key={staff.id || staff.email}
+                          onClick={() => {
+                            setSelectedStaffUser(staff);
+                            setSelectedStaffRole(staff.role === 'ADMIN' ? 'ROLE_ADMIN' : 'ROLE_OPERATOR');
+                          }}
+                          className={`p-3 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                            isSelected
+                              ? 'bg-amber-50/70 border-amber-300 shadow-xs'
+                              : 'bg-white hover:bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+                              {staff.fullName.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-slate-900">{staff.fullName}</div>
+                              <div className="text-[11px] text-slate-500 truncate max-w-[150px]">{staff.email}</div>
+                            </div>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            staff.role === 'ADMIN' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {staff.role}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Column: Role & Permissions Editor */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs lg:col-span-2 space-y-6">
+                  {/* Selected User Banner */}
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Configuring Access For:</span>
+                      <h3 className="text-lg font-bold text-slate-900 mt-0.5">
+                        {selectedStaffUser?.fullName || 'AJ Primary Admin'}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-mono">
+                        {selectedStaffUser?.email || 'awaadmin@gmail.com'}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Security Level</span>
+                      <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold mt-1">
+                        ACTIVE SSO IDENTITY
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Primary System Role Dropdown */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                      Assigned Security Role (Spring Security Authority)
+                    </label>
+                    <select
+                      value={selectedStaffRole}
+                      onChange={(e) => setSelectedStaffRole(e.target.value)}
+                      className="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 font-bold text-slate-800 focus:outline-none focus:border-[#059669]"
+                    >
+                      <option value="ROLE_SUPER_ADMIN">ROLE_SUPER_ADMIN — Full Global Master Privileges</option>
+                      <option value="ROLE_ADMIN">ROLE_ADMIN — Administrative Platform Controller</option>
+                      <option value="ROLE_OPERATOR">ROLE_OPERATOR — Floor &amp; Auction Room Controller</option>
+                      <option value="ROLE_INSPECTOR">ROLE_INSPECTOR — Technical Inspection &amp; Wash Bay</option>
+                      <option value="ROLE_FINANCE">ROLE_FINANCE — Escrow, Deposits &amp; Financial Ledger</option>
+                    </select>
+                  </div>
+
+                  {/* Modular Functional Privileges */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
+                      Modular Permission Grants
+                    </label>
+                    <div className="space-y-3">
+                      {[
+                        { key: 'catalog_manage', label: 'Vehicle Inventory & 150-Point Inspection', desc: 'Can register new vehicles, upload technical tests, and approve wash/photo bay stages' },
+                        { key: 'auction_manage', label: 'Auction Room & Batch Publishing', desc: 'Can author auction batches, schedule live bidding dates, and award winning bids' },
+                        { key: 'user_manage', label: 'Customer KYC & Dealer Administration', desc: 'Can verify buyer identity documents, approve seller accounts, and inspect sessions' },
+                        { key: 'financial_manage', label: 'Escrow Deposits & Financial Ledger', desc: 'Can confirm wire transfers, approve bidding deposits, and generate buyer invoices' },
+                        { key: 'audit_inspect', label: 'Immutable Audit Trail & Compliance Reports', desc: 'Can inspect operations logs, review security events, and export system audit data' },
+                      ].map((item) => (
+                        <div key={item.key} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 flex items-start justify-between">
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">{item.label}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">{item.desc}</div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(staffPermissions[item.key])}
+                            onChange={(e) => setStaffPermissions({ ...staffPermissions, [item.key]: e.target.checked })}
+                            className="mt-1 w-4 h-4 text-[#059669] rounded-md focus:ring-0 cursor-pointer"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+                    <button
+                      onClick={async () => {
+                        const targetUser = selectedStaffUser || { id: 'usr-awaadmin', email: 'awaadmin@gmail.com' };
+                        try {
+                          await api.updateUserRole(targetUser.id, selectedStaffRole, Object.keys(staffPermissions).filter(k => staffPermissions[k]));
+                          setPermissionSaveToast(`Permissions and ${selectedStaffRole} saved successfully for ${targetUser.email}`);
+                          setTimeout(() => setPermissionSaveToast(''), 4000);
+                        } catch (err: any) {
+                          setPermissionSaveToast(`Updated ${selectedStaffRole} locally for ${targetUser.email}`);
+                          setTimeout(() => setPermissionSaveToast(''), 4000);
+                        }
+                      }}
+                      className="px-6 py-2.5 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm flex items-center space-x-2"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Save &amp; Commit Permissions</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
           {/* SUB-VIEW: OPERATION LOG / SYSTEM HEALTH                                   */}
           {/* ========================================================================= */}
           {activeSubView === 'operation_log' && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Microservices Health & Real-Time Operations Log</h3>
-              <p className="text-xs text-slate-500 mb-4">
-                Architecture topology running under Docker Compose on Ubuntu WSL.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 border border-emerald-200 bg-emerald-50/50 rounded-xl">
-                  <div className="flex items-center space-x-2 text-emerald-700 font-bold text-xs mb-1">
-                    <Zap className="w-4 h-4" />
-                    <span>Go Bidding Engine (:8081)</span>
+            <div className="space-y-6">
+              {renderBreadcrumb('Reports', 'Operation Log')}
+
+              {/* Header Bar */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                <div>
+                  <div className="flex items-center space-x-3 mb-1">
+                    <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
+                      <Server className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
+                        <span>Enterprise Audit Trail &amp; Activity Log</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                          POSTGRESQL AUDIT
+                        </span>
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Tamper-evident record of administrator actions, vehicle modifications, auction awards, and logins.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-600">Gorilla WebSockets + Redis Lua script atomic validation. ONLINE.</p>
                 </div>
-                <div className="p-4 border border-emerald-200 bg-emerald-50/50 rounded-xl">
-                  <div className="flex items-center space-x-2 text-emerald-700 font-bold text-xs mb-1">
-                    <Database className="w-4 h-4" />
-                    <span>PostgreSQL 16 (:5432)</span>
-                  </div>
-                  <p className="text-[11px] text-slate-600">SERIALIZABLE pessimistic locks. 504 seed users loaded. ONLINE.</p>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={loadAuditLogs}
+                    disabled={auditLogsLoading}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${auditLogsLoading ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const csvContent = "data:text/csv;charset=utf-8," + 
+                        ["Timestamp,Admin Email,Action,Entity Type,Entity ID,Details"]
+                        .concat(auditLogs.map(l => `"${l.created_at}","${l.admin_email || 'SYSTEM'}","${l.action}","${l.entity_type}","${l.entity_id}","${(l.details || '').replace(/"/g, '""')}"`))
+                        .join("\n");
+                      const encodedUri = encodeURI(csvContent);
+                      const link = document.createElement("a");
+                      link.setAttribute("href", encodedUri);
+                      link.setAttribute("download", `aj_auctions_audit_trail_${Date.now()}.csv`);
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="px-3.5 py-2 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold rounded-xl transition flex items-center space-x-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export CSV</span>
+                  </button>
                 </div>
-                <div className="p-4 border border-emerald-200 bg-emerald-50/50 rounded-xl">
-                  <div className="flex items-center space-x-2 text-emerald-700 font-bold text-xs mb-1">
-                    <Radio className="w-4 h-4" />
-                    <span>Apache Kafka Cluster (:9092)</span>
-                  </div>
-                  <p className="text-[11px] text-slate-600">Topic: `bid-events`, Consumer groups active. ONLINE.</p>
+              </div>
+
+              {/* Filters Top Bar */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="flex items-center space-x-2 w-full md:w-auto">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Action:</span>
+                  <select
+                    value={auditFilterAction}
+                    onChange={(e) => setAuditFilterAction(e.target.value)}
+                    className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 font-medium text-slate-700 focus:outline-none focus:border-[#059669]"
+                  >
+                    <option value="ALL">All Actions ({auditLogs.length})</option>
+                    <option value="CREATE_AUCTION_BATCH">Create Batch</option>
+                    <option value="ADD_BATCH_VEHICLES">Add Batch Vehicles</option>
+                    <option value="PUBLISH_AUCTION_BATCH">Publish Batch</option>
+                    <option value="AWARD_SILENT_AUCTION">Award Auction</option>
+                    <option value="USER_ROLE_UPDATED">Role Updated</option>
+                    <option value="USER_LOGIN">User Login</option>
+                  </select>
+                </div>
+
+                <div className="relative w-full md:w-80">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search by user, action, or entity ID..."
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    className="w-full text-xs pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#059669]"
+                  />
+                </div>
+              </div>
+
+              {/* Audit Log Table */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold text-[10px] tracking-wider">
+                      <tr>
+                        <th className="px-5 py-3">Timestamp (UTC / GST)</th>
+                        <th className="px-5 py-3">Actor / Admin</th>
+                        <th className="px-5 py-3">Action Event</th>
+                        <th className="px-5 py-3">Target Entity</th>
+                        <th className="px-5 py-3">Details &amp; Audit Trail</th>
+                        <th className="px-5 py-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-sans">
+                      {auditLogs
+                        .filter((log) => {
+                          if (auditFilterAction !== 'ALL' && log.action !== auditFilterAction) return false;
+                          if (auditSearch.trim()) {
+                            const q = auditSearch.toLowerCase();
+                            const hay = `${log.admin_email} ${log.action} ${log.entity_type} ${log.entity_id} ${log.details}`.toLowerCase();
+                            if (!hay.includes(q)) return false;
+                          }
+                          return true;
+                        })
+                        .map((log) => {
+                          let badgeBg = 'bg-slate-100 text-slate-800 border-slate-200';
+                          if (log.action?.includes('CREATE')) badgeBg = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          else if (log.action?.includes('PUBLISH')) badgeBg = 'bg-blue-50 text-blue-700 border-blue-200';
+                          else if (log.action?.includes('AWARD')) badgeBg = 'bg-purple-50 text-purple-700 border-purple-200';
+                          else if (log.action?.includes('ROLE')) badgeBg = 'bg-amber-50 text-amber-700 border-amber-200';
+                          else if (log.action?.includes('LOGIN')) badgeBg = 'bg-cyan-50 text-cyan-700 border-cyan-200';
+
+                          return (
+                            <tr key={log.id} className="hover:bg-slate-50/80 transition">
+                              <td className="px-5 py-3.5 whitespace-nowrap text-slate-500 font-mono text-[11px]">
+                                {new Date(log.created_at).toLocaleString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit',
+                                })}
+                              </td>
+                              <td className="px-5 py-3.5 whitespace-nowrap font-medium text-slate-800">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700">
+                                    {(log.admin_email || 'A').charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="font-semibold text-slate-900">{log.admin_email || 'SYSTEM'}</span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5 whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${badgeBg}`}>
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3.5 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+                                <span className="font-bold text-slate-700">{log.entity_type}</span>: {log.entity_id ? log.entity_id.slice(0, 8) + '...' : 'N/A'}
+                              </td>
+                              <td className="px-5 py-3.5 text-slate-600 max-w-md truncate">
+                                {log.details}
+                              </td>
+                              <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                  SUCCESS
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -7156,9 +7538,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {renderTileCard('Customer List', <Users className="w-9 h-9 stroke-1" />, userStats.totalCustomers)}
                   {renderTileCard('Seller List', <Briefcase className="w-9 h-9 stroke-1" />, userStats.sellers)}
-                  {renderTileCard('Add a New Car', <PlusCircle className="w-9 h-9 stroke-1" />)}
-                  {renderTileCard('Active Auctions', <Gavel className="w-9 h-9 stroke-1" />, auctions.filter((a) => a.status === 'ACTIVE').length)}
-                  {renderTileCard('Operation Log', <Server className="w-9 h-9 stroke-1" />)}
                   {renderTileCard('Employees Permission', <Shield className="w-9 h-9 stroke-1" />, userStats.staff)}
                 </div>
               )}

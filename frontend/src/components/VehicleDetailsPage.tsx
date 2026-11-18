@@ -371,11 +371,11 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
                 onClick={() => onOpenBidModal(auction)}
                 className={`w-full font-extrabold py-3.5 px-6 rounded-xl uppercase tracking-wider text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
                   isLeadingBidder
-                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
-                    : 'bg-[#4caf50] hover:bg-[#43a047] text-white shadow-green-600/20'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                    : 'bg-[#D32437] hover:bg-[#b01e2e] text-white shadow-red-600/20'
                 }`}
               >
-                <span>{isLeadingBidder ? 'RAISE YOUR BID' : 'BID NOW'}</span>
+                <span>{isLeadingBidder ? 'WINNING (RAISE BID)' : 'PLACE LIVE BID'}</span>
               </button>
 
               {/* Technical Report Download Button */}

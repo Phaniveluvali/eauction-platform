@@ -1,3 +1,4 @@
+import { ErrorBoundary } from './components/ErrorBoundary';
 import React, { useEffect, useState, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { HomePage } from './components/HomePage';
@@ -192,6 +193,7 @@ export const App: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const isPollingRef = useRef<boolean>(false);
 
   // Dedicated View Router: initialized from URL pathname
   const initialRoute = getRouteFromPath();
@@ -505,6 +507,8 @@ export const App: React.FC = () => {
     if (currentView === 'AUCTION_ROOM') return; // Inside an auction room, WebSockets handle real-time broadcasts
 
     const pollInterval = setInterval(async () => {
+      if (isPollingRef.current) return;
+      isPollingRef.current = true;
       try {
         const freshAuctions = await api.getAuctions();
         setAuctions((prev) =>
@@ -559,8 +563,10 @@ export const App: React.FC = () => {
         });
       } catch (err) {
         // Ignore background polling errors
+      } finally {
+        isPollingRef.current = false;
       }
-    }, 1000);
+    }, 10000); // Throttled to 10s to eliminate HTTP connection starvation
 
     return () => clearInterval(pollInterval);
   }, [currentView]);
@@ -662,7 +668,7 @@ export const App: React.FC = () => {
     return () => clearInterval(heartbeatInterval);
   }, [currentUser?.id, currentView]);
 
-  const loadInventory = async () => {
+  const loadInventory = async (retryCount = 0) => {
     setLoading(true);
     try {
       const [fetchedVehicles, fetchedAuctions] = await Promise.all([
@@ -696,6 +702,10 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load catalog inventory:', err);
+      if (retryCount < 3) {
+        setTimeout(() => loadInventory(retryCount + 1), (retryCount + 1) * 1500);
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -799,6 +809,7 @@ export const App: React.FC = () => {
   const emiratesMotoCount = vehicles.filter((v) => (v as any).category === 'EMIRATES_MOTO').length;
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-white text-[#231F20] flex flex-col font-sans selection:bg-[#059669] selection:text-white">
       {/* OIDC Authentication In-Progress Overlay */}
       {isOidcProcessing ? (
@@ -918,6 +929,7 @@ export const App: React.FC = () => {
         <OnlineAuctionsPage
           vehicles={vehicles}
           auctions={auctions}
+          loading={loading}
           currentUser={currentUser}
           favoriteIds={favoriteIds}
           onToggleFavorite={handleToggleFavorite}
@@ -935,6 +947,7 @@ export const App: React.FC = () => {
         <SilentAuctionsPage
           vehicles={vehicles}
           auctions={auctions}
+          loading={loading}
           currentUser={currentUser}
           favoriteIds={favoriteIds}
           onToggleFavorite={handleToggleFavorite}
@@ -1144,6 +1157,7 @@ export const App: React.FC = () => {
         onNavigateToCatalog={() => navigateToView('ONLINE_AUCTIONS')}
       />
     </div>
+    </ErrorBoundary>
   );
 };
 

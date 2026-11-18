@@ -282,7 +282,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
           <button
             type="button"
             onClick={() => onBidClick(auction)}
-            className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+            className="w-full py-2.5 px-4 bg-[#D32437] hover:bg-[#b01e2e] text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
           >
             <span>Place Live Bid</span>
             <ArrowUpRight className="w-4 h-4" />

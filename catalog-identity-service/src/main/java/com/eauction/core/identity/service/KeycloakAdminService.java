@@ -59,9 +59,12 @@ public class KeycloakAdminService {
         this.adminPassword = adminPassword;
         this.syncEnabled = syncEnabled;
 
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(10000);
+        java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(3))
+                .version(java.net.http.HttpClient.Version.HTTP_1_1)
+                .build();
+        org.springframework.http.client.JdkClientHttpRequestFactory factory = new org.springframework.http.client.JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(java.time.Duration.ofSeconds(8));
         this.restTemplate = new RestTemplate(factory);
         this.objectMapper = new ObjectMapper();
     }

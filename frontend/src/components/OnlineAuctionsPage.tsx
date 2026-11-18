@@ -24,6 +24,7 @@ interface OnlineAuctionsPageProps {
   vehicles: Vehicle[];
   auctions: Auction[];
   currentUser: User | null;
+  loading?: boolean;
   onSelectAuction: (auction: Auction) => void;
   onRequireAuth: () => void;
   onNavigate: (view: PortalView) => void;
@@ -38,6 +39,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
   vehicles,
   auctions,
   currentUser,
+  loading = false,
   onSelectAuction,
   onRequireAuth,
   onNavigate,
@@ -189,11 +191,36 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
     return true;
   });
 
-  const totalItems = liveAuctions.length;
+  // Deterministic sorting comparator (ending soonest first with strict ID tiebreaker)
+  const sortedAuctions = [...liveAuctions].sort((a, b) => {
+    if (sortBy === 'PRICE_LOW_TO_HIGH' || sortBy === 'PRICE_ASC') {
+      const pA = Number(a.currentHighestBid || a.startPrice || 0);
+      const pB = Number(b.currentHighestBid || b.startPrice || 0);
+      return (pA - pB) || a.id.localeCompare(b.id);
+    }
+    if (sortBy === 'PRICE_HIGH_TO_LOW' || sortBy === 'PRICE_DESC') {
+      const pA = Number(a.currentHighestBid || a.startPrice || 0);
+      const pB = Number(b.currentHighestBid || b.startPrice || 0);
+      return (pB - pA) || a.id.localeCompare(b.id);
+    }
+    if (sortBy === 'YEAR_NEW_TO_OLD' || sortBy === 'YEAR_DESC') {
+      const vA = a.vehicle || vehicles.find((v) => v.id === a.vehicleId);
+      const vB = b.vehicle || vehicles.find((v) => v.id === b.vehicleId);
+      const yA = vA?.manufacturingYear || 0;
+      const yB = vB?.manufacturingYear || 0;
+      return (yB - yA) || a.id.localeCompare(b.id);
+    }
+    // DEFAULT: Ending soonest first, deterministic tiebreaker by auction ID
+    const tA = a.endTime ? new Date(a.endTime).getTime() : 0;
+    const tB = b.endTime ? new Date(b.endTime).getTime() : 0;
+    return (tA - tB) || a.id.localeCompare(b.id);
+  });
+
+  const totalItems = sortedAuctions.length;
   const effectivePerPage = itemsPerPage > 0 ? itemsPerPage : 27;
   const totalPages = Math.max(1, Math.ceil(totalItems / effectivePerPage));
   const startIndex = (currentPage - 1) * effectivePerPage;
-  const paginatedAuctions = liveAuctions.slice(startIndex, startIndex + effectivePerPage);
+  const paginatedAuctions = sortedAuctions.slice(startIndex, startIndex + effectivePerPage);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-row font-sans">
@@ -516,7 +543,18 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
         </div>
 
         {/* Live Vehicles Grid */}
-        {liveAuctions.length === 0 ? (
+        {loading && auctions.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((idx) => (
+              <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs animate-pulse">
+                <div className="w-full h-48 bg-slate-200 rounded-xl mb-3" />
+                <div className="h-4 bg-slate-200 rounded-md w-3/4 mb-2" />
+                <div className="h-3 bg-slate-100 rounded-md w-1/2 mb-4" />
+                <div className="h-10 bg-slate-200 rounded-xl w-full" />
+              </div>
+            ))}
+          </div>
+        ) : liveAuctions.length === 0 ? (
           <div className="py-16 text-center border border-dashed border-[#D1D5DB] rounded-2xl bg-white">
             <h4 className="text-base font-bold text-[#231F20]">No Online Auctions Match Your Selection</h4>
             <p className="text-xs text-[#8C8C8C] mt-1">Try resetting the filter selections above.</p>

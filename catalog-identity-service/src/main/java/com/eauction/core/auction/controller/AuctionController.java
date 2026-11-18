@@ -86,7 +86,7 @@ public class AuctionController {
     @GetMapping
     @Transactional
     public ResponseEntity<List<Auction>> listAuctions(@RequestParam(required = false) String status) {
-        List<Auction> all = auctionRepository.findAll();
+        List<Auction> all = auctionRepository.findAllOrdered();
         java.time.Instant now = java.time.Instant.now();
         boolean modified = false;
         for (Auction a : all) {
@@ -97,7 +97,7 @@ public class AuctionController {
             }
         }
         if (status != null && !status.isBlank()) {
-            return ResponseEntity.ok(auctionRepository.findByStatus(status.toUpperCase().trim()));
+            return ResponseEntity.ok(auctionRepository.findByStatusOrdered(status.toUpperCase().trim()));
         }
         return ResponseEntity.ok(all);
     }

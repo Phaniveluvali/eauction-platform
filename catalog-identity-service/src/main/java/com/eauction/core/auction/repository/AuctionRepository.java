@@ -22,4 +22,10 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
     Optional<Auction> findByVehicleId(UUID vehicleId);
 
     List<Auction> findByStatus(String status);
+
+    @Query("SELECT a FROM Auction a ORDER BY a.startTime DESC, a.id ASC")
+    List<Auction> findAllOrdered();
+
+    @Query("SELECT a FROM Auction a WHERE a.status = :status ORDER BY a.startTime DESC, a.id ASC")
+    List<Auction> findByStatusOrdered(@Param("status") String status);
 }
