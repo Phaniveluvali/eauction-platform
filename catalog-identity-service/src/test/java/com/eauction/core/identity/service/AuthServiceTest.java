@@ -190,4 +190,35 @@ class AuthServiceTest {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> serviceWithOtp.register(req));
         assertTrue(ex.getMessage().contains("verification code"));
     }
+
+    @Test
+    @DisplayName("Should sync password reset to both PostgreSQL database and Keycloak")
+    void shouldResetPasswordInBothDatabaseAndKeycloak() {
+        KeycloakAdminService mockKeycloak = mock(KeycloakAdminService.class);
+        AuthService serviceWithKeycloak = new AuthService(
+                userRepository,
+                passwordEncoder,
+                null,
+                new com.eauction.core.identity.security.JwtTokenProvider(secretKey, 3600000L),
+                null,
+                mockKeycloak,
+                3600000L
+        );
+
+        UUID userId = UUID.randomUUID();
+        User existingUser = new User();
+        existingUser.setId(userId);
+        existingUser.setEmail("buyer@sharmatransport.in");
+        existingUser.setFullName("Sharma Transport");
+        existingUser.setPasswordHash(passwordEncoder.encode("OldPassword123!"));
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        serviceWithKeycloak.resetUserPassword(userId, "Welcome@123", "admin@eauction.in");
+
+        assertTrue(passwordEncoder.matches("Welcome@123", existingUser.getPasswordHash()));
+        verify(userRepository).saveAndFlush(existingUser);
+        verify(mockKeycloak).syncUserPassword("buyer@sharmatransport.in", "Sharma Transport", "Welcome@123");
+    }
 }

@@ -28,6 +28,7 @@ public class AuthService {
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     private final TokenProvider tokenProvider;
     private final com.eauction.core.notification.service.NotificationService notificationService;
+    private final KeycloakAdminService keycloakAdminService;
     private final long expirationMs;
 
     @Autowired
@@ -37,13 +38,25 @@ public class AuthService {
             org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
             TokenProvider tokenProvider,
             @Autowired(required = false) com.eauction.core.notification.service.NotificationService notificationService,
+            @Autowired(required = false) KeycloakAdminService keycloakAdminService,
             @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jdbcTemplate = jdbcTemplate;
         this.tokenProvider = tokenProvider;
         this.notificationService = notificationService;
+        this.keycloakAdminService = keycloakAdminService;
         this.expirationMs = expirationMs;
+    }
+
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+            TokenProvider tokenProvider,
+            com.eauction.core.notification.service.NotificationService notificationService,
+            long expirationMs) {
+        this(userRepository, passwordEncoder, jdbcTemplate, tokenProvider, notificationService, null, expirationMs);
     }
 
     public AuthService(
@@ -51,7 +64,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             TokenProvider tokenProvider,
             @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
-        this(userRepository, passwordEncoder, null, tokenProvider, null, expirationMs);
+        this(userRepository, passwordEncoder, null, tokenProvider, null, null, expirationMs);
     }
 
     public AuthService(
@@ -59,7 +72,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             String jwtSecret,
             long expirationMs) {
-        this(userRepository, passwordEncoder, null, new com.eauction.core.identity.security.JwtTokenProvider(jwtSecret, expirationMs), null, expirationMs);
+        this(userRepository, passwordEncoder, null, new com.eauction.core.identity.security.JwtTokenProvider(jwtSecret, expirationMs), null, null, expirationMs);
     }
 
     @Transactional
@@ -115,6 +128,13 @@ public class AuthService {
                 jdbcTemplate.update("INSERT INTO user_roles (user_id, role_id) VALUES (?, (SELECT id FROM roles WHERE name = ?)) ON CONFLICT DO NOTHING", savedUser.getId(), normalizedRole);
             }
         } catch (Exception ignored) {}
+
+        // Synchronize newly registered user & password into Keycloak
+        if (keycloakAdminService != null) {
+            try {
+                keycloakAdminService.syncUserPassword(savedUser.getEmail(), savedUser.getFullName(), request.getPassword());
+            } catch (Exception ignored) {}
+        }
 
         String token = generateToken(savedUser);
         List<String> roles = getUserRoles(savedUser.getId());
@@ -472,6 +492,11 @@ public class AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setUpdatedAt(Instant.now());
-        userRepository.save(user);
+        userRepository.saveAndFlush(user);
+
+        // Atomically sync password to Keycloak; any exception rolls back the DB transaction
+        if (keycloakAdminService != null) {
+            keycloakAdminService.syncUserPassword(user.getEmail(), user.getFullName(), newPassword);
+        }
     }
 }

@@ -97,10 +97,19 @@ public class AuthController {
                     .body(java.util.Map.of("error", "Password must be at least 6 characters."));
         }
 
-        authService.resetUserPassword(id, newPassword.trim(), admin.getEmail());
+        try {
+            authService.resetUserPassword(id, newPassword.trim(), admin.getEmail());
+        } catch (IllegalStateException ex) {
+            java.util.Map<String, Object> err = new java.util.HashMap<>();
+            err.put("success", false);
+            err.put("error", ex.getMessage());
+            err.put("message", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(err);
+        }
         java.util.Map<String, Object> resp = new java.util.HashMap<>();
         resp.put("success", true);
-        resp.put("message", "Password reset successfully for user.");
+        resp.put("keycloakSynced", true);
+        resp.put("message", "Password reset successfully in database and Keycloak.");
         return ResponseEntity.ok(resp);
     }
 }

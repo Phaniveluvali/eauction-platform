@@ -135,6 +135,16 @@ spec:
                 configMapKeyRef:
                   name: eauction-config
                   key: NOTIFICATION_WHATSAPP_APIKEY
+            - name: KEYCLOAK_SERVER_URL
+              value: "http://eauction-keycloak:8080/auth"
+            - name: KEYCLOAK_REALM
+              value: "eauction"
+            - name: KEYCLOAK_ADMIN_USERNAME
+              value: "admin"
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              value: "adminpassword"
+            - name: KEYCLOAK_SYNC_ENABLED
+              value: "true"
             {{- with .Values.catalogIdentity.environment }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
