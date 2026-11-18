@@ -1,17 +1,24 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Auction, Vehicle, User } from '../types';
 import { PortalView } from './PortalSidebar';
+import { getAssetUrl } from '../utils/assets';
 import {
-  Car,
-  Wallet,
-  HelpCircle,
-  Heart,
-  ShoppingBag,
-  ArrowRight,
-  X,
-  Clock,
-  Sparkles,
-} from 'lucide-react';
+  ICON_ONLINE_AUCTIONS,
+  ICON_SILENT_AUCTIONS,
+  ICON_UAE_PLATES,
+  ICON_EQUIPMENT,
+  ICON_EMIRATES_MOTO,
+  ICON_STEP_SIGNUP,
+  ICON_STEP_BIDS,
+  ICON_STEP_PAYMENT,
+  ICON_STEP_DELIVERY,
+  ICON_SVC_INSPECTION,
+  ICON_SVC_DELIVERY,
+  ICON_SVC_TRANSFER,
+  ICON_SVC_POLISHING,
+  ICON_SVC_REPAIRS,
+  ICON_SVC_MORE,
+} from '../constants/homeAssets';
 
 interface HomePageProps {
   vehicles: Vehicle[];
@@ -34,15 +41,8 @@ interface HomePageProps {
 export const HomePage: React.FC<HomePageProps> = ({
   vehicles,
   auctions,
-  currentUser,
-  onOpenDeposit,
-  onOpenCreateVehicle,
   onNavigate,
-  onRequireAuth,
-  favoriteIds = [],
 }) => {
-  const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
-
   const stats = useMemo(() => {
     const now = Date.now();
     const onlineActive = auctions.filter(
@@ -63,20 +63,6 @@ export const HomePage: React.FC<HomePageProps> = ({
     return { onlineActive, silentActive, inspectedVehicles };
   }, [auctions, vehicles]);
 
-  const handleSellCarClick = () => {
-    if (!currentUser) {
-      onRequireAuth();
-      return;
-    }
-    if (currentUser.role === 'BUYER') {
-      alert(
-        'You are currently signed in as a Buyer account.\n\nOnly registered Sellers or Admins can submit vehicles for consignment. Please sign out and sign in with a Seller account, or contact AJ Auctions support.'
-      );
-      return;
-    }
-    onOpenCreateVehicle();
-  };
-
   return (
     <div className="min-h-screen bg-[#FFFFFF] font-sans text-slate-900">
       {/* ============================================================ */}
@@ -84,39 +70,37 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* ============================================================ */}
       <div className="w-full bg-[#0F172A] overflow-hidden flex items-center justify-center">
         <img
-          src="/assets/banner-aj.png"
+          src={getAssetUrl('/assets/banner-aj.png')}
           alt="AJ Auctions Web Banner"
           className="w-full h-auto object-cover max-h-[380px] sm:max-h-[460px] block"
-          onError={(e) => {
-            // Fallback gradient if banner image fails
-            e.currentTarget.style.display = 'none';
-          }}
         />
       </div>
 
       {/* ============================================================ */}
-      {/* 2. AUCTION CATEGORIES (IDENTICAL TO CATEGORY GRID)     */}
+      {/* 2. AUCTION CATEGORIES (EXACT MATCH TO AL WATANEYA LAYOUT)    */}
       {/* ============================================================ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
+      <div className="auction-home-section max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
         <div className="mb-6">
           <h3 className="header-title">Auction Categories</h3>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-6">
-          {/* 1. Online Auctions */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
+          {/* Card 1: Online Auctions */}
           <div
             onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className="category-box group"
-            title="Browse Live Online Auctions"
+            className="category-box"
+            role="button"
+            tabIndex={0}
+            title="Online Auctions"
           >
             <img
-              src="/assets/categories/cat-online-auctions.png"
+              src={ICON_ONLINE_AUCTIONS}
               alt="Online Auctions"
               width="80"
               height="80"
-              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain mx-auto mb-2"
             />
-            <div className="category-title text-center mt-2">
+            <div className="category-title text-center">
               Online Auctions
               <br />
               <span className="text-[#D32437] font-bold text-base sm:text-lg">
@@ -125,20 +109,22 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           </div>
 
-          {/* 2. Silent Auctions */}
+          {/* Card 2: Silent Auctions */}
           <div
             onClick={() => onNavigate('SILENT_AUCTIONS')}
-            className="category-box group"
-            title="Browse Confidential Silent Auctions"
+            className="category-box"
+            role="button"
+            tabIndex={0}
+            title="Silent Auctions"
           >
             <img
-              src="/assets/categories/cat-silent-auctions.png"
+              src={ICON_SILENT_AUCTIONS}
               alt="Silent Auctions"
               width="80"
               height="80"
-              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain mx-auto mb-2"
             />
-            <div className="category-title text-center mt-2">
+            <div className="category-title text-center">
               Silent Auctions
               <br />
               <span className="text-[#D32437] font-bold text-base sm:text-lg">
@@ -147,197 +133,78 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           </div>
 
-          {/* 3. UAE Plates */}
+          {/* Card 3: UAE Plates */}
           <div
-            onClick={() => setComingSoonTitle('UAE License Plates Auction')}
-            className="category-box group"
-            title="Exclusive VIP Number Plates"
+            className="category-box cursor-pointer"
+            role="button"
+            tabIndex={0}
+            title="UAE Plates"
           >
             <img
-              src="/assets/categories/cat-uae-plates.png"
+              src={ICON_UAE_PLATES}
               alt="UAE Plates"
               width="80"
               height="80"
-              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain mx-auto mb-2"
             />
-            <div className="category-title text-center mt-2">
+            <div className="category-title text-center">
               UAE Plates
               <br />
-              <span className="text-[#D32437] font-bold text-xs uppercase tracking-wider">
-                Coming Soon
-              </span>
+              <span className="text-[#D32437] font-bold text-base sm:text-lg">&nbsp;</span>
             </div>
           </div>
 
-          {/* 4. Equipment & Machinery */}
+          {/* Card 4: Equipment & Machinery */}
           <div
-            onClick={() => setComingSoonTitle('Equipment & Heavy Machinery Auction')}
-            className="category-box group"
-            title="Heavy Commercial Equipment & Machinery"
+            className="category-box cursor-pointer"
+            role="button"
+            tabIndex={0}
+            title="Equipment & Machinery"
           >
             <img
-              src="/assets/categories/cat-equipment.png"
+              src={ICON_EQUIPMENT}
               alt="Equipment & Machinery"
               width="80"
               height="80"
-              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain mx-auto mb-2"
             />
-            <div className="category-title text-center mt-2">
+            <div className="category-title text-center">
               Equipment &amp; Machinery
               <br />
-              <span className="text-[#D32437] font-bold text-xs uppercase tracking-wider">
-                Coming Soon
-              </span>
+              <span className="text-[#D32437] font-bold text-base sm:text-lg">&nbsp;</span>
             </div>
           </div>
 
-          {/* 5. AJ Moto */}
+          {/* Card 5: Emirates Moto */}
           <div
-            onClick={() => setComingSoonTitle('AJ Moto - Specialty Showroom & Bikes')}
-            className="category-box group"
-            title="AJ Moto Specialty & Supercars"
+            className="category-box cursor-pointer"
+            role="button"
+            tabIndex={0}
+            title="Emirates Moto"
           >
             <img
-              src="/assets/categories/cat-aj-moto.png"
-              alt="AJ Moto"
+              src={ICON_EMIRATES_MOTO}
+              alt="Emirates Moto"
               width="80"
               height="80"
-              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain mx-auto mb-2"
             />
-            <div className="category-title text-center mt-2">
-              AJ Moto
+            <div className="category-title text-center">
+              Emirates Moto
               <br />
-              <span className="text-[#D32437] font-bold text-xs uppercase tracking-wider">
-                Showroom
-              </span>
+              <span className="text-[#D32437] font-bold text-base sm:text-lg">&nbsp;</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* ============================================================ */}
-      {/* 3. HOME DIVIDER                                              */}
+      {/* 3. 10px HOME DIVIDER                                         */}
       {/* ============================================================ */}
       <div className="home_divider" />
 
       {/* ============================================================ */}
-      {/* 4. QUICK ACTION CARDS (SELL CAR, DEPOSIT/PURCHASES, WATCHLIST)*/}
-      {/* ============================================================ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Sell Your Car */}
-          <div
-            onClick={handleSellCarClick}
-            className="bg-white border border-[#C7C7C7] hover:border-[#D32437] rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
-          >
-            <div className="w-12 h-12 rounded-xl bg-red-50 text-[#D32437] flex items-center justify-center shrink-0">
-              <Car className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-base font-extrabold text-[#231F20]">Sell Your Car</h3>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Submit your vehicle for inspection, verification, and batching in our next Online or Silent auction.
-              </p>
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-[#D32437] mt-3">
-                <span>Submit Vehicle</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </span>
-            </div>
-          </div>
-
-          {/* Security Deposit OR My Purchases */}
-          {currentUser?.role === 'BUYER' ? (
-            <div
-              onClick={() => onNavigate('MY_PURCHASES')}
-              className="bg-white border border-[#C7C7C7] hover:border-blue-500 rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
-            >
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <ShoppingBag className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-extrabold text-[#231F20]">My Purchases &amp; Payments</h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  View won vehicles, official settlement receipts, chronological payments, and active sealed bids.
-                </p>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 mt-3">
-                  <span>Open Buyer Portal</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div
-              onClick={() => (currentUser ? onOpenDeposit() : onRequireAuth())}
-              className="bg-white border border-[#C7C7C7] hover:border-blue-500 rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
-            >
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <Wallet className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-extrabold text-[#231F20]">Security Deposit &amp; 200x Limit</h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Top up your 100% refundable security deposit to activate up to 200x instant bidding power across all auctions.
-                </p>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 mt-3">
-                  <span>Manage Deposit</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Buyer Watchlist OR Help Center */}
-          {currentUser?.role === 'BUYER' ? (
-            <div
-              onClick={() => onNavigate('FAVORITES')}
-              className="bg-white border border-[#C7C7C7] hover:border-red-400 rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
-            >
-              <div className="w-12 h-12 rounded-xl bg-red-50 text-[#D32437] flex items-center justify-center shrink-0">
-                <Heart className="w-6 h-6 fill-[#D32437] text-[#D32437]" />
-              </div>
-              <div>
-                <h3 className="text-base font-extrabold text-[#231F20]">
-                  My Watchlist ({favoriteIds.length})
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Track saved vehicles across Online and Silent auctions with instant status notifications.
-                </p>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#D32437] mt-3">
-                  <span>View Watchlist</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div
-              onClick={() => onNavigate('HELP')}
-              className="bg-white border border-[#C7C7C7] hover:border-amber-500 rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
-            >
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <HelpCircle className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-extrabold text-[#231F20]">Inspection &amp; Bidding Guide</h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Learn about 150-point technical tests, Online vs Silent auctions, deposit limits, and yard collection.
-                </p>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 mt-3">
-                  <span>Help Center</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ============================================================ */}
-      {/* 5. HOME DIVIDER                                              */}
-      {/* ============================================================ */}
-      <div className="home_divider" />
-
-      {/* ============================================================ */}
-      {/* 6. HOW IT WORKS (AUTHENTIC 4-STEP CATEGORY GRID)        */}
+      {/* 4. HOW IT WORKS (AUTHENTIC 4-STEP AL WATANEYA LAYOUT)        */}
       {/* ============================================================ */}
       <section className="py-14 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -350,8 +217,8 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="step-wrapper">
               <div className="step-icon light">
                 <img
-                  src="/assets/steps/step-1-signup.png"
-                  alt="Sign Up"
+                  src={ICON_STEP_SIGNUP}
+                  alt="Sign Up & Verify Account"
                   className="w-10 h-10 object-contain"
                 />
               </div>
@@ -368,7 +235,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="step-wrapper">
               <div className="step-icon">
                 <img
-                  src="/assets/steps/step-2-bids.png"
+                  src={ICON_STEP_BIDS}
                   alt="Browse & Place Bids"
                   className="w-10 h-10 object-contain brightness-0 invert"
                 />
@@ -386,7 +253,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="step-wrapper">
               <div className="step-icon light">
                 <img
-                  src="/assets/steps/step-3-payment.png"
+                  src={ICON_STEP_PAYMENT}
                   alt="Win & Make Payment"
                   className="w-10 h-10 object-contain"
                 />
@@ -404,7 +271,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="step-wrapper">
               <div className="step-icon">
                 <img
-                  src="/assets/steps/step-4-delivery.png"
+                  src={ICON_STEP_DELIVERY}
                   alt="Get Your Car Delivered"
                   className="w-10 h-10 object-contain brightness-0 invert"
                 />
@@ -421,12 +288,12 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* ============================================================ */}
-      {/* 7. HOME DIVIDER                                              */}
+      {/* 5. 10px HOME DIVIDER                                         */}
       {/* ============================================================ */}
       <div className="home_divider" />
 
       {/* ============================================================ */}
-      {/* 8. VALUE - ADDED SERVICES                                   */}
+      {/* 6. VALUE - ADDED SERVICES                                    */}
       {/* ============================================================ */}
       <section className="py-14 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -436,16 +303,15 @@ export const HomePage: React.FC<HomePageProps> = ({
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {[
-              { title: 'Vehicle Inspection', icon: '/assets/services/svc-inspection.png' },
-              { title: 'Vehicle Delivery', icon: '/assets/services/svc-delivery.png' },
-              { title: 'Ownership Transfer', icon: '/assets/services/svc-transfer.png' },
-              { title: 'Polishing & Detailing', icon: '/assets/services/svc-polishing.png' },
-              { title: 'Maintenance & Repairs', icon: '/assets/services/svc-repairs.png' },
-              { title: 'More Services', icon: '/assets/services/svc-more.png' },
+              { title: 'Vehicle Inspection', icon: ICON_SVC_INSPECTION },
+              { title: 'Vehicle Delivery', icon: ICON_SVC_DELIVERY },
+              { title: 'Ownership Transfer', icon: ICON_SVC_TRANSFER },
+              { title: 'Polishing & Detailing', icon: ICON_SVC_POLISHING },
+              { title: 'Maintenance & Repairs', icon: ICON_SVC_REPAIRS },
+              { title: 'More Services', icon: ICON_SVC_MORE },
             ].map((svc) => (
               <div
                 key={svc.title}
-                onClick={() => setComingSoonTitle(`AJ Services: ${svc.title}`)}
                 className="category-box p-4"
               >
                 <img
@@ -453,7 +319,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   alt={svc.title}
                   width="54"
                   height="54"
-                  className="w-12 h-12 mb-3 object-contain"
+                  className="w-12 h-12 mb-3 object-contain mx-auto"
                 />
                 <div className="category-title text-center text-xs sm:text-sm font-semibold text-[#231F20]">
                   {svc.title}
@@ -465,12 +331,12 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* ============================================================ */}
-      {/* 9. HOME DIVIDER                                              */}
+      {/* 7. 10px HOME DIVIDER                                         */}
       {/* ============================================================ */}
       <div className="home_divider" />
 
       {/* ============================================================ */}
-      {/* 10. TESTIMONIALS                                             */}
+      {/* 8. TESTIMONIALS                                              */}
       {/* ============================================================ */}
       <section className="py-14 bg-[#FAFAFA]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -537,7 +403,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* ============================================================ */}
-      {/* 11. FOOTER & AJ AUCTIONS COMMUNICATION CHANNELS             */}
+      {/* 9. FOOTER & AJ AUCTIONS COMMUNICATION CHANNELS               */}
       {/* ============================================================ */}
       <footer className="bg-[#1F242E] text-slate-300 pt-12 pb-8 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -545,7 +411,11 @@ export const HomePage: React.FC<HomePageProps> = ({
             {/* Column 1: Brand */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <img src="/assets/logo-aj.png" alt="AJ Auctions" className="h-9 w-auto" />
+                <img
+                  src={getAssetUrl('/assets/logo-aj.png')}
+                  alt="AJ Auctions"
+                  className="h-9 w-auto"
+                />
                 <span className="text-lg font-black text-white tracking-wider">AJ AUCTIONS</span>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
@@ -558,15 +428,27 @@ export const HomePage: React.FC<HomePageProps> = ({
               <h5 className="text-white font-bold text-sm mb-3">Contact AJ Auctions</h5>
               <div className="space-y-2 text-xs text-slate-300">
                 <div className="flex items-center gap-2">
-                  <img src="/assets/phone.png" alt="Phone" className="w-4 h-4" />
+                  <img
+                    src={getAssetUrl('/assets/phone.png')}
+                    alt="Phone"
+                    className="w-4 h-4"
+                  />
                   <span>+971 4 123 4567</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <img src="/assets/wtsapp.png" alt="WhatsApp" className="w-4 h-4" />
+                  <img
+                    src={getAssetUrl('/assets/wtsapp.png')}
+                    alt="WhatsApp"
+                    className="w-4 h-4"
+                  />
                   <span>WhatsApp: +971 50 123 4567</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <img src="/assets/email.png" alt="Email" className="w-4 h-4" />
+                  <img
+                    src={getAssetUrl('/assets/email.png')}
+                    alt="Email"
+                    className="w-4 h-4"
+                  />
                   <span>support@ajauctions.ae</span>
                 </div>
               </div>
@@ -583,7 +465,11 @@ export const HomePage: React.FC<HomePageProps> = ({
                   className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition"
                   title="AJ Auctions on Instagram"
                 >
-                  <img src="/assets/instagram.png" alt="Instagram" className="w-4 h-4" />
+                  <img
+                    src={getAssetUrl('/assets/instagram.png')}
+                    alt="Instagram"
+                    className="w-4 h-4"
+                  />
                 </a>
                 <a
                   href="https://facebook.com/ajauctionsuae"
@@ -592,7 +478,11 @@ export const HomePage: React.FC<HomePageProps> = ({
                   className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition"
                   title="AJ Auctions on Facebook"
                 >
-                  <img src="/assets/logos_facebook.png" alt="Facebook" className="w-4 h-4" />
+                  <img
+                    src={getAssetUrl('/assets/logos_facebook.png')}
+                    alt="Facebook"
+                    className="w-4 h-4"
+                  />
                 </a>
                 <a
                   href="https://youtube.com/@ajauctionsuae"
@@ -601,7 +491,11 @@ export const HomePage: React.FC<HomePageProps> = ({
                   className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition"
                   title="AJ Auctions on YouTube"
                 >
-                  <img src="/assets/youtube.png" alt="YouTube" className="w-4 h-4" />
+                  <img
+                    src={getAssetUrl('/assets/youtube.png')}
+                    alt="YouTube"
+                    className="w-4 h-4"
+                  />
                 </a>
               </div>
               <p className="text-[11px] text-slate-500 mt-3">
@@ -613,18 +507,20 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div>
               <h5 className="text-white font-bold text-sm mb-3">Download Mobile App</h5>
               <div className="space-y-2">
-                <div
-                  onClick={() => setComingSoonTitle('AJ Auctions iOS App')}
-                  className="cursor-pointer inline-block"
-                >
-                  <img src="/assets/appstore.png" alt="App Store" className="h-9 w-auto" />
+                <div className="cursor-pointer inline-block">
+                  <img
+                    src={getAssetUrl('/assets/appstore.png')}
+                    alt="App Store"
+                    className="h-9 w-auto"
+                  />
                 </div>
                 <br />
-                <div
-                  onClick={() => setComingSoonTitle('AJ Auctions Android App')}
-                  className="cursor-pointer inline-block"
-                >
-                  <img src="/assets/googleplay.png" alt="Google Play" className="h-9 w-auto" />
+                <div className="cursor-pointer inline-block">
+                  <img
+                    src={getAssetUrl('/assets/googleplay.png')}
+                    alt="Google Play"
+                    className="h-9 w-auto"
+                  />
                 </div>
               </div>
             </div>
@@ -635,56 +531,6 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
         </div>
       </footer>
-
-      {/* ============================================================ */}
-      {/* COMING SOON MODAL                                            */}
-      {/* ============================================================ */}
-      {comingSoonTitle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-[#D32437]">
-                <Clock className="w-5 h-5" />
-                <h4 className="font-bold text-slate-900 text-base">{comingSoonTitle}</h4>
-              </div>
-              <button
-                onClick={() => setComingSoonTitle(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="py-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-red-50 text-[#D32437] flex items-center justify-center mx-auto mb-3">
-                <Sparkles className="w-7 h-7" />
-              </div>
-              <h5 className="font-extrabold text-slate-900 text-lg">Launching Soon!</h5>
-              <p className="text-xs text-slate-600 mt-2 leading-relaxed max-w-sm mx-auto">
-                This service category is currently being prepared for catalog ingestion and batching. Please check our active Online and Silent vehicle auctions in the meantime.
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setComingSoonTitle(null);
-                  onNavigate('ONLINE_AUCTIONS');
-                }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-[#D32437] hover:bg-[#b01e2e] text-white font-bold text-xs shadow-xs transition"
-              >
-                Browse Online Auctions
-              </button>
-              <button
-                onClick={() => setComingSoonTitle(null)}
-                className="py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs transition"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
