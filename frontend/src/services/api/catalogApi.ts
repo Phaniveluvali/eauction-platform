@@ -106,7 +106,7 @@ export const catalogApi = {
   },
 
   async submitPhotoVehicle(vehicleId: string, mediaPaths: string[]): Promise<Vehicle> {
-    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/submit-photo`, {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/photo-submit`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -114,7 +114,10 @@ export const catalogApi = {
       },
       body: JSON.stringify({ mediaPaths: mediaPaths || [] }),
     });
-    if (!res.ok) throw new Error('Failed to submit vehicle photos');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || err.error || `Failed to submit vehicle photos (HTTP ${res.status})`);
+    }
     return res.json();
   },
 
@@ -132,7 +135,7 @@ export const catalogApi = {
   },
 
   async submitTechnicalTest(vehicleId: string, comment?: string): Promise<Vehicle> {
-    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/technical-test`, {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/technical-submit`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -140,7 +143,10 @@ export const catalogApi = {
       },
       body: JSON.stringify({ comment: comment || '' }),
     });
-    if (!res.ok) throw new Error('Failed to submit technical inspection');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || err.error || `Failed to submit technical inspection (HTTP ${res.status})`);
+    }
     return res.json();
   },
 

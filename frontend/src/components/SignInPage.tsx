@@ -2,7 +2,7 @@ import React from 'react';
 import { PortalView } from './PortalSidebar';
 import { User } from '../types';
 import { initiateKeycloakLogin } from '../utils/oidc';
-import { Shield, Lock, ArrowLeft, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Shield, ArrowLeft, AlertCircle } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
 
 interface SignInPageProps {
@@ -29,22 +29,16 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     });
   };
 
-  const handleKeycloakRegister = () => {
-    initiateKeycloakLogin({
-      action: 'register',
-    });
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#1A1D20] to-black flex items-center justify-center p-4 selection:bg-[#059669] selection:text-white">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
-        
+
         {/* Brand Header */}
-        <div className="p-6 bg-slate-50 border-b border-slate-100 text-center">
-          <img 
-            src={getAssetUrl('/assets/logo-aj.png')} 
-            alt="AJ Auctions" 
-            className="h-10 mx-auto object-contain mb-3"
+        <div className="px-6 pt-8 pb-6 bg-slate-50 border-b border-slate-100 text-center">
+          <img
+            src={getAssetUrl('/assets/logo-aj.png')}
+            alt="AJ Auctions"
+            className="h-11 mx-auto object-contain mb-3"
             onError={(e) => {
               (e.target as HTMLImageElement).src = getAssetUrl('/assets/main_logo-aj.png');
             }}
@@ -76,25 +70,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             </div>
           )}
 
-          {/* Explanation Text */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 text-center">
-            <div className="w-12 h-12 rounded-xl bg-red-100 text-[#059669] flex items-center justify-center mx-auto mb-3 shadow-xs">
-              <Lock className="w-6 h-6" />
-            </div>
-            <h3 className="text-sm font-bold text-slate-900 mb-1">
-              Zero-Trust Identity Provider
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              All buyers, sellers, and administrators authenticate securely through our centralized Keycloak SSO service.
-            </p>
-          </div>
-
-          {/* Primary Action: Direct Keycloak SSO Button */}
-          <div className="space-y-3 pt-2">
+          {/* Primary Actions */}
+          <div className="space-y-3">
             <button
               type="button"
               onClick={handleKeycloakLogin}
-              className="w-full py-3.5 px-4 bg-[#059669] hover:bg-[#047857] text-white text-sm font-bold uppercase tracking-wider rounded-xl transition shadow-lg shadow-red-600/25 flex items-center justify-center gap-2.5 cursor-pointer"
+              className="w-full py-3.5 px-4 bg-[#059669] hover:bg-[#047857] text-white text-sm font-bold uppercase tracking-wider rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2.5 cursor-pointer"
             >
               <Shield className="w-4 h-4" />
               <span>Log In with Keycloak SSO</span>
@@ -103,33 +84,18 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             <button
               type="button"
               onClick={() => onNavigate ? onNavigate('SIGNUP') : (window.location.href = '/signup')}
-              className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer border border-slate-200"
+              className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer border border-slate-200"
             >
               <span>Don't have an account? Sign Up</span>
             </button>
           </div>
 
-          {/* Security Features Info */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 px-1">
-            <span className="flex items-center gap-1 text-emerald-700 font-semibold">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> PKCE S256 & Anti-CSRF
-            </span>
-            <a 
-              href="https://tecnics-internal.online/auth/admin" 
-              target="_blank" 
-              rel="noreferrer" 
-              className="hover:text-[#059669] flex items-center gap-1 transition text-slate-500 hover:underline"
-            >
-              Keycloak Admin <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
-
           {/* Return to Marketplace */}
-          <div className="text-center pt-2">
+          <div className="text-center pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onBackHome}
-              className="text-xs text-slate-500 hover:text-slate-800 transition flex items-center justify-center gap-1 mx-auto cursor-pointer font-medium"
+              className="text-xs text-slate-500 hover:text-slate-800 transition inline-flex items-center justify-center gap-1.5 mx-auto cursor-pointer font-medium"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Return to Public Marketplace</span>

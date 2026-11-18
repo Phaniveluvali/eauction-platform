@@ -600,6 +600,64 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [photoFilterLocation, setPhotoFilterLocation] = useState('');
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
   const [submittingPhotoVehicleId, setSubmittingPhotoVehicleId] = useState<string | null>(null);
+  const [uploadedPhotosByVehicle, setUploadedPhotosByVehicle] = useState<Record<string, string[]>>({});
+  const [processingPhotoVehicleId, setProcessingPhotoVehicleId] = useState<string | null>(null);
+
+  // Compress selected image file into a compact JPEG Data URL (max 1024px) for reliable storage across all replicas
+  const compressVehicleImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error(`Invalid image file ${file.name}`));
+        img.onload = () => {
+          const maxDim = 1024;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width >= height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(String(reader.result));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.78));
+        };
+        img.src = String(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSelectPhotoFiles = async (v: Vehicle, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    try {
+      setProcessingPhotoVehicleId(v.id);
+      setPhotoActionMsg('');
+      const selected = Array.from(files).slice(0, 10);
+      const dataUrls = await Promise.all(selected.map((file) => compressVehicleImage(file)));
+      setUploadedPhotosByVehicle((prev) => {
+        const merged = [...(prev[v.id] || []), ...dataUrls];
+        return { ...prev, [v.id]: merged };
+      });
+      setPhotoActionMsg(`Attached ${dataUrls.length} photo(s) for Vehicle #${v.lotNo || v.vin}. Click Submit to save & move to Technical Test.`);
+    } catch (err: any) {
+      alert(`Failed to process selected image(s): ${err.message}`);
+    } finally {
+      setProcessingPhotoVehicleId(null);
+    }
+  };
   const [photoActionMsg, setPhotoActionMsg] = useState('');
   const photoFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1205,18 +1263,31 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   };
 
-  // Submit Photo Vehicle -> transitions to 'FTT' (Technical Test)
+  // Submit Photo Vehicle -> uploads selected photos & transitions to 'FTT' (Technical Test)
   const handleSubmitPhotoVehicle = async (v: Vehicle) => {
     try {
       setSubmittingPhotoVehicleId(v.id);
       setPhotoActionMsg('');
-      await api.submitPhotoVehicle(v.id, [
-        'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=800',
-        'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800',
-      ]);
-      setPhotoActionMsg(`Vehicle #${v.lotNo || v.vin} inspection photos submitted! Transitioned to Technical Test.`);
+      const stagedPhotos = uploadedPhotosByVehicle[v.id] || [];
+      const existingPhotos = Array.isArray(v.mediaPaths) ? v.mediaPaths : [];
+      const finalMediaPaths =
+        stagedPhotos.length > 0
+          ? stagedPhotos
+          : existingPhotos.length > 0
+          ? existingPhotos
+          : [
+              'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=800',
+              'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800',
+            ];
+      await api.submitPhotoVehicle(v.id, finalMediaPaths);
+      setUploadedPhotosByVehicle((prev) => {
+        const next = { ...prev };
+        delete next[v.id];
+        return next;
+      });
+      setPhotoActionMsg(`Vehicle #${v.lotNo || v.vin} (${finalMediaPaths.length} photo(s)) uploaded & submitted! Transitioned to Technical Test.`);
       onRefreshInventory();
-      setTimeout(() => setPhotoActionMsg(''), 4000);
+      setTimeout(() => setPhotoActionMsg(''), 4500);
     } catch (err: any) {
       alert(`Photo submission error: ${err.message}`);
     } finally {
@@ -3468,32 +3539,71 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                 {formatTableDate(v.createdAt)}
                               </td>
                               <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                <div className="flex items-center justify-center space-x-1.5">
-                                  <label
-                                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded cursor-pointer transition"
-                                    title="Upload Photos"
-                                  >
-                                    <Upload className="w-3.5 h-3.5" />
-                                    <input
-                                      type="file"
-                                      multiple
-                                      accept="image/*"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        if (e.target.files?.length) {
-                                          alert(`${e.target.files.length} photo(s) selected for Vehicle #${v.lotNo}!`);
+                                <div className="flex flex-col items-center gap-1.5">
+                                  <div className="flex items-center justify-center space-x-1.5">
+                                    <label
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md cursor-pointer transition text-xs font-medium"
+                                      title="Upload Vehicle Photos"
+                                    >
+                                      <Upload className="w-3.5 h-3.5" />
+                                      <span>
+                                        {processingPhotoVehicleId === v.id
+                                          ? 'Loading...'
+                                          : (uploadedPhotosByVehicle[v.id]?.length || 0) > 0
+                                          ? `${uploadedPhotosByVehicle[v.id].length} Photo(s)`
+                                          : 'Upload'}
+                                      </span>
+                                      <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                          handleSelectPhotoFiles(v, e.target.files);
+                                          e.target.value = '';
+                                        }}
+                                      />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSubmitPhotoVehicle(v)}
+                                      disabled={submittingPhotoVehicleId === v.id || processingPhotoVehicleId === v.id}
+                                      className="bg-[#D0E8F9] hover:bg-[#B9E1F7] text-[#0369A1] font-semibold text-xs px-4 py-1.5 rounded-md transition shadow-2xs cursor-pointer disabled:opacity-50"
+                                    >
+                                      {submittingPhotoVehicleId === v.id ? 'Submitting...' : 'Submit'}
+                                    </button>
+                                  </div>
+                                  {(uploadedPhotosByVehicle[v.id]?.length || 0) > 0 && (
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      {uploadedPhotosByVehicle[v.id].slice(0, 4).map((srcUrl, idx) => (
+                                        <img
+                                          key={idx}
+                                          src={srcUrl}
+                                          alt={`preview-${idx}`}
+                                          className="w-7 h-7 object-cover rounded border border-emerald-300 shadow-2xs"
+                                        />
+                                      ))}
+                                      {uploadedPhotosByVehicle[v.id].length > 4 && (
+                                        <span className="text-[10px] font-bold text-emerald-700">
+                                          +{uploadedPhotosByVehicle[v.id].length - 4}
+                                        </span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setUploadedPhotosByVehicle((prev) => {
+                                            const next = { ...prev };
+                                            delete next[v.id];
+                                            return next;
+                                          })
                                         }
-                                      }}
-                                    />
-                                  </label>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSubmitPhotoVehicle(v)}
-                                    disabled={submittingPhotoVehicleId === v.id}
-                                    className="bg-[#D0E8F9] hover:bg-[#B9E1F7] text-[#0369A1] font-semibold text-xs px-4 py-1.5 rounded-md transition shadow-2xs cursor-pointer disabled:opacity-50"
-                                  >
-                                    {submittingPhotoVehicleId === v.id ? 'Submitting...' : 'Submit'}
-                                  </button>
+                                        className="text-[10px] text-red-500 hover:underline ml-1 cursor-pointer"
+                                        title="Clear selected photos"
+                                      >
+                                        Clear
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                             </tr>

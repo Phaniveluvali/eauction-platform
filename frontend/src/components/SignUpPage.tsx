@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { PortalSidebar, PortalView } from './PortalSidebar';
 import { 
   X, 
@@ -21,7 +21,6 @@ import {
   Send
 } from 'lucide-react';
 import { authApi } from '../services/api/authApi';
-import { initiateKeycloakLogin } from '../utils/oidc';
 import { getAssetUrl } from '../utils/assets';
 import { User } from '../types';
 
@@ -38,8 +37,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   onBackHome,
   onNavigate,
 }) => {
-  // Wizard steps: 1 = Details, 2 = Email OTP Verification, 3 = Complete
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Wizard steps: 1 = Details, 2 = Complete (direct registration without email OTP)
+  const [step, setStep] = useState<1 | 2>(1);
 
   // Form State
   const [role, setRole] = useState<'BUYER' | 'SELLER'>('BUYER');
@@ -59,30 +58,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
-  // OTP State
-  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
-  const [otpTimer, setOtpTimer] = useState(60);
-  const [canResend, setCanResend] = useState(false);
   const [registeredUser, setRegisteredUser] = useState<User | null>(null);
-
-  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  // Countdown timer for OTP resend
-  useEffect(() => {
-    let interval: any;
-    if (step === 2 && otpTimer > 0) {
-      interval = setInterval(() => {
-        setOtpTimer((prev) => {
-          if (prev <= 1) {
-            setCanResend(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [step, otpTimer]);
 
   // Validation
   const validateStep1 = (): boolean => {
@@ -122,8 +98,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     return Object.keys(errors).length === 0;
   };
 
-  // Step 1: Request Email Verification Code
-  const handleRequestVerificationCode = async (e: React.FormEvent) => {
+  // Direct Registration (no Email OTP required; syncs PostgreSQL + Keycloak)
+  const handleDirectRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setServerError(null);
 
@@ -133,105 +109,16 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
     setIsLoading(true);
     try {
-      // Dispatch email verification OTP via catalog-identity-service
-      await authApi.sendEmailOtp(email.trim().toLowerCase(), fullName.trim());
-      
-      // Move to step 2
-      setStep(2);
-      setOtpTimer(60);
-      setCanResend(false);
-      setOtpCode(['', '', '', '', '', '']);
-      setTimeout(() => {
-        otpInputRefs.current[0]?.focus();
-      }, 100);
-    } catch (err: any) {
-      setServerError(err.message || 'Failed to dispatch verification code. Please check your email and try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle OTP digit changes
-  const handleOtpChange = (index: number, val: string) => {
-    const cleanVal = val.replace(/[^0-9]/g, '');
-    if (!cleanVal && val !== '') return;
-
-    const newCode = [...otpCode];
-    newCode[index] = cleanVal.slice(-1);
-    setOtpCode(newCode);
-
-    // Auto-advance to next input
-    if (cleanVal && index < 5) {
-      otpInputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  // Handle OTP backspace
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
-      otpInputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  // Handle OTP paste
-  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
-    if (!pasted) return;
-
-    const newCode = [...otpCode];
-    for (let i = 0; i < pasted.length; i++) {
-      newCode[i] = pasted[i];
-    }
-    setOtpCode(newCode);
-    const targetIdx = Math.min(pasted.length, 5);
-    otpInputRefs.current[targetIdx]?.focus();
-  };
-
-  // Resend OTP Code
-  const handleResendCode = async () => {
-    if (!canResend || isLoading) return;
-    setIsLoading(true);
-    setServerError(null);
-    try {
-      await authApi.sendEmailOtp(email.trim().toLowerCase(), fullName.trim());
-      setOtpTimer(60);
-      setCanResend(false);
-      setOtpCode(['', '', '', '', '', '']);
-      otpInputRefs.current[0]?.focus();
-    } catch (err: any) {
-      setServerError(err.message || 'Failed to resend code. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Step 2: Verify Code and Finalize Registration
-  const handleVerifyAndRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setServerError(null);
-
-    const fullCode = otpCode.join('');
-    if (fullCode.length !== 6) {
-      setServerError('Please enter the complete 6-digit verification code.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Register User Account (atomically validates and verifies email OTP)
       const authResp = await authApi.register({
         email: email.trim().toLowerCase(),
         password: password,
         fullName: fullName.trim(),
         phoneNumber: phoneNumber.trim(),
         role: role,
-        verificationCode: fullCode,
         panNumber: panNumber.trim() ? panNumber.trim() : undefined,
         gstNumber: gstNumber.trim() ? gstNumber.trim() : undefined,
       });
 
-      // 3. Store authentication session
       if (authResp.token) {
         localStorage.setItem('token', authResp.token);
       }
@@ -250,13 +137,13 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
       };
 
       setRegisteredUser(createdUser);
-      setStep(3);
+      setStep(2);
 
       if (onSuccess) {
         onSuccess(createdUser);
       }
     } catch (err: any) {
-      setServerError(err.message || 'Registration failed. The code may have expired or user details are already registered.');
+      setServerError(err.message || 'Registration failed. The email or phone number may already be registered.');
     } finally {
       setIsLoading(false);
     }
@@ -292,15 +179,11 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
           {/* Stepper Indicator */}
           <div className="hidden sm:flex items-center gap-2 text-xs font-semibold">
             <span className={`px-2.5 py-1 rounded-full ${step === 1 ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
-              1. Details
+              1. Account Details
             </span>
             <span className="text-slate-300">→</span>
             <span className={`px-2.5 py-1 rounded-full ${step === 2 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-              2. Email Code
-            </span>
-            <span className="text-slate-300">→</span>
-            <span className={`px-2.5 py-1 rounded-full ${step === 3 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-              3. Ready
+              2. Ready
             </span>
           </div>
         </div>
@@ -339,7 +222,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
             {/* STEP 1: Registration Form */}
             {step === 1 && (
-              <form onSubmit={handleRequestVerificationCode} className="p-6 sm:p-8 space-y-6">
+              <form onSubmit={handleDirectRegister} className="p-6 sm:p-8 space-y-6">
                 
                 {/* Role Selection */}
                 <div>
@@ -580,11 +463,11 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                   {isLoading ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Sending Verification Code...</span>
+                      <span>Creating Account...</span>
                     </>
                   ) : (
                     <>
-                      <span>Continue to Email Verification</span>
+                      <span>Create Account</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -605,112 +488,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               </form>
             )}
 
-            {/* STEP 2: Email OTP Verification */}
+            {/* STEP 2: Registration Success */}
             {step === 2 && (
-              <form onSubmit={handleVerifyAndRegister} className="p-6 sm:p-8 space-y-6 text-center">
-                
-                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-inner border border-emerald-100">
-                  <Mail className="w-8 h-8" />
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-black text-slate-900 tracking-tight mb-2">
-                    Verify Your Email Address
-                  </h2>
-                  <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-                    We sent a 6-digit security verification code to:
-                  </p>
-                  <div className="mt-1.5 inline-flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full font-bold text-xs text-slate-800">
-                    <span>{email}</span>
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="text-emerald-700 hover:underline font-normal text-[11px] cursor-pointer"
-                    >
-                      (Edit)
-                    </button>
-                  </div>
-                </div>
-
-                {/* 6-Digit Code Inputs */}
-                <div className="py-2">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
-                    Enter 6-Digit Code
-                  </label>
-                  <div className="flex justify-center gap-2 sm:gap-3" onPaste={handleOtpPaste}>
-                    {otpCode.map((digit, index) => (
-                      <input
-                        key={index}
-                        ref={(el) => (otpInputRefs.current[index] = el)}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(e) => handleOtpChange(index, e.target.value)}
-                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                        className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-black font-mono bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 focus:outline-none transition"
-                      />
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-2">
-                    Check your spam or junk folder if the email doesn't arrive within 1 minute.
-                  </p>
-                </div>
-
-                {/* Timer & Resend */}
-                <div className="text-xs text-slate-500">
-                  {canResend ? (
-                    <button
-                      type="button"
-                      onClick={handleResendCode}
-                      disabled={isLoading}
-                      className="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Resend Verification Code</span>
-                    </button>
-                  ) : (
-                    <span>
-                      Resend code available in <strong className="text-slate-800 font-mono">{otpTimer}s</strong>
-                    </span>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-3 pt-2">
-                  <button
-                    type="submit"
-                    disabled={isLoading || otpCode.join('').length !== 6}
-                    className="w-full py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold rounded-xl shadow-lg shadow-emerald-700/20 transition flex items-center justify-center gap-2 text-sm uppercase tracking-wider cursor-pointer"
-                  >
-                    {isLoading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Verifying & Creating Account...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Verify & Complete Registration</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="w-full py-2.5 text-xs text-slate-500 hover:text-slate-800 transition font-medium flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back to Account Details</span>
-                  </button>
-                </div>
-
-              </form>
-            )}
-
-            {/* STEP 3: Registration Success */}
-            {step === 3 && (
               <div className="p-8 sm:p-10 space-y-6 text-center">
                 
                 <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-lg animate-in zoom-in-75">
@@ -719,7 +498,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
                 <div>
                   <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full font-bold text-xs uppercase tracking-wider mb-2">
-                    Email Verified & Active
+                    Account Created & Active
                   </span>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight">
                     Welcome to AJ Auctions!
@@ -742,7 +521,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                   <div className="flex justify-between py-1">
                     <span className="text-slate-500">Security Clearance:</span>
                     <span className="font-bold text-emerald-700 flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" /> Email Two-Factor Certified
+                      <Check className="w-3.5 h-3.5" /> Active Verified Account
                     </span>
                   </div>
                 </div>
@@ -775,22 +554,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               </div>
             )}
 
-            {/* Keycloak SSO Secondary Option (Step 1 only) */}
-            {step === 1 && (
-              <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
-                <p className="text-[11px] text-slate-500 mb-2">
-                  Have an enterprise corporate account?
-                </p>
-                <button
-                  type="button"
-                  onClick={() => initiateKeycloakLogin({ action: 'register' })}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-700 transition cursor-pointer"
-                >
-                  <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Register via Keycloak Corporate SSO</span>
-                </button>
-              </div>
-            )}
+
 
           </div>
 
@@ -799,10 +563,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             <span className="flex items-center gap-1">
               <Shield className="w-3.5 h-3.5 text-emerald-600" /> 256-Bit TLS Encryption
             </span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Mandatory Email OTP Validation
-            </span>
+
             <span>•</span>
             <span>AJ Auctions v2.1</span>
           </div>

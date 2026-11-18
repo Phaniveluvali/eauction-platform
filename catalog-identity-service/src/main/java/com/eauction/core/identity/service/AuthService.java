@@ -91,13 +91,9 @@ public class AuthService {
             throw new IllegalArgumentException("Phone number is already registered: " + rawPhone);
         }
 
-        // Email OTP verification check
-        if (notificationService != null) {
-            String code = request.getVerificationCode();
-            if (code == null || code.trim().isEmpty()) {
-                throw new IllegalArgumentException("Email verification code is required to complete registration");
-            }
-            boolean verified = notificationService.verifyOtp(normalizedEmail, code.trim());
+        // Optional Email OTP verification: only verify if a verificationCode was explicitly provided
+        if (notificationService != null && request.getVerificationCode() != null && !request.getVerificationCode().trim().isEmpty()) {
+            boolean verified = notificationService.verifyOtp(normalizedEmail, request.getVerificationCode().trim());
             if (!verified) {
                 throw new IllegalArgumentException("Invalid or expired email verification code. Please request a new code.");
             }

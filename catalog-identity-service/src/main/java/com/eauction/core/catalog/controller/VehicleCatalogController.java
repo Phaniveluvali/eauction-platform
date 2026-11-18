@@ -97,7 +97,7 @@ public class VehicleCatalogController {
         return ResponseEntity.ok(vehicleCatalogService.markWashingComplete(id));
     }
 
-    @PutMapping("/{id}/photo-submit")
+    @PutMapping({"/{id}/photo-submit", "/{id}/submit-photo"})
     public ResponseEntity<Vehicle> submitPhotoVehicle(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
             @PathVariable UUID id,
@@ -131,7 +131,7 @@ public class VehicleCatalogController {
         return ResponseEntity.ok(vehicleCatalogService.updateTechnicalReport(id, reportUrl));
     }
 
-    @PutMapping("/{id}/technical-submit")
+    @PutMapping({"/{id}/technical-submit", "/{id}/technical-test"})
     public ResponseEntity<Vehicle> submitTechnicalTest(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
             @PathVariable UUID id,
