@@ -1865,6 +1865,35 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           )}
         </nav>
 
+        {/* Architecture & Executive Presentation Links */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50 space-y-1.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Executive &amp; Tech Specs</p>
+          <a
+            href={getAssetUrl('/presentation.html')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-between px-2.5 py-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Executive PPT Deck</span>
+            </div>
+            <ExternalLink className="w-3 h-3 text-red-200" />
+          </a>
+          <a
+            href={getAssetUrl('/architecture-document.html')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-between px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition cursor-pointer"
+          >
+            <div className="flex items-center space-x-2">
+              <Server className="w-3.5 h-3.5 text-slate-500" />
+              <span>Architecture Spec</span>
+            </div>
+            <ExternalLink className="w-3 h-3 text-slate-400" />
+          </a>
+        </div>
+
         {/* User Profile & Sign Out Footer */}
         <div className="p-3 border-t border-slate-100 bg-slate-50/50">
           <div className="flex items-center space-x-2.5 mb-2 px-1">

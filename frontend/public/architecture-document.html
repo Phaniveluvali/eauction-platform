@@ -1068,7 +1068,104 @@ public void persistBid(BidEvent event) {
       </tr>
     </tbody>
   </table>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 10: DATABASE READ/WRITE SPLITTING & STREAMING REPLICATION      -->
+  <!-- ===================================================================== -->
+  <h2><span class="num">10</span> Database Read/Write Splitting &amp; Hot Standby Replication</h2>
+  <p>
+    In high-traffic live automotive auctions, the read-to-write query ratio is heavily skewed (95% reads vs 5% writes). 
+    To maintain deterministic low latency for bid processing and prevent heavy catalog searches from exhausting I/O bandwidth, 
+    the data layer implements strict <strong>Primary-Replica Command Query Responsibility Segregation (CQRS)</strong>.
+  </p>
+
+  <div class="card" style="margin: 20px 0;">
+    <h4>PostgreSQL Dual-Service Kubernetes Topology</h4>
+    <p>
+      PostgreSQL is deployed as a 2-pod StatefulSet with physical WAL streaming replication:
+    </p>
+    <ul>
+      <li><strong>Write Primary (<code>eauction-postgres:5432</code>)</strong>: Targeted specifically at <code>eauction-postgres-0</code>. Dedicated strictly to transactional mutations (<code>INSERT INTO bids</code>, user role modifications, settlement invoices).</li>
+      <li><strong>Read Standby (<code>eauction-postgres-replica:5432</code>)</strong>: Targeted at <code>eauction-postgres-1</code>. Operates in <code>hot_standby=on</code> mode, servicing all vehicle catalog searches, pagination, sorting, and reporting.</li>
+      <li><strong>Application-Tier Routing</strong>: Implemented in Spring Boot via <code>AbstractRoutingDataSource</code> and <code>LazyConnectionDataSourceProxy</code>. Methods marked with <code>@Transactional(readOnly = true)</code> automatically dispatch queries to the standby replica, eliminating table lock contention.</li>
+    </ul>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 11: FAULT ISOLATION, BULKHEADING & GRACEFUL DEGRADATION       -->
+  <!-- ===================================================================== -->
+  <h2><span class="num">11</span> Microservice Fault Domain Isolation &amp; Graceful Degradation</h2>
+  <p>
+    A critical architectural principle of the AJ Auctions platform is <strong>Zero Cascade Failures (Bulkhead Isolation)</strong>.
+    Transient failures in downstream processing or high-frequency bidding engines must never take down the user interface or prevent buyers from browsing inventory and managing their accounts.
+  </p>
+
+  <table class="flow-table">
+    <thead>
+      <tr>
+        <th>Failure Scenario</th>
+        <th>Isolated Subsystem</th>
+        <th>System Protection Mechanism</th>
+        <th>User Experience Impact</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Bidding Engine Unreachable / Glitch</strong></td>
+        <td><code>eauction-bidding-engine</code> (Go)</td>
+        <td>Circuit Breaker in <code>App.tsx</code> and <code>ErrorBoundary.tsx</code> intercepts WebSocket disconnects. Polling falls back gracefully.</td>
+        <td><strong style="color:#059669;">Zero Site Outage:</strong> Buyers seamlessly browse 2,000+ vehicles, search specs, inspect photos, and view past wins. An interactive status banner alerts: <em>"Bidding engine is undergoing a brief sync; will be back momentarily."</em></td>
+      </tr>
+      <tr>
+        <td><strong>Payment Broker Gateway Timeout</strong></td>
+        <td><code>eauction-payment-broker</code></td>
+        <td>Kafka dead-letter queue (DLQ) buffers transaction intents; asynchronous webhook reconciliation.</td>
+        <td>Buyer retains auction award in PENDING_SETTLEMENT state without losing their winning status.</td>
+      </tr>
+      <tr>
+        <td><strong>AI Service Heavy Load / Pod Restart</strong></td>
+        <td><code>eauction-ai-service</code></td>
+        <td>Non-blocking REST timeout with client-side fallback to standard keyword search and deterministic rule-based pricing.</td>
+        <td>Core platform operations remain 100% functional; AI recommendations gracefully defer until the pod recovers.</td>
+      </tr>
+      <tr>
+        <td><strong>Redis Master Node Failure</strong></td>
+        <td><code>eauction-redis-0</code></td>
+        <td>Redis Sentinel 3-node quorum detects node drop in 3 seconds, promotes replica to master, and pushes updated topology to Go clients.</td>
+        <td>Bidding pauses for &lt; 3 seconds, then automatically resumes on the new master with zero data loss.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 12: ARTIFICIAL INTELLIGENCE & LOCAL LLM INTEGRATION           -->
+  <!-- ===================================================================== -->
+  <h2><span class="num">12</span> Enterprise AI Microservice Architecture &amp; Local LLM Engine</h2>
+  <p>
+    The AI subsystem (<code>eauction-ai-service</code>) runs on Python 3.11 with FastAPI, providing three critical business capabilities 
+    without incurring per-token commercial API costs or compromising buyer privacy:
+  </p>
+  <ul>
+    <li><strong>AI Concierge (Smart Natural Language Search)</strong>: Allows prospective buyers to search using conversational language (e.g., <em>"Family SUV under 70,000 AED with leather seats and clean history"</em>) in English and Arabic.</li>
+    <li><strong>Financial Intelligence &amp; Anti-Sniping Detector</strong>: Analyzes real-time bid arrival times, bid intervals, and buyer account patterns to flag potential shill bidding, bot activity, or bid sniping anomalies for compliance auditors.</li>
+    <li><strong>Fair Market Valuation &amp; Reserve Recommendations</strong>: Leverages depreciation algorithms and historical hammer prices across past auction lots to calculate predictive fair-market values and assist sellers in setting competitive reserve bids.</li>
+    <li><strong>Local LLM Integration (Ollama)</strong>: Connects to self-hosted open-source models (Llama 3 / Mistral / DeepSeek), guaranteeing <strong>100% data confidentiality</strong> and <strong>$0 cloud API token expenditure</strong>.</li>
+  </ul>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 13: ENTERPRISE AUDIT TRAIL & RBAC PERMISSION MANAGEMENT       -->
+  <!-- ===================================================================== -->
+  <h2><span class="num">13</span> Enterprise Audit Trail &amp; Role-Based Access Control (RBAC)</h2>
+  <p>
+    To satisfy enterprise governance, statutory compliance, and operational transparency:
+  </p>
+  <ul>
+    <li><strong>Tamper-Evident Audit Trail</strong>: Every administrative intervention, vehicle catalog update, auction extension, and role reassignment is permanently recorded in the PostgreSQL <code>admin_audit_logs</code> table with GST timestamp, actor email, entity ID, and detail payloads.</li>
+    <li><strong>Interactive Permission Matrix</strong>: Under <code>User Administration -&gt; Employees Permission</code>, Super Administrators can assign granular roles (<code>ROLE_SUPER_ADMIN</code>, <code>ROLE_ADMIN</code>, <code>ROLE_OPERATOR</code>, <code>ROLE_INSPECTOR</code>, <code>ROLE_FINANCE</code>) with module-level permissions committed directly via REST API.</li>
+    <li><strong>Single Sign-On Authority</strong>: Keycloak 24 serves as the single source of truth for authentication, enforcing MFA, session termination, and secure JWT verification.</li>
+  </ul>
 </div>
 
 </body>
 </html>
+

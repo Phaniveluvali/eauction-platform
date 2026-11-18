@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AJ Auctions Platform - Executive Management Presentation</title>
+  <style>
+    :root {
+      --primary: #D32437;
+      --primary-hover: #b01e2e;
+      --bg-dark: #0B0F19;
+      --bg-card: #151D2F;
+      --bg-card-hover: #1C273E;
+      --border-color: #24304A;
+      --text-white: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --emerald: #059669;
+      --emerald-light: #10B981;
+      --amber: #D97706;
+      --blue: #2563EB;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Toolbar */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: rgba(11, 15, 25, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-badge {
+      background: var(--primary);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-white);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: var(--bg-card-hover);
+      border-color: #384869;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+
+    .slide-indicator {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      min-width: 100px;
+      text-align: center;
+    }
+
+    /* Slide Deck Container */
+    .deck-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      position: relative;
+    }
+
+    .slide {
+      display: none;
+      width: 100%;
+      max-width: 1200px;
+      min-height: 640px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 48px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      position: relative;
+      flex-direction: column;
+      animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .slide.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide-header {
+      margin-bottom: 28px;
+    }
+
+    .slide-tag {
+      display: inline-block;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+
+    .slide-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -1px;
+    }
+
+    .slide-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      max-width: 850px;
+      line-height: 1.5;
+    }
+
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Grid Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    /* Card Panels */
+    .card {
+      background: rgba(11, 15, 25, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card.highlight {
+      border-color: rgba(211, 36, 55, 0.4);
+      background: linear-gradient(180deg, rgba(211, 36, 55, 0.08) 0%, rgba(11, 15, 25, 0.6) 100%);
+    }
+
+    .card.success {
+      border-color: rgba(5, 150, 105, 0.4);
+      background: linear-gradient(180deg, rgba(5, 150, 105, 0.08) 0%, rgba(11, 15, 25, 0.6) 100%);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Metric Badges */
+    .metric-value {
+      font-size: 2.4rem;
+      font-weight: 900;
+      letter-spacing: -1px;
+      color: var(--text-white);
+    }
+
+    .metric-value.red { color: #F87171; }
+    .metric-value.green { color: #34D399; }
+    .metric-value.blue { color: #60A5FA; }
+
+    .metric-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+    }
+
+    /* Architecture Box Diagram Styling */
+    .diagram-box {
+      background: rgba(11, 15, 25, 0.85);
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 8px;
+    }
+
+    .diagram-flow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .arrow {
+      color: var(--primary);
+      font-weight: 900;
+      font-size: 1.3rem;
+    }
+
+    /* Feature List */
+    ul.feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    ul.feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    ul.feature-list li strong {
+      color: var(--text-white);
+    }
+
+    .bullet {
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    /* Progress Bar */
+    .progress-bar-container {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: var(--border-color);
+      z-index: 100;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--primary);
+      width: 8.33%;
+      transition: width 0.3s ease;
+    }
+
+    /* Print Formatting */
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #0F172A !important;
+      }
+      .top-bar, .progress-bar-container {
+        display: none !important;
+      }
+      .slide {
+        display: flex !important;
+        page-break-after: always;
+        break-after: page;
+        min-height: 100vh;
+        border: none;
+        box-shadow: none;
+        background: #ffffff !important;
+        color: #0F172A !important;
+      }
+      .card {
+        background: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        color: #0F172A !important;
+      }
+      .card-desc, .slide-subtitle, ul.feature-list li {
+        color: #475569 !important;
+      }
+      .metric-value {
+        color: #0F172A !important;
+      }
+      .diagram-box {
+        background: #F1F5F9 !important;
+        border-color: #CBD5E1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-bar">
+    <div class="brand">
+      <span class="brand-badge">AJ AUCTIONS</span>
+      <span>Enterprise e-Auction Platform</span>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="prevBtn" onclick="changeSlide(-1)">&#8592; Prev</button>
+      <span class="slide-indicator" id="slideIndicator">Slide 1 of 12</span>
+      <button class="btn btn-primary" id="nextBtn" onclick="changeSlide(1)">Next &#8594;</button>
+      <button class="btn" onclick="toggleFullScreen()" title="Toggle Fullscreen">⛶ Fullscreen</button>
+      <button class="btn" onclick="window.print()" title="Print / Export to PDF">🖨 Print / PDF</button>
+    </div>
+  </header>
+
+  <!-- Slide Deck -->
+  <main class="deck-container">
+
+    <!-- SLIDE 1: Title & Hero -->
+    <section class="slide active" id="slide-1">
+      <div class="slide-header">
+        <span class="slide-tag">Executive Briefing • Cloud-Native Architecture</span>
+        <h1 class="slide-title">AJ Auctions Enterprise Platform</h1>
+        <p class="slide-subtitle">
+          Next-generation automotive e-auction platform engineered for sub-millisecond live bidding, 
+          massive catalog scalability, high fault-tolerance, and private on-premise AI intelligence.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card highlight">
+            <span class="metric-label">High-Concurrency Core</span>
+            <div class="metric-value red">&lt; 1 ms</div>
+            <p class="card-desc">Sub-millisecond atomic bid validation via in-memory Redis Lua execution with zero race conditions.</p>
+          </div>
+          <div class="card">
+            <span class="metric-label">Proven Scale</span>
+            <div class="metric-value green">20,000</div>
+            <p class="card-desc">Simultaneous concurrent buyers tested across 2,077 live vehicles without UI degradation.</p>
+          </div>
+          <div class="card">
+            <span class="metric-label">Enterprise Open-Source</span>
+            <div class="metric-value blue">100% IP</div>
+            <p class="card-desc">Zero proprietary vendor lock-in. Powered by Kubernetes, PostgreSQL HA, Kafka, Keycloak &amp; Go.</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 10px;">
+          <h3 class="card-title">Executive Takeaways for Leadership</h3>
+          <ul class="feature-list">
+            <li><span class="bullet">✔</span> <strong>Business Continuity:</strong> Microservice bulkheading guarantees that even if the bidding engine undergoes a network sync, buyers can seamlessly browse, search, and inspect vehicles without interruption.</li>
+            <li><span class="bullet">✔</span> <strong>Financial Integrity:</strong> Asynchronous Kafka event log guarantees zero lost bids or double-charging during peak auction countdowns.</li>
+            <li><span class="bullet">✔</span> <strong>Private AI:</strong> Self-hosted Ollama AI models deliver conversational vehicle concierge and fraud detection at <strong>$0 cloud API cost</strong> with 100% data sovereignty.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: Business Strategy & The Open-Source Advantage -->
+    <section class="slide" id="slide-2">
+      <div class="slide-header">
+        <span class="slide-tag">Strategic Advantage</span>
+        <h2 class="slide-title">Open-Source Enterprise Stack vs. Proprietary SaaS</h2>
+        <p class="slide-subtitle">
+          Why building on an open-source Kubernetes foundation provides unmatched business agility and cost savings.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card" style="border-color: #EF4444;">
+            <h3 class="card-title" style="color: #EF4444;">❌ The Proprietary SaaS Trap</h3>
+            <ul class="feature-list">
+              <li><span class="bullet">✗</span> <strong>Expensive Licensing:</strong> Recurring annual six-figure licensing fees per user, per bid, or per vehicle.</li>
+              <li><span class="bullet">✗</span> <strong>Black-Box Infrastructure:</strong> Inability to customize auction rules, bidding increments, or local regional tax/customs logic.</li>
+              <li><span class="bullet">✗</span> <strong>Cloud Latency &amp; Egress Costs:</strong> High network hops to overseas SaaS servers; customer data leaves sovereign boundaries.</li>
+              <li><span class="bullet">✗</span> <strong>Vendor Lock-in:</strong> If the SaaS vendor raises prices or discontinues features, business operations are held hostage.</li>
+            </ul>
+          </div>
+
+          <div class="card success">
+            <h3 class="card-title" style="color: #10B981;">✔ The AJ Auctions Open-Source Architecture</h3>
+            <ul class="feature-list">
+              <li><span class="bullet">✔</span> <strong>100% Intellectual Property Ownership:</strong> The entire software stack and data are owned completely in-house.</li>
+              <li><span class="bullet">✔</span> <strong>Zero Per-User / Per-Bid Licensing Fees:</strong> Scale freely from 2,000 to 200,000 vehicles with zero recurring software licensing penalties.</li>
+              <li><span class="bullet">✔</span> <strong>Cloud-Agnostic Portability:</strong> Runs seamlessly on Kubernetes (on-premise bare-metal, AWS EKS, GCP GKE, or Azure AKS).</li>
+              <li><span class="bullet">✔</span> <strong>Custom Fine-Tuning:</strong> Full freedom to customize UI, branding, AI workflows, and regional integrations.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: Platform Features Showcase -->
+    <section class="slide" id="slide-3">
+      <div class="slide-header">
+        <span class="slide-tag">User Experience &amp; Capabilities</span>
+        <h2 class="slide-title">Comprehensive Platform Features</h2>
+        <p class="slide-subtitle">
+          Engineered for intuitive buyer engagement, operational rigor, and executive administrative transparency.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <h3 class="card-title">Live &amp; Silent Auctions</h3>
+            <p class="card-desc">Dual auction formats supporting high-velocity real-time timer countdowns and sealed-bid silent auctions with minimum increment enforcement.</p>
+          </div>
+          <div class="card highlight">
+            <h3 class="card-title">Dynamic "Place Bid" State</h3>
+            <p class="card-desc">Button stays signature red (<code>#D32437</code>) by default; turns emerald green with checkmark only when the logged-in buyer is the active highest bidder.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Deterministic Sorting</h3>
+            <p class="card-desc">Guaranteed identical listing sequence across all buyer logins and devices via combined SQL <code>ORDER BY</code> and frontend tiebreaker sorting.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">WebP &amp; Gzip Optimization</h3>
+            <p class="card-desc">High-res 2K banners compressed from 1.87 MB to 214 KB WebP with 30-day immutable caching. API payloads compressed by &gt;90% via Gzip.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Keycloak 24 Enterprise SSO</h3>
+            <p class="card-desc">Single source of identity authority supporting multi-factor authentication, Azure AD B2C bridging, and instant session termination.</p>
+          </div>
+          <div class="card success">
+            <h3 class="card-title">Audit Trail &amp; RBAC</h3>
+            <p class="card-desc">Tamper-evident audit logging of all admin actions in PostgreSQL. Modular role assignment (Super Admin, Operator, Inspector, Finance).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: Kubernetes Cloud-Native Topology -->
+    <section class="slide" id="slide-4">
+      <div class="slide-header">
+        <span class="slide-tag">Infrastructure Tier</span>
+        <h2 class="slide-title">Kubernetes Cloud-Native Topology</h2>
+        <p class="slide-subtitle">
+          Multi-replica stateless microservices decoupled from stateful clustering for high resilience and elastic scaling.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="diagram-flow">
+          <div class="diagram-box" style="flex: 1;">
+            <strong style="color: #60A5FA;">Edge Router</strong>
+            <span style="font-size: 0.8rem; color: var(--text-dim);">Nginx Ingress</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">SSL / Gzip / Caching</span>
+          </div>
+          <div class="arrow">&#8594;</div>
+          <div class="diagram-box" style="flex: 2;">
+            <strong style="color: #34D399;">Stateless Services (HPA Autoscaling)</strong>
+            <span style="font-size: 0.8rem; color: var(--text-dim);">Frontend (2) • Bidding Engine (3) • Catalog (5) • AI Service (2)</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Zero-downtime rolling updates managed via GitOps ArgoCD</span>
+          </div>
+          <div class="arrow">&#8594;</div>
+          <div class="diagram-box" style="flex: 2;">
+            <strong style="color: #F87171;">Stateful HA Clusters</strong>
+            <span style="font-size: 0.8rem; color: var(--text-dim);">Postgres Master/Replica • Redis Sentinel • Kafka/Zookeeper</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Persistent Volume Claims &amp; Automated Failover</span>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 10px;">
+          <div class="card">
+            <span class="metric-label">Continuous Delivery</span>
+            <div class="metric-value blue">GitOps</div>
+            <p class="card-desc">Declarative state managed by ArgoCD. Commits to <code>main</code> trigger automated testing, container builds, and rolling updates.</p>
+          </div>
+          <div class="card">
+            <span class="metric-label">High Availability</span>
+            <div class="metric-value green">99.99%</div>
+            <p class="card-desc">No single point of failure. Pod anti-affinity rules prevent co-locating replicas on the same compute nodes.</p>
+          </div>
+          <div class="card">
+            <span class="metric-label">Automated Scaling</span>
+            <div class="metric-value red">HPA</div>
+            <p class="card-desc">Horizontal Pod Autoscaler dynamically scales catalog and bidding pods based on real-time CPU and request volume.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: Real-Time Bidding Engine: Go + Redis Lua -->
+    <section class="slide" id="slide-5">
+      <div class="slide-header">
+        <span class="slide-tag">Core Bidding Technology</span>
+        <h2 class="slide-title">Sub-Millisecond Atomic Bidding (Go + Redis Lua)</h2>
+        <p class="slide-subtitle">
+          How Redis Lua scripting guarantees strict linearizability and eliminates race conditions.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card">
+            <h3 class="card-title">The High-Concurrency Challenge</h3>
+            <p class="card-desc">
+              In traditional database-driven auctions, when two buyers submit $10,000 at the exact same millisecond:
+            </p>
+            <ul class="feature-list">
+              <li><span class="bullet">✗</span> <strong>Race Condition:</strong> Both read the same price and attempt an update, causing lock waits, timeouts, or split-brain highest bidders.</li>
+              <li><span class="bullet">✗</span> <strong>Database Bottleneck:</strong> Thousands of concurrent bids lock rows in SQL, grinding transactions to a halt.</li>
+            </ul>
+          </div>
+
+          <div class="card highlight">
+            <h3 class="card-title">The Redis Lua Solution</h3>
+            <p class="card-desc">
+              Redis executes Lua scripts as a <strong>single atomic unit of work</strong> on its single-threaded event loop:
+            </p>
+            <ul class="feature-list">
+              <li><span class="bullet">✔</span> <strong>Strict Linearizability:</strong> Bids are strictly ordered in microseconds; impossible for two bids to collide.</li>
+              <li><span class="bullet">✔</span> <strong>Instant Validation:</strong> Checks auction status, end-time, minimum increments, and bidder ID in memory (&lt; 1ms).</li>
+              <li><span class="bullet">✔</span> <strong>Immediate Fan-Out:</strong> Validated bid is broadcast to all active buyers via WebSockets before touching the disk.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="diagram-flow">
+          <div class="diagram-box">1. Buyer Submits Bid</div>
+          <div class="arrow">&#8594;</div>
+          <div class="diagram-box" style="border-color: #EF4444;">2. Go Engine Dispatches Lua</div>
+          <div class="arrow">&#8594;</div>
+          <div class="diagram-box" style="border-color: #10B981;">3. Redis Mutates Hash (&lt;1ms)</div>
+          <div class="arrow">&#8594;</div>
+          <div class="diagram-box">4. WebSocket Push to All Buyers</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: High Availability & Zero Data-Loss Quorum: Redis Sentinel -->
+    <section class="slide" id="slide-6">
+      <div class="slide-header">
+        <span class="slide-tag">Stateful Reliability</span>
+        <h2 class="slide-title">Redis Sentinel 3-Node Failover Quorum</h2>
+        <p class="slide-subtitle">
+          Automated heartbeat monitoring, leader election, and topology discovery ensuring zero downtime during node outages.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <h3 class="card-title">3-Node Sentinel Quorum</h3>
+            <p class="card-desc">Three independent Sentinel monitors continuously ping Redis Master and Replica pods every 1,000 milliseconds.</p>
+          </div>
+          <div class="card highlight">
+            <h3 class="card-title">3-Second Automatic Failover</h3>
+            <p class="card-desc">If the master node crashes, Sentinel nodes establish a 2/3 quorum agreement, elect the standby replica, and promote it to master within 3 seconds.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Dynamic Client Discovery</h3>
+            <p class="card-desc">The Go bidding engine listens to Sentinel Pub/Sub notifications, automatically re-pointing its connection pool to the new master without restarting.</p>
+          </div>
+        </div>
+
+        <div class="card success" style="margin-top: 10px;">
+          <h3 class="card-title">Business Impact for Management</h3>
+          <p class="card-desc">
+            Even in the rare event of a physical server failure or hardware crash on the database host, 
+            <strong>active auctions remain intact, no bids are lost, and auction closing timers do not freeze.</strong>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: Event-Driven Persistence Pipeline: Kafka & Zookeeper -->
+    <section class="slide" id="slide-7">
+      <div class="slide-header">
+        <span class="slide-tag">Event Architecture</span>
+        <h2 class="slide-title">Zero Data-Loss Kafka Event Pipeline</h2>
+        <p class="slide-subtitle">
+          Decoupling high-speed in-memory bidding from durable relational database persistence.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="diagram-flow">
+          <div class="diagram-box">
+            <strong>Bidding Engine (Go)</strong>
+            <span style="font-size: 0.75rem; color: var(--text-dim);">Commits Bid in Memory</span>
+          </div>
+          <div class="arrow">&#8594;</div>
+          <div class="diagram-box" style="border-color: #60A5FA;">
+            <strong>Apache Kafka (Topic: vehicle-bids)</strong>
+            <span style="font-size: 0.75rem; color: var(--text-dim);">Immutable Partitioned Log</span>
+          </div>
+          <div class="arrow">&#8594;</div>
+          <div class="diagram-box" style="border-color: #34D399;">
+            <strong>Catalog Identity (Spring Boot)</strong>
+            <span style="font-size: 0.75rem; color: var(--text-dim);">Async Kafka Consumer</span>
+          </div>
+          <div class="arrow">&#8594;</div>
+          <div class="diagram-box">
+            <strong>PostgreSQL 16</strong>
+            <span style="font-size: 0.75rem; color: var(--text-dim);">Permanent Audit Record</span>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 10px;">
+          <div class="card">
+            <h3 class="card-title">Asynchronous Decoupling</h3>
+            <p class="card-desc">Slow database queries or disk writes can never slow down the live auction. Redis handles immediate speed; Kafka handles guaranteed durability.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Zero Message Loss</h3>
+            <p class="card-desc">Kafka retains an append-only commit log on persistent storage. If a database goes offline for maintenance, events wait safely in Kafka until it recovers.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Auditability &amp; Analytics</h3>
+            <p class="card-desc">Every bid event payload is replayable, enabling real-time analytics, settlement reconciliation, and AI anomaly detection downstream.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: Database Scalability: Read/Write Splitting -->
+    <section class="slide" id="slide-8">
+      <div class="slide-header">
+        <span class="slide-tag">Data Tier Scalability</span>
+        <h2 class="slide-title">PostgreSQL Read/Write Splitting &amp; Streaming Replication</h2>
+        <p class="slide-subtitle">
+          Segregating heavy catalog read queries to standby replicas while protecting transactional writes.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card highlight">
+            <h3 class="card-title">Write Primary (<code>eauction-postgres:5432</code>)</h3>
+            <p class="card-desc">Dedicated strictly to transactional state changes:</p>
+            <ul class="feature-list">
+              <li><span class="bullet">✔</span> <code>INSERT INTO bids</code> (Recorded from Kafka)</li>
+              <li><span class="bullet">✔</span> User registration, KYC updates, and password changes</li>
+              <li><span class="bullet">✔</span> Auction lifecycle transitions (SCHEDULED &#8594; ACTIVE &#8594; CLOSED)</li>
+              <li><span class="bullet">✔</span> Financial ledger entries and payment settlement invoices</li>
+            </ul>
+          </div>
+
+          <div class="card success">
+            <h3 class="card-title">Read Standby (<code>eauction-postgres-replica:5432</code>)</h3>
+            <p class="card-desc">Dedicated to high-volume read traffic (95% of queries):</p>
+            <ul class="feature-list">
+              <li><span class="bullet">✔</span> 2,077 vehicle catalog browsing, filtering, and pagination</li>
+              <li><span class="bullet">✔</span> Vehicle inspection report downloads and spec queries</li>
+              <li><span class="bullet">✔</span> Historical bid logs and buyer past-bid review</li>
+              <li><span class="bullet">✔</span> Physical streaming replication lag is negligible (&lt; 5 ms)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 10px;">
+          <h3 class="card-title">Automatic Spring Routing</h3>
+          <p class="card-desc">
+            Spring Boot's <code>LazyConnectionDataSourceProxy</code> inspects transactions: methods annotated with <code>@Transactional(readOnly = true)</code> 
+            route directly to the Standby Replica, eliminating read/write lock contention.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: Crucial Spotlight: Zero Cascade Failures & Microservice Resilience -->
+    <section class="slide" id="slide-9">
+      <div class="slide-header">
+        <span class="slide-tag" style="color: #34D399;">Business Continuity Spotlight</span>
+        <h2 class="slide-title">Zero Cascade Failures: Microservice Bulkheading</h2>
+        <p class="slide-subtitle">
+          If a backend service encounters a glitch, the site NEVER crashes—buyers continue other tasks uninterrupted.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card highlight">
+            <h3 class="card-title">Traditional Monolith vs. AJ Auctions Bulkhead</h3>
+            <p class="card-desc">
+              In older monolithic architectures, if the bidding service or payment gateway crashes, the entire website displays a blank screen or 500 error.
+            </p>
+            <p class="card-desc" style="color: var(--text-white); font-weight: 600;">
+              In AJ Auctions, each microservice operates inside an isolated fault domain. A failure in one service is strictly contained.
+            </p>
+          </div>
+
+          <div class="card success">
+            <h3 class="card-title">Graceful Degradation Experience</h3>
+            <ul class="feature-list">
+              <li><span class="bullet">✔</span> <strong>Bidding Engine Down?</strong> Buyers continue searching 2,000+ vehicles, viewing inspection sheets, checking profile settings, and reading financial logs without any freeze.</li>
+              <li><span class="bullet">✔</span> <strong>Polite Interactive Alert:</strong> Instead of crashing, an informative modal/banner informs: <em>"Bidding service is temporarily syncing. We will be back momentarily."</em></li>
+              <li><span class="bullet">✔</span> <strong>Automatic Reconnection:</strong> The frontend circuit breaker automatically retries WebSocket handshakes in the background with exponential backoff.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 10px;">
+          <div class="diagram-box" style="border-color: #10B981;">
+            <strong style="color: #34D399;">Catalog &amp; Browsing</strong>
+            <span style="font-size: 0.8rem; color: var(--text-dim);">100% OPERATIONAL</span>
+          </div>
+          <div class="diagram-box" style="border-color: #10B981;">
+            <strong style="color: #34D399;">User Accounts &amp; Admin</strong>
+            <span style="font-size: 0.8rem; color: var(--text-dim);">100% OPERATIONAL</span>
+          </div>
+          <div class="diagram-box" style="border-color: #EF4444;">
+            <strong style="color: #F87171;">Bidding Service Glitch</strong>
+            <span style="font-size: 0.8rem; color: var(--text-dim);">ISOLATED (Auto-Recovery)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: Artificial Intelligence Demystified -->
+    <section class="slide" id="slide-10">
+      <div class="slide-header">
+        <span class="slide-tag">Enterprise AI</span>
+        <h2 class="slide-title">Pragmatic AI: High Value, Zero Cloud API Costs</h2>
+        <p class="slide-subtitle">
+          How AJ Auctions integrates local open-source LLMs (Ollama) to drive revenue while keeping customer data confidential.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <h3 class="card-title">1. AI Vehicle Concierge</h3>
+            <p class="card-desc">
+              Conversational natural language search in English and Arabic. Buyers type: <em>"Find me a reliable German sedan under 50k AED"</em>, and the AI matches catalog specs instantly.
+            </p>
+          </div>
+          <div class="card highlight">
+            <h3 class="card-title">2. Financial &amp; Anti-Sniping Guard</h3>
+            <p class="card-desc">
+              Analyzes bidding velocity, frequency, and account associations in real time. Flags suspicious shill bidding, coordinated bidding rings, or rogue bots for admin audit.
+            </p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">3. Dynamic Fair-Value Pricing</h3>
+            <p class="card-desc">
+              Evaluates past hammer prices, mileage, model year, and market depreciation to suggest optimal starting prices and realistic reserve thresholds.
+            </p>
+          </div>
+        </div>
+
+        <div class="card success" style="margin-top: 10px;">
+          <h3 class="card-title">Why Management Loves Our AI Architecture</h3>
+          <div class="grid-2" style="margin-top: 6px;">
+            <div>
+              <strong style="color: #34D399;">$0 Ongoing API Subscriptions</strong>
+              <p class="card-desc">Powered by local self-hosted models (Llama 3 / Mistral via Ollama). No per-token OpenAI or cloud invoices.</p>
+            </div>
+            <div>
+              <strong style="color: #34D399;">100% Data Sovereignty</strong>
+              <p class="card-desc">Bidder data, financial records, and vehicle inventories never leave the internal network. Zero risk of data leaks.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 11: Enterprise Security, Keycloak SSO & Audit Trail -->
+    <section class="slide" id="slide-11">
+      <div class="slide-header">
+        <span class="slide-tag">Governance &amp; Security</span>
+        <h2 class="slide-title">Enterprise Security, SSO &amp; Audit Trail</h2>
+        <p class="slide-subtitle">
+          Strict identity federation, role-based access control, and immutable operational compliance.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <h3 class="card-title">Keycloak 24 IAM</h3>
+            <p class="card-desc">
+              OpenID Connect (OIDC) &amp; OAuth2 authentication authority. Supports multi-factor authentication (MFA), password policies, and Azure AD B2C federation.
+            </p>
+          </div>
+          <div class="card highlight">
+            <h3 class="card-title">Granular RBAC Permissions</h3>
+            <p class="card-desc">
+              Dedicated staff roles (<code>SUPER_ADMIN</code>, <code>ADMIN</code>, <code>OPERATOR</code>, <code>INSPECTOR</code>, <code>FINANCE</code>) with module-level permissions managed directly from the Admin Portal.
+            </p>
+          </div>
+          <div class="card success">
+            <h3 class="card-title">Tamper-Evident Audit Trail</h3>
+            <p class="card-desc">
+              All administrative operations (vehicle edits, auction extensions, role changes) are recorded in PostgreSQL <code>admin_audit_logs</code> with GST timestamp and actor email.
+            </p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 10px;">
+          <h3 class="card-title">Single Source of Credential Authority</h3>
+          <p class="card-desc">
+            Direct database password resets are permanently disabled in favor of centralized Keycloak SSO tokens. Passwords can never fall out of sync or be exposed in transit.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 12: Production Concurrency Benchmark & Strategic Roadmap -->
+    <section class="slide" id="slide-12">
+      <div class="slide-header">
+        <span class="slide-tag">Proven Results &amp; Future Vision</span>
+        <h2 class="slide-title">Concurrency Benchmark &amp; Strategic Roadmap</h2>
+        <p class="slide-subtitle">
+          Demonstrated production performance under extreme load and future strategic milestones.
+        </p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-4">
+          <div class="card">
+            <span class="metric-label">Load Tested</span>
+            <div class="metric-value blue">20,000</div>
+            <p class="card-desc">Concurrent virtual users</p>
+          </div>
+          <div class="card">
+            <span class="metric-label">Throughput</span>
+            <div class="metric-value green">12,000</div>
+            <p class="card-desc">Bids per 5-minute peak</p>
+          </div>
+          <div class="card">
+            <span class="metric-label">Latency (p99)</span>
+            <div class="metric-value red">3.64 ms</div>
+            <p class="card-desc">Round-trip database write</p>
+          </div>
+          <div class="card">
+            <span class="metric-label">Data Loss</span>
+            <div class="metric-value green">0.00%</div>
+            <p class="card-desc">Zero lost or duplicate bids</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 10px;">
+          <h3 class="card-title">Strategic Roadmap (Next 12 Months)</h3>
+          <div class="grid-3" style="margin-top: 8px;">
+            <div>
+              <strong style="color: #60A5FA;">Phase 1: Mobile Native Apps</strong>
+              <p class="card-desc">iOS &amp; Android Flutter apps with biometric authentication and real-time push notifications.</p>
+            </div>
+            <div>
+              <strong style="color: #34D399;">Phase 2: Computer Vision AI</strong>
+              <p class="card-desc">Automated vehicle scratch and dent detection from upload photos using local vision models.</p>
+            </div>
+            <div>
+              <strong style="color: #F87171;">Phase 3: Multi-Region Active/Active</strong>
+              <p class="card-desc">Multi-region Kubernetes deployment with automated cross-datacenter failover.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Progress Bar -->
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 12;
+
+    function showSlide(index) {
+      if (index < 1) index = 1;
+      if (index > totalSlides) index = totalSlides;
+      currentSlide = index;
+
+      document.querySelectorAll('.slide').forEach((slide, idx) => {
+        slide.classList.remove('active');
+        if (idx === currentSlide - 1) {
+          slide.classList.add('active');
+        }
+      });
+
+      document.getElementById('slideIndicator').textContent = `Slide ${currentSlide} of ${totalSlides}`;
+      document.getElementById('progressBar').style.width = `${(currentSlide / totalSlides) * 100}%`;
+
+      document.getElementById('prevBtn').disabled = currentSlide === 1;
+      document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+    }
+
+    function changeSlide(delta) {
+      showSlide(currentSlide + delta);
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {});
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    // Keyboard Navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        changeSlide(1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        changeSlide(-1);
+      } else if (e.key.toLowerCase() === 'f') {
+        toggleFullScreen();
+      } else if (e.key === 'Home') {
+        showSlide(1);
+      } else if (e.key === 'End') {
+        showSlide(totalSlides);
+      }
+    });
+
+    // Initialize
+    showSlide(1);
+  </script>
+</body>
+</html>

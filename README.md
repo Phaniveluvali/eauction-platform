@@ -1,8 +1,13 @@
-# Vehicle E-Auction Platform (India) - Production Microservices Workspace
+# AJ Auctions Platform - Enterprise Cloud-Native e-Auction Platform
 
-An enterprise-grade, event-driven, distributed microservices platform engineered for high-volume commercial vehicle auctions (cars, trucks, tippers, and multi-axle trailers) in India. Built with **Clean Architecture / Domain-Driven Design (DDD)** principles across React 18, Java 17 + Spring Boot 3.3+, Go 1.22, and Node.js 20 + TypeScript.
+An enterprise-grade, event-driven, distributed microservices platform engineered for high-volume automotive and commercial asset auctions. Built with **Clean Architecture / Domain-Driven Design (DDD)** principles across React 18, Java 17 + Spring Boot 3.3+, Go 1.22, Python 3.11 (AI Service), and PostgreSQL HA with Redis Sentinel & Apache Kafka.
+
+### 📑 Executive & Technical Documentation Links
+* 📊 **[Executive Management Presentation Deck (Interactive Slides)](./frontend/public/presentation.html)** (Accessible live at `https://tecnics-internal.online/seller-buyer/presentation.html`)
+* 🏛 **[Comprehensive Architecture & Bidding Flow Specification](./frontend/public/architecture-document.html)** (Accessible live at `https://tecnics-internal.online/seller-buyer/architecture-document.html`)
 
 ---
+
 
 ## 1. System Architecture & Topology
 
