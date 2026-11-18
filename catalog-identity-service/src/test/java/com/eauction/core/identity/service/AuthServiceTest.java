@@ -221,4 +221,72 @@ class AuthServiceTest {
         verify(userRepository).saveAndFlush(existingUser);
         verify(mockKeycloak).syncUserPassword("buyer@sharmatransport.in", "Sharma Transport", "Welcome@123");
     }
+
+    @Test
+    @DisplayName("Should authenticate against Keycloak as single password authority even when DB hash is stale")
+    void shouldAuthenticateViaKeycloakWhenEnabled() {
+        KeycloakAdminService mockKeycloak = mock(KeycloakAdminService.class);
+        when(mockKeycloak.isSyncEnabled()).thenReturn(true);
+        when(mockKeycloak.authenticateUser("awabuyer@gmail.com", "KcResetPass@2026")).thenReturn(true);
+
+        AuthService serviceWithKeycloak = new AuthService(
+                userRepository,
+                passwordEncoder,
+                null,
+                new com.eauction.core.identity.security.JwtTokenProvider(secretKey, 3600000L),
+                null,
+                mockKeycloak,
+                3600000L
+        );
+
+        UUID userId = UUID.randomUUID();
+        User existingUser = new User();
+        existingUser.setId(userId);
+        existingUser.setEmail("awabuyer@gmail.com");
+        existingUser.setFullName("AWA Buyer");
+        existingUser.setRole("BUYER");
+        existingUser.setIsActive(true);
+        existingUser.setKycVerified(true);
+        existingUser.setPasswordHash(passwordEncoder.encode("OldStaleDbPassword!"));
+
+        when(userRepository.findByEmail("awabuyer@gmail.com")).thenReturn(Optional.of(existingUser));
+
+        AuthResponse resp = serviceWithKeycloak.login(new LoginRequest("awabuyer@gmail.com", "KcResetPass@2026"));
+
+        assertNotNull(resp);
+        assertNotNull(resp.getToken());
+        assertEquals(userId, resp.getUserId());
+        assertEquals("awabuyer@gmail.com", resp.getEmail());
+        verify(mockKeycloak).authenticateUser("awabuyer@gmail.com", "KcResetPass@2026");
+    }
+
+    @Test
+    @DisplayName("Should reject login with old DB password when Keycloak rejects credentials")
+    void shouldRejectLoginWhenKeycloakRejectsPassword() {
+        KeycloakAdminService mockKeycloak = mock(KeycloakAdminService.class);
+        when(mockKeycloak.isSyncEnabled()).thenReturn(true);
+        when(mockKeycloak.authenticateUser("awabuyer@gmail.com", "OldStaleDbPassword!")).thenReturn(false);
+
+        AuthService serviceWithKeycloak = new AuthService(
+                userRepository,
+                passwordEncoder,
+                null,
+                new com.eauction.core.identity.security.JwtTokenProvider(secretKey, 3600000L),
+                null,
+                mockKeycloak,
+                3600000L
+        );
+
+        User existingUser = new User();
+        existingUser.setId(UUID.randomUUID());
+        existingUser.setEmail("awabuyer@gmail.com");
+        existingUser.setIsActive(true);
+        existingUser.setPasswordHash(passwordEncoder.encode("OldStaleDbPassword!"));
+
+        when(userRepository.findByEmail("awabuyer@gmail.com")).thenReturn(Optional.of(existingUser));
+
+        assertThrows(BadCredentialsException.class,
+                () -> serviceWithKeycloak.login(new LoginRequest("awabuyer@gmail.com", "OldStaleDbPassword!")));
+        verify(mockKeycloak).authenticateUser("awabuyer@gmail.com", "OldStaleDbPassword!");
+    }
 }

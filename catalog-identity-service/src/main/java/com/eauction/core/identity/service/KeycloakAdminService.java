@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -14,6 +15,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -31,17 +33,20 @@ public class KeycloakAdminService {
     private final String realm;
     private final String masterRealm;
     private final String clientId;
+    private final String portalClientId;
     private final String adminUsername;
     private final String adminPassword;
     private final boolean syncEnabled;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public KeycloakAdminService(
             @Value("${keycloak.admin.server-url:http://eauction-keycloak:8080/auth}") String serverUrl,
             @Value("${keycloak.admin.realm:eauction}") String realm,
             @Value("${keycloak.admin.master-realm:master}") String masterRealm,
             @Value("${keycloak.admin.client-id:admin-cli}") String clientId,
+            @Value("${keycloak.admin.portal-client-id:eauction-portal}") String portalClientId,
             @Value("${keycloak.admin.username:admin}") String adminUsername,
             @Value("${keycloak.admin.password:adminpassword}") String adminPassword,
             @Value("${keycloak.admin.sync-enabled:true}") boolean syncEnabled) {
@@ -49,6 +54,7 @@ public class KeycloakAdminService {
         this.realm = realm;
         this.masterRealm = masterRealm;
         this.clientId = clientId;
+        this.portalClientId = portalClientId;
         this.adminUsername = adminUsername;
         this.adminPassword = adminPassword;
         this.syncEnabled = syncEnabled;
@@ -58,6 +64,58 @@ public class KeycloakAdminService {
         factory.setReadTimeout(10000);
         this.restTemplate = new RestTemplate(factory);
         this.objectMapper = new ObjectMapper();
+    }
+
+    public KeycloakAdminService(
+            String serverUrl,
+            String realm,
+            String masterRealm,
+            String clientId,
+            String adminUsername,
+            String adminPassword,
+            boolean syncEnabled) {
+        this(serverUrl, realm, masterRealm, clientId, "eauction-portal", adminUsername, adminPassword, syncEnabled);
+    }
+
+    public boolean isSyncEnabled() {
+        return syncEnabled;
+    }
+
+    /**
+     * Authenticates user credentials directly against Keycloak using the OIDC password grant.
+     * Makes Keycloak the single password authority so Keycloak Forgot Password resets work immediately.
+     */
+    public boolean authenticateUser(String email, String password) {
+        if (email == null || email.isBlank() || password == null || password.isEmpty()) {
+            return false;
+        }
+        String normalizedEmail = email.trim().toLowerCase();
+        String tokenUrl = serverUrl + "/realms/" + realm + "/protocol/openid-connect/token";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("client_id", portalClientId);
+        form.add("grant_type", "password");
+        form.add("username", normalizedEmail);
+        form.add("password", password);
+
+        try {
+            ResponseEntity<String> resp = restTemplate.postForEntity(tokenUrl, new HttpEntity<>(form, headers), String.class);
+            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
+                return false;
+            }
+            JsonNode root = objectMapper.readTree(resp.getBody());
+            String accessToken = root.path("access_token").asText(null);
+            return accessToken != null && !accessToken.isBlank();
+        } catch (HttpClientErrorException ex) {
+            log.debug("Keycloak rejected credentials for {} with HTTP {}", normalizedEmail, ex.getStatusCode());
+            return false;
+        } catch (Exception ex) {
+            log.error("Keycloak authentication request failed for {}: {}", normalizedEmail, ex.getMessage(), ex);
+            throw new IllegalStateException("Identity provider (Keycloak) is temporarily unavailable", ex);
+        }
     }
 
     /**

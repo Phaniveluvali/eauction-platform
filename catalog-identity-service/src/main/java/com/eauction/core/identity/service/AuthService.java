@@ -125,11 +125,9 @@ public class AuthService {
             }
         } catch (Exception ignored) {}
 
-        // Synchronize newly registered user & password into Keycloak
-        if (keycloakAdminService != null) {
-            try {
-                keycloakAdminService.syncUserPassword(savedUser.getEmail(), savedUser.getFullName(), request.getPassword());
-            } catch (Exception ignored) {}
+        // Synchronize newly registered user & password into Keycloak (single password authority)
+        if (keycloakAdminService != null && keycloakAdminService.isSyncEnabled()) {
+            keycloakAdminService.syncUserPassword(savedUser.getEmail(), savedUser.getFullName(), request.getPassword());
         }
 
         String token = generateToken(savedUser);
@@ -157,7 +155,15 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        boolean authenticated;
+        if (keycloakAdminService != null && keycloakAdminService.isSyncEnabled()) {
+            // Keycloak is the single password authority so Keycloak Forgot Password resets work immediately
+            authenticated = keycloakAdminService.authenticateUser(user.getEmail(), request.getPassword());
+        } else {
+            authenticated = passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
+        }
+
+        if (!authenticated) {
             throw new BadCredentialsException("Invalid email or password");
         }
 

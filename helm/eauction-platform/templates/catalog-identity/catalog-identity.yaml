@@ -145,6 +145,8 @@ spec:
               value: "adminpassword"
             - name: KEYCLOAK_SYNC_ENABLED
               value: "true"
+            - name: KEYCLOAK_PORTAL_CLIENT_ID
+              value: "eauction-portal"
             {{- with .Values.catalogIdentity.environment }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
