@@ -2,21 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { Auction, Vehicle, User } from '../types';
 import { PortalView } from './PortalSidebar';
 import {
-  Search,
-  Gavel,
-  Lock,
-  ArrowRight,
-  ShieldCheck,
   Car,
   Wallet,
   HelpCircle,
-  CheckCircle2,
-  UserPlus,
-  CreditCard,
-  Award,
-  Sparkles,
   Heart,
   ShoppingBag,
+  ArrowRight,
+  X,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 
 interface HomePageProps {
@@ -47,7 +41,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onRequireAuth,
   favoriteIds = [],
 }) => {
-  const [heroSearch, setHeroSearch] = useState('');
+  const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     const now = Date.now();
@@ -69,200 +63,204 @@ export const HomePage: React.FC<HomePageProps> = ({
     return { onlineActive, silentActive, inspectedVehicles };
   }, [auctions, vehicles]);
 
-  const handleHeroSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onNavigate('ONLINE_AUCTIONS');
+  const handleSellCarClick = () => {
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
+    if (currentUser.role === 'BUYER') {
+      alert(
+        'You are currently signed in as a Buyer account.\n\nOnly registered Sellers or Admins can submit vehicles for consignment. Please sign out and sign in with a Seller account, or contact AJ Auctions support.'
+      );
+      return;
+    }
+    onOpenCreateVehicle();
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900">
+    <div className="min-h-screen bg-[#FFFFFF] font-sans text-slate-900">
       {/* ============================================================ */}
-      {/* 1. CLEAN INSTITUTIONAL HERO BANNER                           */}
+      {/* 1. TOP WEB BANNER (AJ AUCTIONS PLATFORM BANNER)              */}
       {/* ============================================================ */}
-      <section className="relative bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,#10b981,transparent_55%)]" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-bold mb-5">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>AJ Auctions • UAE Verified Vehicle & Fleet Marketplace</span>
-            </div>
+      <div className="w-full bg-[#0F172A] overflow-hidden flex items-center justify-center">
+        <img
+          src="/assets/banner-aj.png"
+          alt="AJ Auctions Web Banner"
+          className="w-full h-auto object-cover max-h-[380px] sm:max-h-[460px] block"
+          onError={(e) => {
+            // Fallback gradient if banner image fails
+            e.currentTarget.style.display = 'none';
+          }}
+        />
+      </div>
 
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-              Transparent Online &amp; Silent{' '}
-              <span className="text-emerald-400">Vehicle Auctions</span>
-            </h1>
-
-            <p className="mt-4 text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Choose an auction channel below to explore 150-point inspected passenger cars, corporate fleets, and commercial vehicles — or submit your vehicle for verified consignment.
-            </p>
-
-            {/* Quick Search Bar -> routes into Online Auctions */}
-            <form
-              onSubmit={handleHeroSearchSubmit}
-              className="mt-7 max-w-xl mx-auto flex items-center bg-white rounded-2xl p-1.5 shadow-xl border border-white/20"
-            >
-              <div className="flex items-center flex-1 px-3">
-                <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
-                <input
-                  type="text"
-                  value={heroSearch}
-                  onChange={(e) => setHeroSearch(e.target.value)}
-                  placeholder="Search make, model, or lot number..."
-                  className="w-full py-2 text-sm text-slate-900 placeholder-slate-400 outline-none bg-transparent"
-                />
-              </div>
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shrink-0"
-              >
-                Explore Catalog
-              </button>
-            </form>
-
-            {/* Real Live Database KPI Strip */}
-            <div className="mt-8 grid grid-cols-3 gap-3 max-w-lg mx-auto">
-              <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 backdrop-blur-xs">
-                <div className="text-lg sm:text-2xl font-black text-emerald-400">{stats.onlineActive}</div>
-                <div className="text-[11px] text-slate-300 font-semibold">Live Online Lots</div>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 backdrop-blur-xs">
-                <div className="text-lg sm:text-2xl font-black text-amber-300">{stats.silentActive}</div>
-                <div className="text-[11px] text-slate-300 font-semibold">Active Silent Lots</div>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 backdrop-blur-xs">
-                <div className="text-lg sm:text-2xl font-black text-white">{stats.inspectedVehicles}</div>
-                <div className="text-[11px] text-slate-300 font-semibold">Registered Fleet</div>
-              </div>
-            </div>
-          </div>
+      {/* ============================================================ */}
+      {/* 2. AUCTION CATEGORIES (IDENTICAL TO CATEGORY GRID)     */}
+      {/* ============================================================ */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
+        <div className="mb-6">
+          <h3 className="header-title">Auction Categories</h3>
         </div>
-      </section>
 
-      {/* ============================================================ */}
-      {/* 2. PRIMARY AUCTION CHANNEL BOXES (dev-alwataneya.et.ae style) */}
-      {/* ============================================================ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* BOX 1: ONLINE AUCTIONS */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-6">
+          {/* 1. Online Auctions */}
           <div
             onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className="group bg-white border-2 border-slate-200 hover:border-emerald-500 rounded-3xl p-7 sm:p-8 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
+            className="category-box group"
+            title="Browse Live Online Auctions"
           >
-            <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-50 group-hover:bg-emerald-600 text-emerald-600 group-hover:text-white flex items-center justify-center transition-colors shadow-xs">
-                  <Gavel className="w-7 h-7" />
-                </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-extrabold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>{stats.onlineActive} Active Vehicles</span>
-                </span>
-              </div>
-
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 group-hover:text-emerald-700 transition-colors">
-                Online Auctions
-              </h2>
-              <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">
-                Participate in real-time competitive vehicle auctions with live countdowns, verified inspection reports, transparent bid history, and instant outbid notifications.
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
-                <span className="px-2.5 py-1 bg-slate-100 rounded-lg">Live WebSocket Bidding</span>
-                <span className="px-2.5 py-1 bg-slate-100 rounded-lg">150-Point Reports</span>
-                <span className="px-2.5 py-1 bg-slate-100 rounded-lg">200x Deposit Power</span>
-              </div>
-            </div>
-
-            <div className="mt-7 pt-5 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-sm font-extrabold text-emerald-700 group-hover:translate-x-1 transition-transform inline-flex items-center gap-2">
-                <span>Enter Online Auctions</span>
-                <ArrowRight className="w-4 h-4" />
+            <img
+              src="/assets/categories/cat-online-auctions.png"
+              alt="Online Auctions"
+              width="80"
+              height="80"
+              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+            />
+            <div className="category-title text-center mt-2">
+              Online Auctions
+              <br />
+              <span className="text-[#D32437] font-bold text-base sm:text-lg">
+                {stats.onlineActive}
               </span>
-              <span className="text-xs text-slate-400 font-semibold">Open Marketplace →</span>
             </div>
           </div>
 
-          {/* BOX 2: SILENT AUCTIONS */}
+          {/* 2. Silent Auctions */}
           <div
             onClick={() => onNavigate('SILENT_AUCTIONS')}
-            className="group bg-white border-2 border-slate-200 hover:border-slate-900 rounded-3xl p-7 sm:p-8 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
+            className="category-box group"
+            title="Browse Confidential Silent Auctions"
           >
-            <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-slate-100 group-hover:bg-slate-900 text-slate-800 group-hover:text-white flex items-center justify-center transition-colors shadow-xs">
-                  <Lock className="w-7 h-7" />
-                </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-extrabold">
-                  <Lock className="w-3 h-3" />
-                  <span>{stats.silentActive} Sealed Lots</span>
-                </span>
-              </div>
-
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 group-hover:text-slate-950 transition-colors">
-                Silent Auctions
-              </h2>
-              <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">
-                Submit private, confidential sealed offers on curated corporate &amp; government fleet batches. Competing bids stay hidden until auction closure and award review.
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
-                <span className="px-2.5 py-1 bg-slate-100 rounded-lg">100% Confidential Offers</span>
-                <span className="px-2.5 py-1 bg-slate-100 rounded-lg">Editable Before Close</span>
-                <span className="px-2.5 py-1 bg-slate-100 rounded-lg">Verified Batch Lots</span>
-              </div>
-            </div>
-
-            <div className="mt-7 pt-5 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-sm font-extrabold text-slate-900 group-hover:translate-x-1 transition-transform inline-flex items-center gap-2">
-                <span>Enter Silent Auctions</span>
-                <ArrowRight className="w-4 h-4" />
+            <img
+              src="/assets/categories/cat-silent-auctions.png"
+              alt="Silent Auctions"
+              width="80"
+              height="80"
+              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+            />
+            <div className="category-title text-center mt-2">
+              Silent Auctions
+              <br />
+              <span className="text-[#D32437] font-bold text-base sm:text-lg">
+                {stats.silentActive}
               </span>
-              <span className="text-xs text-slate-400 font-semibold">Sealed Bidding →</span>
+            </div>
+          </div>
+
+          {/* 3. UAE Plates */}
+          <div
+            onClick={() => setComingSoonTitle('UAE License Plates Auction')}
+            className="category-box group"
+            title="Exclusive VIP Number Plates"
+          >
+            <img
+              src="/assets/categories/cat-uae-plates.png"
+              alt="UAE Plates"
+              width="80"
+              height="80"
+              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+            />
+            <div className="category-title text-center mt-2">
+              UAE Plates
+              <br />
+              <span className="text-[#D32437] font-bold text-xs uppercase tracking-wider">
+                Coming Soon
+              </span>
+            </div>
+          </div>
+
+          {/* 4. Equipment & Machinery */}
+          <div
+            onClick={() => setComingSoonTitle('Equipment & Heavy Machinery Auction')}
+            className="category-box group"
+            title="Heavy Commercial Equipment & Machinery"
+          >
+            <img
+              src="/assets/categories/cat-equipment.png"
+              alt="Equipment & Machinery"
+              width="80"
+              height="80"
+              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+            />
+            <div className="category-title text-center mt-2">
+              Equipment &amp; Machinery
+              <br />
+              <span className="text-[#D32437] font-bold text-xs uppercase tracking-wider">
+                Coming Soon
+              </span>
+            </div>
+          </div>
+
+          {/* 5. AJ Moto */}
+          <div
+            onClick={() => setComingSoonTitle('AJ Moto - Specialty Showroom & Bikes')}
+            className="category-box group"
+            title="AJ Moto Specialty & Supercars"
+          >
+            <img
+              src="/assets/categories/cat-aj-moto.png"
+              alt="AJ Moto"
+              width="80"
+              height="80"
+              className="w-16 h-16 sm:w-20 sm:h-20 transition group-hover:scale-105"
+            />
+            <div className="category-title text-center mt-2">
+              AJ Moto
+              <br />
+              <span className="text-[#D32437] font-bold text-xs uppercase tracking-wider">
+                Showroom
+              </span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* ============================================================ */}
-        {/* 3. QUICK-ACTION PORTAL BOXES                                 */}
-        {/* ============================================================ */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {/* Sell Your Car (Auth-Guarded) */}
+      {/* ============================================================ */}
+      {/* 3. HOME DIVIDER                                              */}
+      {/* ============================================================ */}
+      <div className="home_divider" />
+
+      {/* ============================================================ */}
+      {/* 4. QUICK ACTION CARDS (SELL CAR, DEPOSIT/PURCHASES, WATCHLIST)*/}
+      {/* ============================================================ */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Sell Your Car */}
           <div
-            onClick={onOpenCreateVehicle}
-            className="bg-white border border-slate-200 hover:border-emerald-500 rounded-2xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
+            onClick={handleSellCarClick}
+            className="bg-white border border-[#C7C7C7] hover:border-[#D32437] rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
           >
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-red-50 text-[#D32437] flex items-center justify-center shrink-0">
               <Car className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-slate-900">Sell Your Car</h3>
+              <h3 className="text-base font-extrabold text-[#231F20]">Sell Your Car</h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Submit your vehicle for inspection, admin verification, and inclusion in our next Online or Silent auction batch.
+                Submit your vehicle for inspection, verification, and batching in our next Online or Silent auction.
               </p>
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 mt-3">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-[#D32437] mt-3">
                 <span>Submit Vehicle</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </span>
             </div>
           </div>
 
-          {/* Security Deposit / Buyer Quick Links */}
+          {/* Security Deposit OR My Purchases */}
           {currentUser?.role === 'BUYER' ? (
             <div
               onClick={() => onNavigate('MY_PURCHASES')}
-              className="bg-white border border-slate-200 hover:border-blue-500 rounded-2xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
+              className="bg-white border border-[#C7C7C7] hover:border-blue-500 rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
             >
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <ShoppingBag className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900">My Purchases &amp; Payments</h3>
+                <h3 className="text-base font-extrabold text-[#231F20]">My Purchases &amp; Payments</h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  View your won vehicles, pricing breakdowns, payment history, receipts, and active online or sealed bids.
+                  View won vehicles, official settlement receipts, chronological payments, and active sealed bids.
                 </p>
                 <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 mt-3">
-                  <span>Open Buyer Ledger</span>
+                  <span>Open Buyer Portal</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
@@ -270,15 +268,15 @@ export const HomePage: React.FC<HomePageProps> = ({
           ) : (
             <div
               onClick={() => (currentUser ? onOpenDeposit() : onRequireAuth())}
-              className="bg-white border border-slate-200 hover:border-blue-500 rounded-2xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
+              className="bg-white border border-[#C7C7C7] hover:border-blue-500 rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
             >
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <Wallet className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900">Security Deposit &amp; 200x Limit</h3>
+                <h3 className="text-base font-extrabold text-[#231F20]">Security Deposit &amp; 200x Limit</h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Top up your 100% refundable security deposit to unlock up to 200x instant bidding power across all auctions.
+                  Top up your 100% refundable security deposit to activate up to 200x instant bidding power across all auctions.
                 </p>
                 <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 mt-3">
                   <span>Manage Deposit</span>
@@ -292,20 +290,20 @@ export const HomePage: React.FC<HomePageProps> = ({
           {currentUser?.role === 'BUYER' ? (
             <div
               onClick={() => onNavigate('FAVORITES')}
-              className="bg-white border border-slate-200 hover:border-red-400 rounded-2xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
+              className="bg-white border border-[#C7C7C7] hover:border-red-400 rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
             >
-              <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-                <Heart className="w-6 h-6 fill-red-600 text-red-600" />
+              <div className="w-12 h-12 rounded-xl bg-red-50 text-[#D32437] flex items-center justify-center shrink-0">
+                <Heart className="w-6 h-6 fill-[#D32437] text-[#D32437]" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900">
+                <h3 className="text-base font-extrabold text-[#231F20]">
                   My Watchlist ({favoriteIds.length})
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Track your saved vehicles across Online and Silent auctions in one dedicated buyer watchlist.
+                  Track saved vehicles across Online and Silent auctions with instant status notifications.
                 </p>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600 mt-3">
-                  <span>View Saved Vehicles</span>
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#D32437] mt-3">
+                  <span>View Watchlist</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
@@ -313,83 +311,380 @@ export const HomePage: React.FC<HomePageProps> = ({
           ) : (
             <div
               onClick={() => onNavigate('HELP')}
-              className="bg-white border border-slate-200 hover:border-amber-500 rounded-2xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
+              className="bg-white border border-[#C7C7C7] hover:border-amber-500 rounded-xl p-6 shadow-xs hover:shadow-md transition cursor-pointer flex items-start gap-4"
             >
               <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                 <HelpCircle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900">Inspection &amp; Bidding Guide</h3>
+                <h3 className="text-base font-extrabold text-[#231F20]">Inspection &amp; Bidding Guide</h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Learn about 150-point technical inspections, Online vs Silent auction rules, deposits, and settlement.
+                  Learn about 150-point technical tests, Online vs Silent auctions, deposit limits, and yard collection.
                 </p>
                 <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 mt-3">
-                  <span>Read Help Center</span>
+                  <span>Help Center</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
             </div>
           )}
         </div>
-      </section>
+      </div>
 
       {/* ============================================================ */}
-      {/* 4. HOW AJ AUCTIONS WORKS (4 CLEAN STEPS)                     */}
+      {/* 5. HOME DIVIDER                                              */}
       {/* ============================================================ */}
-      <section className="bg-white border-t border-slate-200 py-14">
+      <div className="home_divider" />
+
+      {/* ============================================================ */}
+      {/* 6. HOW IT WORKS (AUTHENTIC 4-STEP CATEGORY GRID)        */}
+      {/* ============================================================ */}
+      <section className="py-14 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold mb-2">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Simple 4-Step Process</span>
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">How AJ Auctions Works</h2>
+          <div className="mb-10">
+            <h3 className="header-title">How It Works</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[
-              {
-                step: '01',
-                icon: UserPlus,
-                title: 'Create Your Account',
-                desc: 'Register as a verified Buyer or Seller in seconds with secure identity protection.',
-              },
-              {
-                step: '02',
-                icon: CreditCard,
-                title: 'Add Security Deposit',
-                desc: 'Deposit a 100% refundable security balance to activate 200x bidding power.',
-              },
-              {
-                step: '03',
-                icon: Gavel,
-                title: 'Bid Online or Silent',
-                desc: 'Join real-time Online Auctions or place confidential offers in Silent Auctions.',
-              },
-              {
-                step: '04',
-                icon: Award,
-                title: 'Win & Settle Instantly',
-                desc: 'Track won vehicles, download official receipts, and schedule yard collection.',
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.step} className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-black text-slate-300">{item.step}</span>
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-sm">{item.title}</h3>
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{item.desc}</p>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+            {/* Step 1 */}
+            <div className="step-wrapper">
+              <div className="step-icon light">
+                <img
+                  src="/assets/steps/step-1-signup.png"
+                  alt="Sign Up"
+                  className="w-10 h-10 object-contain"
+                />
+              </div>
+              <div className="hidden lg:block step-line" />
+              <div className="step-text mt-4">
+                <h5 className="text-lg font-bold text-[#231F20]">Sign Up &amp; Verify Account</h5>
+                <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                  Create your account and complete verification in minutes to start bidding on AJ Auctions.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="step-wrapper">
+              <div className="step-icon">
+                <img
+                  src="/assets/steps/step-2-bids.png"
+                  alt="Browse & Place Bids"
+                  className="w-10 h-10 object-contain brightness-0 invert"
+                />
+              </div>
+              <div className="hidden lg:block step-line" />
+              <div className="step-text mt-4">
+                <h5 className="text-lg font-bold text-[#231F20]">Browse &amp; Place Bids</h5>
+                <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                  Explore our extensive inventory and place competitive bids on your desired vehicles.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="step-wrapper">
+              <div className="step-icon light">
+                <img
+                  src="/assets/steps/step-3-payment.png"
+                  alt="Win & Make Payment"
+                  className="w-10 h-10 object-contain"
+                />
+              </div>
+              <div className="hidden lg:block step-line" />
+              <div className="step-text mt-4">
+                <h5 className="text-lg font-bold text-[#231F20]">Win &amp; Make Payment</h5>
+                <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                  Won the auction? Complete your payment securely through our trusted platform.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 4 */}
+            <div className="step-wrapper">
+              <div className="step-icon">
+                <img
+                  src="/assets/steps/step-4-delivery.png"
+                  alt="Get Your Car Delivered"
+                  className="w-10 h-10 object-contain brightness-0 invert"
+                />
+              </div>
+              <div className="step-text mt-4">
+                <h5 className="text-lg font-bold text-[#231F20]">Get Your Car Delivered</h5>
+                <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                  Sit back and relax as we handle the delivery of your vehicle to your doorstep.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* ============================================================ */}
+      {/* 7. HOME DIVIDER                                              */}
+      {/* ============================================================ */}
+      <div className="home_divider" />
+
+      {/* ============================================================ */}
+      {/* 8. VALUE - ADDED SERVICES                                   */}
+      {/* ============================================================ */}
+      <section className="py-14 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h3 className="header-title">Value - Added Services</h3>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { title: 'Vehicle Inspection', icon: '/assets/services/svc-inspection.png' },
+              { title: 'Vehicle Delivery', icon: '/assets/services/svc-delivery.png' },
+              { title: 'Ownership Transfer', icon: '/assets/services/svc-transfer.png' },
+              { title: 'Polishing & Detailing', icon: '/assets/services/svc-polishing.png' },
+              { title: 'Maintenance & Repairs', icon: '/assets/services/svc-repairs.png' },
+              { title: 'More Services', icon: '/assets/services/svc-more.png' },
+            ].map((svc) => (
+              <div
+                key={svc.title}
+                onClick={() => setComingSoonTitle(`AJ Services: ${svc.title}`)}
+                className="category-box p-4"
+              >
+                <img
+                  src={svc.icon}
+                  alt={svc.title}
+                  width="54"
+                  height="54"
+                  className="w-12 h-12 mb-3 object-contain"
+                />
+                <div className="category-title text-center text-xs sm:text-sm font-semibold text-[#231F20]">
+                  {svc.title}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 9. HOME DIVIDER                                              */}
+      {/* ============================================================ */}
+      <div className="home_divider" />
+
+      {/* ============================================================ */}
+      {/* 10. TESTIMONIALS                                             */}
+      {/* ============================================================ */}
+      <section className="py-14 bg-[#FAFAFA]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 flex justify-between items-center">
+            <h3 className="header-title">Testimonials</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="testimonial-card p-6 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1 text-amber-400 mb-3 text-lg">
+                  ★★★★★
+                </div>
+                <h5 className="font-bold text-[#231F20] text-base mb-2">
+                  Smooth Bidding, Great Finds at AJ Auctions!
+                </h5>
+                <p className="text-sm text-slate-600 leading-relaxed italic">
+                  "I had a fantastic buying experience with AJ Auctions! The platform was user-friendly, offering a wide variety of vehicles. The bidding process was smooth, and their team provided excellent support, ensuring a seamless transaction. Highly recommend!"
+                </p>
+              </div>
+              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="font-semibold text-xs text-slate-800">Mohammed A. • Verified Buyer</span>
+                <span className="text-xs text-slate-400">Dubai, UAE</span>
+              </div>
+            </div>
+
+            <div className="testimonial-card p-6 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1 text-amber-400 mb-3 text-lg">
+                  ★★★★★
+                </div>
+                <h5 className="font-bold text-[#231F20] text-base mb-2">
+                  Effortless Selling with AJ Auctions.
+                </h5>
+                <p className="text-sm text-slate-600 leading-relaxed italic">
+                  "Selling through AJ Auctions was a breeze! Their platform made listing my vehicle simple, and the bidding process attracted serious buyers quickly. The team's support was top-notch, ensuring a fast and profitable sale. Highly recommend!"
+                </p>
+              </div>
+              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="font-semibold text-xs text-slate-800">Tariq S. • Verified Seller</span>
+                <span className="text-xs text-slate-400">Abu Dhabi, UAE</span>
+              </div>
+            </div>
+
+            <div className="testimonial-card p-6 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1 text-amber-400 mb-3 text-lg">
+                  ★★★★★
+                </div>
+                <h5 className="font-bold text-[#231F20] text-base mb-2">
+                  Outstanding Customer Service at AJ Auctions
+                </h5>
+                <p className="text-sm text-slate-600 leading-relaxed italic">
+                  "AJ Auctions provided exceptional customer service! Their team was responsive, guiding me through every step of the bidding process with clarity and patience. Any questions I had were answered promptly, making my experience smooth and stress-free."
+                </p>
+              </div>
+              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="font-semibold text-xs text-slate-800">Khalid M. • Corporate Bidder</span>
+                <span className="text-xs text-slate-400">Sharjah, UAE</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 11. FOOTER & AJ AUCTIONS COMMUNICATION CHANNELS             */}
+      {/* ============================================================ */}
+      <footer className="bg-[#1F242E] text-slate-300 pt-12 pb-8 border-t border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-700/60">
+            {/* Column 1: Brand */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <img src="/assets/logo-aj.png" alt="AJ Auctions" className="h-9 w-auto" />
+                <span className="text-lg font-black text-white tracking-wider">AJ AUCTIONS</span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                UAE's premier online &amp; silent vehicle auction platform. Certified 150-point technical testing, bank-grade settlement, and door-to-door delivery.
+              </p>
+            </div>
+
+            {/* Column 2: Contact Details */}
+            <div>
+              <h5 className="text-white font-bold text-sm mb-3">Contact AJ Auctions</h5>
+              <div className="space-y-2 text-xs text-slate-300">
+                <div className="flex items-center gap-2">
+                  <img src="/assets/phone.png" alt="Phone" className="w-4 h-4" />
+                  <span>+971 4 123 4567</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <img src="/assets/wtsapp.png" alt="WhatsApp" className="w-4 h-4" />
+                  <span>WhatsApp: +971 50 123 4567</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <img src="/assets/email.png" alt="Email" className="w-4 h-4" />
+                  <span>support@ajauctions.ae</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Column 3: Social Channels */}
+            <div>
+              <h5 className="text-white font-bold text-sm mb-3">Follow AJ Auctions</h5>
+              <div className="flex items-center gap-3">
+                <a
+                  href="https://instagram.com/ajauctionsuae"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition"
+                  title="AJ Auctions on Instagram"
+                >
+                  <img src="/assets/instagram.png" alt="Instagram" className="w-4 h-4" />
+                </a>
+                <a
+                  href="https://facebook.com/ajauctionsuae"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition"
+                  title="AJ Auctions on Facebook"
+                >
+                  <img src="/assets/logos_facebook.png" alt="Facebook" className="w-4 h-4" />
+                </a>
+                <a
+                  href="https://youtube.com/@ajauctionsuae"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition"
+                  title="AJ Auctions on YouTube"
+                >
+                  <img src="/assets/youtube.png" alt="YouTube" className="w-4 h-4" />
+                </a>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-3">
+                @ajauctionsuae across all official channels
+              </p>
+            </div>
+
+            {/* Column 4: App Download */}
+            <div>
+              <h5 className="text-white font-bold text-sm mb-3">Download Mobile App</h5>
+              <div className="space-y-2">
+                <div
+                  onClick={() => setComingSoonTitle('AJ Auctions iOS App')}
+                  className="cursor-pointer inline-block"
+                >
+                  <img src="/assets/appstore.png" alt="App Store" className="h-9 w-auto" />
+                </div>
+                <br />
+                <div
+                  onClick={() => setComingSoonTitle('AJ Auctions Android App')}
+                  className="cursor-pointer inline-block"
+                >
+                  <img src="/assets/googleplay.png" alt="Google Play" className="h-9 w-auto" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-6 text-center text-xs text-slate-500">
+            © 2025 AJ Auctions. All rights reserved. AshwikTechnologies &amp; AJ Auctions Group.
+          </div>
+        </div>
+      </footer>
+
+      {/* ============================================================ */}
+      {/* COMING SOON MODAL                                            */}
+      {/* ============================================================ */}
+      {comingSoonTitle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-[#D32437]">
+                <Clock className="w-5 h-5" />
+                <h4 className="font-bold text-slate-900 text-base">{comingSoonTitle}</h4>
+              </div>
+              <button
+                onClick={() => setComingSoonTitle(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-red-50 text-[#D32437] flex items-center justify-center mx-auto mb-3">
+                <Sparkles className="w-7 h-7" />
+              </div>
+              <h5 className="font-extrabold text-slate-900 text-lg">Launching Soon!</h5>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed max-w-sm mx-auto">
+                This service category is currently being prepared for catalog ingestion and batching. Please check our active Online and Silent vehicle auctions in the meantime.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setComingSoonTitle(null);
+                  onNavigate('ONLINE_AUCTIONS');
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-[#D32437] hover:bg-[#b01e2e] text-white font-bold text-xs shadow-xs transition"
+              >
+                Browse Online Auctions
+              </button>
+              <button
+                onClick={() => setComingSoonTitle(null)}
+                className="py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
