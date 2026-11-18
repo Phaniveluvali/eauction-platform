@@ -20,7 +20,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
   const [activeTab, setActiveTab] = useState<'deposit' | 'refund'>('deposit');
 
   // Deposit state
-  const currentDeposit = currentUser?.securityDeposit ?? 4000;
+  const currentDeposit = currentUser?.securityDeposit ?? 0;
   const currentLimit = currentUser?.biddingLimit ?? (currentDeposit * 200);
   const usedLimit = currentUser?.usedBiddingLimit ?? 0;
   const availableLimit = Math.max(0, currentLimit - usedLimit);
@@ -100,13 +100,13 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
       <div 
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden relative"
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden relative my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-4 py-3.5 sm:px-5 sm:py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center text-[#059669]">
               <Shield className="w-5 h-5" />
@@ -129,7 +129,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
         </div>
 
         {/* Current Balance Summary Bar */}
-        <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+        <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between shrink-0">
           <div>
             <span className="text-[11px] text-slate-400 block uppercase tracking-wider">Current Security Deposit</span>
             <span className="text-lg font-extrabold text-white">AED {currentDeposit.toLocaleString()}</span>
@@ -141,7 +141,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex border-b border-slate-200 bg-slate-50">
+        <div className="flex border-b border-slate-200 bg-slate-50 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('deposit')}

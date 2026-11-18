@@ -1,5 +1,7 @@
 package com.eauction.core.auction.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.eauction.core.auction.dto.CreateAuctionRequest;
 import com.eauction.core.auction.model.Auction;
 import com.eauction.core.auction.model.Bid;
@@ -47,6 +49,7 @@ public class AuctionController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<Auction> createAuction(@Valid @RequestBody CreateAuctionRequest request) {
         if (!vehicleRepository.existsById(request.getVehicleId())) {
@@ -110,10 +113,16 @@ public class AuctionController {
     @GetMapping("/{id}/bids")
     @Transactional(readOnly = true)
     public ResponseEntity<List<Bid>> getAuctionBids(@PathVariable UUID id) {
+        Auction auction = auctionRepository.findById(id).orElse(null);
+        if (auction != null && "SILENT".equalsIgnoreCase(auction.getAuctionType())) {
+            // Never leak competing sealed bids on public endpoint
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
         return ResponseEntity.ok(bidRepository.findByAuctionIdOrderByBidAmountDesc(id));
     }
 
     @PostMapping("/{id}/bids")
+    @PreAuthorize("hasRole('BUYER')")
     @Transactional
     public ResponseEntity<?> placeBid(
             @PathVariable UUID id,
@@ -123,6 +132,12 @@ public class AuctionController {
         Auction auction = auctionRepository.findById(id).orElse(null);
         if (auction == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(java.util.Map.of("message", "Auction not found with ID: " + id));
+        }
+
+        if ("SILENT".equalsIgnoreCase(auction.getAuctionType())) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "message", "This is a Silent Auction. Please submit a confidential sealed bid via /silent-bids."
+            ));
         }
 
         // Validate lifecycle
@@ -144,11 +159,8 @@ public class AuctionController {
                 bidderId = authService.extractUserId(token).toString();
             } catch (Exception ignored) {}
         }
-        if (bidderId == null && payload.get("bidderId") != null) {
-            bidderId = payload.get("bidderId").toString();
-        }
         if (bidderId == null || bidderId.isBlank()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "Please log in to submit a bid."));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "Valid Buyer JWT authentication is required to place a bid."));
         }
 
         // Parse proposed bid amount
@@ -238,6 +250,7 @@ public class AuctionController {
     }
 
     @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<Auction> activateAuction(@PathVariable UUID id) {
         Auction auction = auctionRepository.findById(id)
@@ -247,6 +260,7 @@ public class AuctionController {
     }
 
     @PatchMapping("/{id}/close")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<Auction> closeAuction(@PathVariable UUID id) {
         Auction auction = auctionRepository.findById(id)

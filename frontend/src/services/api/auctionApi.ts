@@ -171,4 +171,183 @@ export const auctionApi = {
     }
     return res.json();
   },
+
+  // ================= ADMIN AUCTION BATCHES =================
+  async getAuctionBatches(): Promise<any[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/auction-batches`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to load auction batches (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async createAuctionBatch(payload: {
+    title: string;
+    auctionType: 'ONLINE' | 'SILENT';
+    startTime: string;
+    endTime: string;
+    minBidIncrement?: number;
+  }): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/auction-batches`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to create auction batch (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async addVehiclesToBatch(batchId: string, vehicleIds: string[]): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/auction-batches/${batchId}/vehicles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ vehicleIds }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to add vehicles to batch (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async removeVehicleFromBatch(batchId: string, vehicleId: string): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/auction-batches/${batchId}/vehicles/${vehicleId}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to remove vehicle from batch (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async publishAuctionBatch(batchId: string): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/auction-batches/${batchId}/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to publish batch (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async deleteAuctionBatch(batchId: string): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/auction-batches/${batchId}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to delete batch (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  // ================= SILENT AUCTION SEALED BIDS =================
+  async submitSilentBid(auctionId: string, bidAmount: number): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/auctions/${auctionId}/silent-bids`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ bidAmount }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to submit sealed bid (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async getMySilentBid(auctionId: string): Promise<{ hasBid: boolean; bidAmount?: number; status?: string; updatedAt?: string }> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/auctions/${auctionId}/silent-bids/my-bid`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) return { hasBid: false };
+    return res.json();
+  },
+
+  async getAdminSilentBids(auctionId: string): Promise<any[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/auctions/${auctionId}/silent-bids`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to fetch sealed bids (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async awardSilentBid(auctionId: string, bidId: string): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/admin/auctions/${auctionId}/silent-bids/${bidId}/award`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to award silent auction (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  // ================= BUYER PORTAL (FAVORITES, PURCHASES, PAYMENTS, BIDS) =================
+  async getBuyerFavorites(): Promise<string[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/favorites`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.vehicleIds) ? data.vehicleIds : [];
+  },
+
+  async addBuyerFavorite(vehicleId: string): Promise<string[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/favorites/${vehicleId}`, {
+      method: 'POST',
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to add to watchlist');
+    const data = await res.json();
+    return Array.isArray(data.vehicleIds) ? data.vehicleIds : [];
+  },
+
+  async removeBuyerFavorite(vehicleId: string): Promise<string[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/favorites/${vehicleId}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to remove from watchlist');
+    const data = await res.json();
+    return Array.isArray(data.vehicleIds) ? data.vehicleIds : [];
+  },
+
+  async getBuyerPurchases(): Promise<any[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/purchases`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to load purchased vehicles');
+    return res.json();
+  },
+
+  async getBuyerPayments(): Promise<any[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/payments`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to load payment history');
+    return res.json();
+  },
+
+  async getBuyerBids(): Promise<any[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/bids`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to load bids');
+    return res.json();
+  },
 };

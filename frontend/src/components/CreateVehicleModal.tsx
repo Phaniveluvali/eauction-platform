@@ -27,7 +27,7 @@ export const CreateVehicleModal: React.FC<CreateVehicleModalProps> = ({
   const [startPrice, setStartPrice] = useState(1500000);
   const [reservePrice, setReservePrice] = useState(1800000);
   const [minBidIncrement, setMinBidIncrement] = useState(25000);
-  const [launchAuctionImmediately, setLaunchAuctionImmediately] = useState(true);
+  const [launchAuctionImmediately, setLaunchAuctionImmediately] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -49,23 +49,14 @@ export const CreateVehicleModal: React.FC<CreateVehicleModalProps> = ({
         manufacturingYear: Number(manufacturingYear),
         odometerReadingKm: Number(odometerReadingKm),
         fuelType,
+        targetSellingPrice: Number(reservePrice) || Number(startPrice) || 50000,
+        minimumSellingPrice: Number(startPrice) || 40000,
         mediaPaths: imageUrl ? [imageUrl] : [],
+        wfActivityId: 'FIA',
+        status: 'INACTIVE_AUCTION',
       });
 
-      if (launchAuctionImmediately) {
-        const startTime = new Date().toISOString();
-        const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-        const auc = await api.createAuction({
-          vehicleId: created.id,
-          startPrice: Number(startPrice),
-          reservePrice: Number(reservePrice),
-          minBidIncrement: Number(minBidIncrement),
-          startTime,
-          endTime,
-        });
-        await api.activateAuction(auc.id);
-      }
-
+      alert(`Vehicle ${created.make} ${created.model} submitted successfully! It has been placed in the Inactive Auctions queue for Admin verification and Auction Batch assignment.`);
       onSuccess(created);
       onClose();
     } catch (err: any) {

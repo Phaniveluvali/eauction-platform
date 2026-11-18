@@ -60,7 +60,7 @@ export const authApi = {
     const storedBank = localStorage.getItem('user_bank_' + user.id);
     const storedIban = localStorage.getItem('user_iban_' + user.id);
 
-    const depositNum = storedDeposit !== null ? Number(storedDeposit) : (user.securityDeposit ?? 4000);
+    const depositNum = storedDeposit !== null ? Number(storedDeposit) : (user.securityDeposit ?? 0);
     const limitNum = storedLimit !== null ? Number(storedLimit) : (user.biddingLimit ?? (depositNum * 200));
     const usedNum = storedUsed !== null ? Number(storedUsed) : (user.usedBiddingLimit ?? 0);
 

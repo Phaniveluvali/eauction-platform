@@ -121,6 +121,47 @@ export const catalogApi = {
     return res.json();
   },
 
+  async updateVehicleDetails(vehicleId: string, payload: Partial<Vehicle>): Promise<Vehicle> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to update vehicle details (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async uploadTechnicalReportFile(vehicleId: string, file: File): Promise<{
+    success: boolean;
+    vehicleId: string;
+    fileName: string;
+    contentType: string;
+    fileSize: number;
+    reportUrl: string;
+    vehicle: Vehicle;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/technical-report/upload`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeader(),
+      },
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || err.error || `Failed to upload technical report (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
   async updateTechnicalReport(vehicleId: string, reportUrl: string): Promise<Vehicle> {
     const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/technical-report`, {
       method: 'PUT',
@@ -185,7 +226,13 @@ export const catalogApi = {
       },
       body: JSON.stringify(vehicles),
     });
-    if (!res.ok) throw new Error('Failed to batch upload vehicles');
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      const err: any = new Error(errBody.message || errBody.error || `Bulk upload failed (HTTP ${res.status})`);
+      err.code = errBody.code;
+      err.validationErrors = Array.isArray(errBody.errors) ? errBody.errors : [];
+      throw err;
+    }
     return res.json();
   },
 

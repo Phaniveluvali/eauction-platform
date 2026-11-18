@@ -166,7 +166,7 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
                   : 'border-slate-200 text-slate-400 hover:text-[#059669] hover:border-[#059669]/40 hover:bg-red-50/20 bg-white'
               }`}
             >
-              <Heart className={`w-4 h-4 transition-transform ${isFavorite ? 'fill-[#059669] text-[#059669]' : ''}`} />
+              <Heart className={`w-4 h-4 transition-transform ${isFavorite ? 'fill-red-600 text-red-600' : ''}`} />
             </button>
             <button
               onClick={() => {

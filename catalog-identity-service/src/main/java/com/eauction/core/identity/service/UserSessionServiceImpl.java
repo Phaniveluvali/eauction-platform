@@ -55,8 +55,8 @@ public class UserSessionServiceImpl implements UserSessionService {
         String podIp = (String) payload.getOrDefault("podIp", "10.244.0.124");
         String currentScreen = (String) payload.getOrDefault("currentScreen", "Active Auctions");
 
-        double securityDeposit = 50000.0;
-        double biddingLimit = 250000.0;
+        double securityDeposit = 0.0;
+        double biddingLimit = 0.0;
         double usedBiddingLimit = 0.0;
         int bidsPlaced = 0;
 

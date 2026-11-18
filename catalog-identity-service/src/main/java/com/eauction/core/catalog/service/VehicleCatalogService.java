@@ -10,6 +10,8 @@ import java.util.UUID;
 
 public interface VehicleCatalogService {
     Vehicle createVehicle(UUID sellerId, CreateVehicleRequest request);
+
+    Vehicle updateVehicleDetails(UUID id, CreateVehicleRequest request);
     Vehicle approveVehicle(UUID id);
     Vehicle sendToWash(UUID id);
     Vehicle markWashingComplete(UUID id);

@@ -81,8 +81,10 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  const toggleFavorite = (targetId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleFavorite = (targetId: string, e?: React.MouseEvent) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
     if (!currentUser) {
       alert('Please log in as a buyer to save favorite vehicles to your watchlist.');
       initiateKeycloakLogin({ action: 'login' });
@@ -548,7 +550,7 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                   vehicle={vehicle}
                   auction={auc}
                   isFavorite={isLiked}
-                  onToggleFavorite={() => toggleFavorite(vehicle.id || auc.id, {} as any)}
+                  onToggleFavorite={() => toggleFavorite(vehicle.id)}
                   isBuyer={currentUser?.role === 'BUYER'}
                   isLoggedIn={Boolean(currentUser)}
                   isLeading={isLeading}

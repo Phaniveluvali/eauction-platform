@@ -86,6 +86,7 @@ export interface Auction {
   endTime: string;
   status: AuctionStatus;
   auctionType?: 'ONLINE' | 'SILENT';
+  batchId?: string;
   version: number;
   vehicle?: Vehicle;
 }
@@ -118,4 +119,115 @@ export interface PaymentOrderResponse {
   currency: string;
   gateway: string;
   status: string;
+}
+
+export interface AuctionBatchVehicle {
+  vehicleId: string;
+  make: string;
+  model: string;
+  manufacturingYear: number;
+  vin: string;
+  registrationNumber: string;
+  lotNo?: number;
+  branch?: string;
+  location?: string;
+  targetSellingPrice?: number;
+  minimumSellingPrice?: number;
+  startPrice?: number;
+  reservePrice?: number;
+  vehicleStatus?: string;
+  clientName?: string;
+  auctionId?: string | null;
+  auctionStatus?: string | null;
+  currentHighestBid?: number | null;
+}
+
+export interface AuctionBatch {
+  id: string;
+  batchCode: string;
+  title: string;
+  auctionType: 'ONLINE' | 'SILENT';
+  startTime: string;
+  endTime: string;
+  minBidIncrement: number;
+  status: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  createdByEmail?: string;
+  createdAt?: string;
+  vehicleCount: number;
+  vehicles: AuctionBatchVehicle[];
+}
+
+export interface SilentBidRecord {
+  id: string;
+  auctionId: string;
+  bidderId: string;
+  bidderEmail: string;
+  bidderName: string;
+  bidAmount: number;
+  status: 'SUBMITTED' | 'WON' | 'REJECTED';
+  submittedAt?: string;
+}
+
+export interface BuyerPurchase {
+  auctionId: string;
+  auctionType: 'ONLINE' | 'SILENT';
+  winningPrice: number;
+  startPrice?: number;
+  wonAt?: string;
+  auctionStatus?: string;
+  vehicleId: string;
+  make: string;
+  model: string;
+  manufacturingYear: number;
+  vin: string;
+  registrationNumber: string;
+  lotNo?: number;
+  color?: string;
+  fuelType?: string;
+  odometerReadingKm?: number;
+  location?: string;
+  mediaPaths: string[];
+  inspectionReportUrl?: string;
+  paymentId?: string | null;
+  paidAmount?: number | null;
+  currency: string;
+  gateway?: string | null;
+  orderId?: string | null;
+  transactionId?: string | null;
+  paymentStatus: string;
+  paymentDate?: string | null;
+}
+
+export interface BuyerPayment {
+  id: string;
+  auctionId?: string;
+  vehicleId?: string;
+  vehicleTitle: string;
+  lotNo?: number;
+  vin?: string;
+  auctionType?: string;
+  gateway: string;
+  orderId: string;
+  transactionId?: string;
+  amount: number;
+  currency: string;
+  status: string;
+  createdAt?: string;
+}
+
+export interface BuyerBidItem {
+  id: string;
+  auctionId: string;
+  vehicleId: string;
+  auctionType: 'ONLINE' | 'SILENT';
+  vehicleTitle: string;
+  lotNo?: number;
+  vin?: string;
+  myBidAmount: number;
+  currentHighestBid?: number | null;
+  bidState: string;
+  auctionStatus: string;
+  endTime?: string;
+  createdAt?: string;
+  mediaPaths: string[];
 }

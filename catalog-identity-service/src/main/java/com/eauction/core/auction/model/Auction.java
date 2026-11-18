@@ -68,6 +68,9 @@ public class Auction {
     @Column(name = "auction_type", length = 50)
     private String auctionType = "ONLINE"; // ONLINE, SILENT
 
+    @Column(name = "batch_id")
+    private UUID batchId;
+
     @Version
     @Column(name = "version", nullable = false)
     private Long version = 0L;
@@ -203,6 +206,14 @@ public class Auction {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public UUID getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(UUID batchId) {
+        this.batchId = batchId;
     }
 
     public String getAuctionType() {

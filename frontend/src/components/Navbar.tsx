@@ -10,7 +10,8 @@ import {
   LogIn,
   Bell,
   Shield,
-  Heart
+  Heart,
+  ShoppingBag
 } from 'lucide-react';
 import { initiateKeycloakLogin } from '../utils/oidc';
 
@@ -275,13 +276,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="flex items-center space-x-1.5 px-2.5 py-1 text-[#231F20] hover:text-emerald-700 font-semibold transition cursor-pointer"
                   title="View your saved favorites"
                 >
-                  <Heart className="w-4 h-4 text-emerald-700 fill-rose-500 text-rose-500" />
+                  <Heart className="w-4 h-4 fill-red-600 text-red-600" />
                   <span>Favorites</span>
                   {Number(favoriteCount) > 0 && (
-                    <span className="text-[11px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full ml-0.5">
+                    <span className="text-[11px] font-bold bg-red-600 text-white px-2 py-0.5 rounded-full ml-0.5">
                       {favoriteCount}
                     </span>
                   )}
+                </button>
+                <div className="h-4 w-[1px] bg-[#D1D5DB] mx-2" />
+                <button
+                  onClick={() => {
+                    if (onNavigate) onNavigate('MY_PURCHASES');
+                  }}
+                  className="flex items-center space-x-1.5 px-2.5 py-1 text-[#231F20] hover:text-emerald-700 font-semibold transition cursor-pointer"
+                  title="View purchased vehicles and payment history"
+                >
+                  <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                  <span>My Purchases</span>
                 </button>
                 <div className="h-4 w-[1px] bg-[#D1D5DB] mx-2" />
               </>

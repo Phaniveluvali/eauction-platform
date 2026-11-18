@@ -81,10 +81,10 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                    <Heart className="w-6 h-6 text-[#059669] fill-[#059669]" />
+                    <Heart className="w-6 h-6 text-red-600 fill-red-600" />
                     <span>My Saved Favorites</span>
                   </h1>
-                  <span className="bg-red-100 text-[#059669] text-xs font-extrabold px-2.5 py-0.5 rounded-full">
+                  <span className="bg-red-100 text-red-700 text-xs font-extrabold px-2.5 py-0.5 rounded-full">
                     {favoriteVehicles.length} {favoriteVehicles.length === 1 ? 'Vehicle' : 'Vehicles'}
                   </span>
                 </div>

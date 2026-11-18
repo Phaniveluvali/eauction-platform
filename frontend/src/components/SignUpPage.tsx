@@ -131,8 +131,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
         role: authResp.role as any,
         kycVerified: authResp.kycVerified,
         isActive: true,
-        securityDeposit: 4000,
-        biddingLimit: 800000,
+        securityDeposit: 0,
+        biddingLimit: 0,
         usedBiddingLimit: 0,
       };
 

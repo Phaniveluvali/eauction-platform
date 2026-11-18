@@ -16,6 +16,7 @@ import { BidModal } from './components/BidModal';
 import { VehicleDetailsPage } from './components/VehicleDetailsPage';
 import { SecurityDepositModal } from './components/SecurityDepositModal';
 import { FavoritesPage } from './components/FavoritesPage';
+import { MyPurchasesPage } from './components/MyPurchasesPage';
 import { AICustomerConcierge } from './components/AICustomerConcierge';
 import { PromotionalBroadcastModal } from './components/PromotionalBroadcastModal';
 import { initiateKeycloakLogin, handleKeycloakCallback, logoutKeycloak } from './utils/oidc';
@@ -40,6 +41,7 @@ const getRouteFromPath = (): { view: PortalView; auctionId?: string; vehicleId?:
   if (path.includes('/online-auctions')) return { view: 'ONLINE_AUCTIONS' };
   if (path.includes('/silent-auctions')) return { view: 'SILENT_AUCTIONS' };
   if (path.includes('/favorites')) return { view: 'FAVORITES' };
+  if (path.includes('/my-purchases')) return { view: 'MY_PURCHASES' };
   if (path.includes('/security-deposit')) return { view: 'SECURITY_DEPOSIT' };
   if (path.includes('/help')) return { view: 'HELP' };
   if (path.includes('/signin-signup')) return { view: 'SIGNIN_SIGNUP' };
@@ -62,6 +64,8 @@ const getPathForView = (view: PortalView, auctionId?: string): string => {
       return `${basePath}/security-deposit`;
     case 'FAVORITES':
       return `${basePath}/favorites`;
+    case 'MY_PURCHASES':
+      return `${basePath}/my-purchases`;
     case 'ONLINE_AUCTIONS':
       return `${basePath}/online-auctions`;
     case 'SILENT_AUCTIONS':
@@ -103,6 +107,12 @@ const ROUTE_SECURITY_RULES: Record<PortalView, RouteSecurityRule> = {
     allowedRoles: ['BUYER'],
     redirectUnauthTo: 'SIGNIN',
     description: 'Buyer Watchlist',
+  },
+  MY_PURCHASES: {
+    requiresAuth: true,
+    allowedRoles: ['BUYER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'My Purchases & Payment History',
   },
   SECURITY_DEPOSIT: {
     requiresAuth: true,
@@ -293,19 +303,27 @@ export const App: React.FC = () => {
     }
   });
 
-  // Sync favorites when currentUser changes
+  // Sync favorites from PostgreSQL backend (with localStorage fallback) when currentUser changes
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && currentUser.role === 'BUYER') {
+      let cached: string[] = [];
       try {
         const stored = localStorage.getItem('favorites_' + currentUser.id);
-        setFavoriteIds(stored ? JSON.parse(stored) : []);
+        cached = stored ? JSON.parse(stored) : [];
+        setFavoriteIds(cached);
       } catch {
         setFavoriteIds([]);
       }
+      api.getBuyerFavorites().then((serverIds) => {
+        if (Array.isArray(serverIds)) {
+          setFavoriteIds(serverIds);
+          localStorage.setItem('favorites_' + currentUser.id, JSON.stringify(serverIds));
+        }
+      }).catch(() => {});
     } else {
       setFavoriteIds([]);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.role]);
 
   const handleToggleFavorite = (vehicleId: string) => {
     if (!currentUser) {
@@ -314,16 +332,44 @@ export const App: React.FC = () => {
       return;
     }
     if (currentUser.role !== 'BUYER') {
-      alert('Favorites are exclusive to Buyer accounts.');
+      alert('Watchlist / Favorites are exclusive to Buyer accounts.');
       return;
     }
-    setFavoriteIds((prev) => {
-      const next = prev.includes(vehicleId)
-        ? prev.filter((id) => id !== vehicleId)
-        : [...prev, vehicleId];
-      localStorage.setItem('favorites_' + currentUser.id, JSON.stringify(next));
-      return next;
+    const alreadyFavorited = favoriteIds.includes(vehicleId);
+    const optimisticNext = alreadyFavorited
+      ? favoriteIds.filter((id) => id !== vehicleId)
+      : [...favoriteIds, vehicleId];
+
+    // Instant UI feedback (red heart immediately)
+    setFavoriteIds(optimisticNext);
+    localStorage.setItem('favorites_' + currentUser.id, JSON.stringify(optimisticNext));
+
+    const req = alreadyFavorited
+      ? api.removeBuyerFavorite(vehicleId)
+      : api.addBuyerFavorite(vehicleId);
+
+    req.then((serverIds) => {
+      if (Array.isArray(serverIds)) {
+        setFavoriteIds(serverIds);
+        localStorage.setItem('favorites_' + currentUser.id, JSON.stringify(serverIds));
+      }
+    }).catch((err) => {
+      console.warn('Favorite sync error:', err);
     });
+  };
+
+  // Auth-guarded Sell Your Car handler (prompts login for unauthenticated guests, blocks buyers)
+  const handleOpenSellCar = () => {
+    if (!currentUser) {
+      setSecurityNotice('Please sign in with a Seller account to submit a vehicle for auction.');
+      navigateToView('SIGNIN');
+      return;
+    }
+    if (currentUser.role !== 'SELLER' && currentUser.role !== 'ADMIN') {
+      alert('Only registered Seller or Administrator accounts can list vehicles for auction. Please sign in with a Seller account.');
+      return;
+    }
+    setIsCreateVehicleOpen(true);
   };
 
   // 1. Initial Profile & Inventory Sync + Keycloak OIDC Callback Handler + Strict Route Guard
@@ -785,7 +831,7 @@ export const App: React.FC = () => {
               currentUser={currentUser}
               vehicles={vehicles}
               auctions={auctions}
-              onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+              onOpenCreateVehicle={handleOpenSellCar}
               onSelectAuction={(auc) => {
                 setSelectedAuction(auc);
                 navigateToView('AUCTION_ROOM', auc.id);
@@ -890,10 +936,36 @@ export const App: React.FC = () => {
           vehicles={vehicles}
           auctions={auctions}
           currentUser={currentUser}
-          onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+          favoriteIds={favoriteIds}
+          onToggleFavorite={handleToggleFavorite}
+          onViewDetails={handleViewDetails}
+          onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
+          onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'SILENT_AUCTIONS' })}
           onNavigate={(view) => navigateToView(view)}
           onBackHome={() => navigateToView('HOME')}
         />
+      ) : currentView === 'MY_PURCHASES' ? (
+        !currentUser || currentUser.role !== 'BUYER' ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="BUYER"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'MY_PURCHASES' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <MyPurchasesPage
+            currentUser={currentUser}
+            onNavigate={(view) => navigateToView(view)}
+            onBackHome={() => navigateToView('HOME')}
+            onOpenPayment={(purchase) => {
+              const found = auctions.find((a) => a.id === purchase.auctionId);
+              if (found) {
+                setSelectedAuction(found);
+                setIsDepositOpen(true);
+              }
+            }}
+          />
+        )
       ) : currentView === 'HELP' ? (
         <HelpPage
           onNavigate={(view) => navigateToView(view)}
@@ -944,7 +1016,7 @@ export const App: React.FC = () => {
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
             onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
-            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+            onOpenCreateVehicle={handleOpenSellCar}
             onOpenAdmin={() => navigateToView('ADMIN')}
             onLogout={handleLogout}
                         onLiveNowClick={handleLiveNowClick}
@@ -974,7 +1046,7 @@ export const App: React.FC = () => {
               }}
               onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
               onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
-                            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+                            onOpenCreateVehicle={handleOpenSellCar}
               searchFilter={searchQuery}
               onNavigate={(view) => navigateToView(view)}
               onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
@@ -1064,7 +1136,7 @@ export const App: React.FC = () => {
           }
         }}
         onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
-        onOpenSellCar={() => setIsCreateVehicleOpen(true)}
+        onOpenSellCar={handleOpenSellCar}
       />
 
       {/* AI Live Promotional Broadcast Modal on Buyer Screens */}

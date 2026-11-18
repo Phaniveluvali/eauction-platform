@@ -60,7 +60,8 @@ import {
   Megaphone,
   Copy,
   MessageCircle,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Lock
 } from 'lucide-react';
 import { User, Vehicle, Auction } from '../types';
 import { SEED_USERS, SeedUserRecord } from '../data/seedUsers';
@@ -106,7 +107,8 @@ type SubViewType =
   | 'washed_vehicles'
   | 'photo_vehicles'
   | 'technical_test'
-  | 'inactive_auctions';
+  | 'inactive_auctions'
+  | 'auction_batches';
 
 // UAE & Enterprise Car Catalog Dropdown Datasets
 const MAKE_MODELS: Record<string, string[]> = {
@@ -246,6 +248,49 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [resetSuccessData, setResetSuccessData] = useState<{ user: any; password: string } | null>(null);
   const [resetErrorMessage, setResetErrorMessage] = useState<string>('');
   const [copySuccessToast, setCopySuccessToast] = useState<boolean>(false);
+
+  // Photo Lightbox Preview Modal State
+  const [photoPreviewVehicle, setPhotoPreviewVehicle] = useState<Vehicle | null>(null);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+  const [photoPreviewIdx, setPhotoPreviewIdx] = useState<number>(0);
+
+  // Edit Vehicle Details Modal State (from Inactive Auctions queue)
+  const [editVehicleTarget, setEditVehicleTarget] = useState<Vehicle | null>(null);
+  const [inactiveEditForm, setInactiveEditForm] = useState({
+    make: '',
+    model: '',
+    manufacturingYear: 2024,
+    vin: '',
+    registrationNumber: '',
+    branch: '',
+    location: '',
+    color: '',
+    targetSellingPrice: 0,
+    minimumSellingPrice: 0,
+  });
+  const [isSavingVehicleEdit, setIsSavingVehicleEdit] = useState<boolean>(false);
+
+  // Auction Batches & Batch Creation State
+  const [batches, setBatches] = useState<any[]>([]);
+  const [loadingBatches, setLoadingBatches] = useState<boolean>(false);
+  const [showCreateBatchModal, setShowCreateBatchModal] = useState<boolean>(false);
+  const [createBatchForm, setCreateBatchForm] = useState({
+    title: '',
+    auctionType: 'ONLINE' as 'ONLINE' | 'SILENT',
+    startTime: '',
+    endTime: '',
+    minBidIncrement: 1000,
+  });
+  const [selectedBatchForAdd, setSelectedBatchForAdd] = useState<any | null>(null);
+  const [selectedBatchVehicleIds, setSelectedBatchVehicleIds] = useState<Set<string>>(new Set());
+  const [batchActionMsg, setBatchActionMsg] = useState<string>('');
+
+  // Bulk Upload Validation Errors State (strict duplicate rejection)
+  const [bulkUploadErrors, setBulkUploadErrors] = useState<any[]>([]);
+  const [showBulkErrorModal, setShowBulkErrorModal] = useState<boolean>(false);
+  const [silentBidsTarget, setSilentBidsTarget] = useState<{ auctionId: string; title: string; batchCode: string } | null>(null);
+  const [silentBidsList, setSilentBidsList] = useState<any[]>([]);
+  const [loadingSilentBids, setLoadingSilentBids] = useState<boolean>(false);
 
   // SubView 1: Add New Car state (Screenshots 1 & 2)
   const [addCarTab, setAddCarTab] = useState<'single' | 'multiple'>('single');
@@ -777,7 +822,39 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   }, [dbUsers, filteredUsers, userPage]);
 
   // Handle Card Click Navigation matching Screenshots 1, 2, 3, 4, 5
+  const loadBatches = async () => {
+    setLoadingBatches(true);
+    try {
+      const data = await api.getAuctionBatches();
+      setBatches(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.warn('Failed to load auction batches:', err);
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
+
+  const openPhotoLightbox = (v: Vehicle, customUrls?: string[]) => {
+    const urls = customUrls && customUrls.length > 0
+      ? customUrls
+      : Array.isArray(v.mediaPaths) && v.mediaPaths.length > 0
+      ? v.mediaPaths
+      : [];
+    if (urls.length === 0) {
+      alert(`No photos uploaded yet for Vehicle #${v.lotNo || v.vin}. Please upload photos first.`);
+      return;
+    }
+    setPhotoPreviewVehicle(v);
+    setPhotoPreviewUrls(urls);
+    setPhotoPreviewIdx(0);
+  };
+
   const handleCardClick = (cardTitle: string) => {
+    if (cardTitle === 'Auction Batch List' || cardTitle === 'Auction Batches') {
+      setActiveSubView('auction_batches');
+      loadBatches();
+      return;
+    }
     if (cardTitle === 'Live Sessions Users') {
       setActiveSubView('live_sessions_users');
       return;
@@ -957,17 +1034,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   };
 
-  // Download Listing Template for Multiple Cars (Screenshot 2)
+  // Download Listing Template for Multiple Cars (Empty Template with Headers Only)
   const handleDownloadTemplate = () => {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      'Chassis Number,Make,Model,Year,Branch,Keys,Color,Fuel Type,Target Selling Price,Minimum Selling Price,Previous Number Plate,Client Name\n' +
-      '220726140342641,Toyota,Land Cruiser,2023,Sharjah,2 Keys,Pearl White,Petrol,100000,92000,DXB-100813,Emirates Fleet Transport\n' +
-      '220726140306806,Toyota,Innova,2022,Sharjah,2 Keys,Silver,Petrol,100000,88000,SHJ-100968,Sharjah VIP Motors\n' +
-      '220726140306807,Toyota,Land Cruiser,2025,Sharjah,2 Keys,Black,Petrol,100000,95000,AD-100786,Al Mansoori Consignments\n' +
-      '030726153039349,Nissan,Sunny,2024,Sharjah,1 Key,White,Petrol,45000,39000,AJM-100388,AJ Consignment\n' +
-      '030726153027179,Nissan,Patrol,2025,Sharjah,2 Keys,Gold,Petrol,45000,42000,DXB-100381,AJ Technologies Fleet\n' +
-      '030726152917539,Nissan,Sunny,2022,Sharjah,1 Key,Silver,Petrol,100000,85000,SHJ-100353,Sharjah Trading Logistics\n';
+      'Chassis Number,Make,Model,Year,Branch,Keys,Color,Fuel Type,Target Selling Price,Minimum Selling Price,Previous Number Plate,Client Name\n';
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -1015,12 +1086,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       });
 
       await api.batchCreateVehicles(batchPayloads);
-      alert(`Successfully uploaded ${batchPayloads.length} vehicles from ${file.name}! Added to Request Vehicle pool.`);
+      alert(`Successfully validated and imported ${batchPayloads.length} new vehicles from ${file.name}! Added to Request Vehicle pool.`);
       onRefreshInventory();
       setActiveSubView('request_vehicle');
     } catch (err: any) {
-      alert(`Bulk upload processed: ${err.message}`);
-      onRefreshInventory();
+      const vErrors = Array.isArray(err.validationErrors) && err.validationErrors.length > 0
+        ? err.validationErrors
+        : [{ row: '—', field: 'Upload', message: err.message || 'Duplicate or invalid vehicle row detected.' }];
+      setBulkUploadErrors(vErrors);
+      setShowBulkErrorModal(true);
+    } finally {
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -1392,20 +1468,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   };
 
-  // Handler: File chosen for technical report
+  // Handler: File chosen for technical report (Real binary upload stored in PostgreSQL)
   const handleReportFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeUploadVehicleId) return;
 
     try {
       const targetVehicle = vehicles.find((v) => v.id === activeUploadVehicleId);
-      const fileName = file.name;
-      const reportUrl = `/reports/technical-report-sample.html?file=${encodeURIComponent(fileName)}&vin=${encodeURIComponent(targetVehicle?.vin || '')}&model=${encodeURIComponent(`${targetVehicle?.make} ${targetVehicle?.model}`)}&year=${targetVehicle?.manufacturingYear || 2024}&loc=${encodeURIComponent(targetVehicle?.location || targetVehicle?.branch || 'Abu Dhabi')}&lot=${targetVehicle?.lotNo || ''}`;
-
-      await api.updateTechnicalReport(activeUploadVehicleId, reportUrl);
-      setTechActionMsg(`Technical Report (${fileName}) uploaded successfully for Vehicle #${targetVehicle?.lotNo || targetVehicle?.vin}!`);
+      const resp = await api.uploadTechnicalReportFile(activeUploadVehicleId, file);
+      setTechActionMsg(`Technical Report (${file.name}, ${(file.size / 1024).toFixed(1)} KB) uploaded successfully for Vehicle #${targetVehicle?.lotNo || targetVehicle?.vin}!`);
       onRefreshInventory();
-      setTimeout(() => setTechActionMsg(''), 4000);
+      setTimeout(() => setTechActionMsg(''), 4500);
     } catch (err: any) {
       alert(`Failed to upload technical report: ${err.message}`);
     } finally {
@@ -1414,11 +1487,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   };
 
-  // Handler: Display report in other tab (Screenshot 1)
+  // Handler: Display real uploaded report in other tab
   const handleDisplayReport = (v: Vehicle) => {
-    const defaultUrl = `/reports/technical-report-sample.html?vin=${encodeURIComponent(v.vin || '')}&model=${encodeURIComponent(`${v.make} ${v.model}`)}&year=${v.manufacturingYear || 2024}&location=${encodeURIComponent(v.location || v.branch || 'Abu Dhabi')}&lot=${v.lotNo || ''}`;
-    const targetUrl = v.inspectionReportUrl && v.inspectionReportUrl.startsWith('/reports/') ? v.inspectionReportUrl : defaultUrl;
-    window.open(targetUrl, '_blank');
+    if (v.inspectionReportUrl && v.inspectionReportUrl.trim().length > 0) {
+      const fullUrl = v.inspectionReportUrl.startsWith('http')
+        ? v.inspectionReportUrl
+        : `${window.location.origin}${v.inspectionReportUrl}`;
+      window.open(fullUrl, '_blank');
+    } else {
+      alert(`No technical inspection report uploaded yet for Vehicle #${v.lotNo || v.vin}. Please click Upload first.`);
+    }
   };
 
   // Handler: Open submit confirmation comment modal (Screenshot 3)
@@ -1456,6 +1534,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     if (activeSubView === 'photo_vehicles') return 'PhotoVehicle';
     if (activeSubView === 'technical_test') return 'Technical Test';
     if (activeSubView === 'inactive_auctions') return 'Inactive Auctions';
+    if (activeSubView === 'auction_batches') return 'Auction Batches';
     if (activeTab === 'admin') return 'User Administration';
     if (activeSubView !== 'none') return activeSubView.replace('_', ' ');
     return activeTab;
@@ -3573,37 +3652,54 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                       {submittingPhotoVehicleId === v.id ? 'Submitting...' : 'Submit'}
                                     </button>
                                   </div>
-                                  {(uploadedPhotosByVehicle[v.id]?.length || 0) > 0 && (
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                      {uploadedPhotosByVehicle[v.id].slice(0, 4).map((srcUrl, idx) => (
-                                        <img
-                                          key={idx}
-                                          src={srcUrl}
-                                          alt={`preview-${idx}`}
-                                          className="w-7 h-7 object-cover rounded border border-emerald-300 shadow-2xs"
-                                        />
-                                      ))}
-                                      {uploadedPhotosByVehicle[v.id].length > 4 && (
-                                        <span className="text-[10px] font-bold text-emerald-700">
-                                          +{uploadedPhotosByVehicle[v.id].length - 4}
-                                        </span>
-                                      )}
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    {(uploadedPhotosByVehicle[v.id]?.length || 0) > 0 ? (
+                                      <>
+                                        <div className="flex items-center gap-1">
+                                          {uploadedPhotosByVehicle[v.id].slice(0, 3).map((srcUrl, idx) => (
+                                            <img
+                                              key={idx}
+                                              src={srcUrl}
+                                              alt={`preview-${idx}`}
+                                              onClick={() => openPhotoLightbox(v, uploadedPhotosByVehicle[v.id])}
+                                              className="w-7 h-7 object-cover rounded border border-emerald-400 shadow-xs cursor-pointer hover:scale-110 transition-transform"
+                                              title="Click to preview full size"
+                                            />
+                                          ))}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => openPhotoLightbox(v, uploadedPhotosByVehicle[v.id])}
+                                          className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-bold cursor-pointer"
+                                        >
+                                          Preview ({uploadedPhotosByVehicle[v.id].length})
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setUploadedPhotosByVehicle((prev) => {
+                                              const next = { ...prev };
+                                              delete next[v.id];
+                                              return next;
+                                            })
+                                          }
+                                          className="text-[10px] text-red-500 hover:underline ml-1 cursor-pointer"
+                                          title="Clear selected photos"
+                                        >
+                                          Clear
+                                        </button>
+                                      </>
+                                    ) : Array.isArray(v.mediaPaths) && v.mediaPaths.length > 0 ? (
                                       <button
                                         type="button"
-                                        onClick={() =>
-                                          setUploadedPhotosByVehicle((prev) => {
-                                            const next = { ...prev };
-                                            delete next[v.id];
-                                            return next;
-                                          })
-                                        }
-                                        className="text-[10px] text-red-500 hover:underline ml-1 cursor-pointer"
-                                        title="Clear selected photos"
+                                        onClick={() => openPhotoLightbox(v)}
+                                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded text-[10px] font-bold cursor-pointer flex items-center gap-1"
                                       >
-                                        Clear
+                                        <Eye className="w-3 h-3" />
+                                        <span>Saved Photos ({v.mediaPaths.length})</span>
                                       </button>
-                                    </div>
-                                  )}
+                                    ) : null}
+                                  </div>
                                 </div>
                               </td>
                             </tr>
@@ -4014,12 +4110,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       Vehicles that passed Technical Test inspection and are ready for auction scheduling.
                     </p>
                   </div>
-                  <button
-                    onClick={() => setActiveSubView('technical_test')}
-                    className="bg-[#059669] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#b01c2d] transition cursor-pointer"
-                  >
-                    View Technical Test Queue
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setActiveSubView('auction_batches');
+                        loadBatches();
+                      }}
+                      className="bg-slate-900 hover:bg-black text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Auction Batches</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveSubView('technical_test')}
+                      className="bg-[#059669] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#b01c2d] transition cursor-pointer"
+                    >
+                      View Technical Test Queue
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -4069,14 +4177,54 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                 <span>View Report</span>
                               </button>
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
+                              {Array.isArray(v.mediaPaths) && v.mediaPaths.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => openPhotoLightbox(v)}
+                                  className="border border-slate-300 hover:bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
+                                >
+                                  Photos ({v.mediaPaths.length})
+                                </button>
+                              )}
                               <button
+                                type="button"
                                 onClick={() => {
-                                  setActiveSubView('active_auctions');
+                                  setEditVehicleTarget(v);
+                                  setInactiveEditForm({
+                                    make: v.make || '',
+                                    model: v.model || '',
+                                    manufacturingYear: v.manufacturingYear || 2024,
+                                    vin: v.vin || '',
+                                    registrationNumber: v.registrationNumber || '',
+                                    branch: v.branch || 'Sharjah',
+                                    location: v.location || v.branch || 'Sharjah',
+                                    color: v.color || 'White',
+                                    targetSellingPrice: Number(v.targetSellingPrice || 0),
+                                    minimumSellingPrice: Number(v.minimumSellingPrice || 0),
+                                  });
                                 }}
-                                className="bg-[#54B435] hover:bg-[#469A2C] text-white px-3 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
+                                className="bg-[#D0E8F9] hover:bg-[#B9E1F7] text-[#0369A1] px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
                               >
-                                Schedule Auction
+                                Edit Details
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveSubView('auction_batches');
+                                  loadBatches();
+                                  setShowCreateBatchModal(true);
+                                  setCreateBatchForm({
+                                    title: `${v.make} ${v.model} Consignment Batch`,
+                                    auctionType: 'ONLINE',
+                                    startTime: new Date().toISOString().slice(0, 16),
+                                    endTime: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16),
+                                    minBidIncrement: 1000,
+                                  });
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
+                              >
+                                + Batch
                               </button>
                             </td>
                           </tr>
@@ -4085,6 +4233,253 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* SUB-VIEW: AUCTION BATCHES (ONLINE & SILENT AUCTION BATCH MANAGEMENT)       */}
+          {/* ========================================================================= */}
+          {activeSubView === 'auction_batches' && (
+            <div className="space-y-5 max-w-7xl mx-auto">
+              {renderBreadcrumb('Operations', 'Auction Batch List')}
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <Layers className="w-5 h-5 text-emerald-600" />
+                      <span>Auction Batches (Channel Scheduler)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Create batches first, assign vehicles from Inactive Auctions, and publish to <strong>Online</strong> or <strong>Silent</strong> auctions.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setShowCreateBatchModal(true);
+                        setCreateBatchForm({
+                          title: '',
+                          auctionType: 'ONLINE',
+                          startTime: new Date().toISOString().slice(0, 16),
+                          endTime: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16),
+                          minBidIncrement: 1000,
+                        });
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>+ Create Auction Batch</span>
+                    </button>
+                    <button
+                      onClick={loadBatches}
+                      className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl transition cursor-pointer"
+                      title="Refresh batches"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {batchActionMsg && (
+                  <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-xl flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{batchActionMsg}</span>
+                  </div>
+                )}
+
+                {loadingBatches ? (
+                  <div className="py-12 text-center text-xs text-slate-500">Loading auction batches...</div>
+                ) : batches.length === 0 ? (
+                  <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-xl">
+                    <Layers className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <h4 className="text-sm font-bold text-slate-800">No Auction Batches Created Yet</h4>
+                    <p className="text-xs text-slate-500 mt-1 mb-4 max-w-md mx-auto">
+                      Click <strong>+ Create Auction Batch</strong> above to create a new Online or Silent batch, assign vehicles from Inactive Auctions, and publish them.
+                    </p>
+                    <button
+                      onClick={() => setShowCreateBatchModal(true)}
+                      className="bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl"
+                    >
+                      Create First Batch
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {batches.map((b) => {
+                      const isDraft = b.status === 'DRAFT';
+                      const isSilent = b.auctionType === 'SILENT';
+                      return (
+                        <div key={b.id} className="border border-slate-200 rounded-2xl p-5 hover:border-slate-300 transition bg-slate-50/50">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <div>
+                              <div className="flex items-center gap-2.5">
+                                <span className="font-mono text-xs font-bold bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-slate-800">
+                                  {b.batchCode}
+                                </span>
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 ${
+                                    isSilent ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'
+                                  }`}
+                                >
+                                  {isSilent && <Lock className="w-3 h-3" />}
+                                  <span>{b.auctionType} AUCTION</span>
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    b.status === 'ACTIVE'
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : b.status === 'DRAFT'
+                                      ? 'bg-slate-200 text-slate-700'
+                                      : 'bg-emerald-100 text-emerald-800'
+                                  }`}
+                                >
+                                  {b.status}
+                                </span>
+                              </div>
+                              <h4 className="text-base font-extrabold text-slate-900 mt-2">{b.title}</h4>
+                              <div className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-3">
+                                <span>Start: {b.startTime ? new Date(b.startTime).toLocaleString() : '—'}</span>
+                                <span>•</span>
+                                <span>End: {b.endTime ? new Date(b.endTime).toLocaleString() : '—'}</span>
+                                <span>•</span>
+                                <span>Vehicles Assigned: <strong className="text-slate-800">{b.vehicleCount || 0}</strong></span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              {isDraft && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedBatchForAdd(b);
+                                      setSelectedBatchVehicleIds(new Set());
+                                    }}
+                                    className="px-3 py-1.5 bg-[#D0E8F9] hover:bg-[#B9E1F7] text-[#0369A1] font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1"
+                                  >
+                                    <PlusCircle className="w-3.5 h-3.5" />
+                                    <span>+ Add Vehicles</span>
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if ((b.vehicleCount || 0) === 0) {
+                                        alert('Please add at least one vehicle to the batch before publishing.');
+                                        return;
+                                      }
+                                      if (!confirm(`Publish batch "${b.batchCode}" (${b.title}) to ${b.auctionType} auctions? This will activate the live auction rooms for all ${b.vehicleCount} vehicle(s).`)) return;
+                                      try {
+                                        const res = await api.publishAuctionBatch(b.id);
+                                        setBatchActionMsg(`Batch ${b.batchCode} published successfully with ${res.publishedCount} vehicle(s) added to ${b.auctionType} Auctions!`);
+                                        loadBatches();
+                                        onRefreshInventory();
+                                        setTimeout(() => setBatchActionMsg(''), 5000);
+                                      } catch (err: any) {
+                                        alert(`Failed to publish batch: ${err.message}`);
+                                      }
+                                    }}
+                                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                  >
+                                    <Zap className="w-3.5 h-3.5" />
+                                    <span>Publish to {b.auctionType}</span>
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Delete draft batch "${b.batchCode}"?`)) return;
+                                      try {
+                                        await api.deleteAuctionBatch(b.id);
+                                        loadBatches();
+                                      } catch (err: any) {
+                                        alert(`Failed to delete batch: ${err.message}`);
+                                      }
+                                    }}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg cursor-pointer"
+                                    title="Delete draft batch"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                              {!isDraft && (
+                                <button
+                                  onClick={() => {
+                                    if (isSilent) {
+                                      window.open('/seller-buyer/silent-auctions', '_blank');
+                                    } else {
+                                      window.open('/seller-buyer/online-auctions', '_blank');
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 border border-slate-300 hover:bg-white text-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1"
+                                >
+                                  <span>View on {isSilent ? 'Silent' : 'Online'} Page</span>
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Vehicles Inside This Batch */}
+                          {Array.isArray(b.vehicles) && b.vehicles.length > 0 && (
+                            <div className="mt-4 pt-3 border-t border-slate-200">
+                              <div className="text-[11px] font-bold uppercase text-slate-500 mb-2">Vehicles In Batch</div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {b.vehicles.map((bv: any) => (
+                                  <div key={bv.vehicleId} className="bg-white border border-slate-200 rounded-xl p-2.5 text-xs flex items-center justify-between">
+                                    <div>
+                                      <div className="font-bold text-slate-900">{bv.manufacturingYear} {bv.make} {bv.model}</div>
+                                      <div className="text-[10px] text-slate-500 font-mono">Lot #{bv.lotNo || '—'} • VIN: {bv.vin}</div>
+                                      <div className="text-[10px] font-semibold text-emerald-700">Start: AED {Number(bv.startPrice || 0).toLocaleString()}</div>
+                                    </div>
+                                    {isDraft ? (
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          try {
+                                            await api.removeVehicleFromBatch(b.id, bv.vehicleId);
+                                            loadBatches();
+                                          } catch (err: any) {
+                                            alert(`Failed to remove vehicle: ${err.message}`);
+                                          }
+                                        }}
+                                        className="text-slate-400 hover:text-red-600 p-1 cursor-pointer"
+                                        title="Remove vehicle from batch"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    ) : isSilent && bv.auctionId ? (
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          setSilentBidsTarget({
+                                            auctionId: bv.auctionId,
+                                            title: `${bv.manufacturingYear} ${bv.make} ${bv.model}`,
+                                            batchCode: b.batchCode,
+                                          });
+                                          setLoadingSilentBids(true);
+                                          try {
+                                            const bids = await api.getAdminSilentBids(bv.auctionId);
+                                            setSilentBidsList(Array.isArray(bids) ? bids : []);
+                                          } catch (err: any) {
+                                            alert(`Failed to load sealed bids: ${err.message}`);
+                                          } finally {
+                                            setLoadingSilentBids(false);
+                                          }
+                                        }}
+                                        className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg font-bold text-[10px] cursor-pointer shrink-0"
+                                      >
+                                        Sealed Bids
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -6848,6 +7243,635 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               )}
             </div>
           )}
+              {/* MODAL: PHOTO PREVIEW LIGHTBOX */}
+              {photoPreviewVehicle && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+                  onClick={() => setPhotoPreviewVehicle(null)}
+                >
+                  <div
+                    className="relative max-w-4xl w-full bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden p-6 text-white flex flex-col max-h-[92vh]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+                      <div>
+                        <h3 className="text-base font-bold text-white">
+                          {photoPreviewVehicle.manufacturingYear} {photoPreviewVehicle.make} {photoPreviewVehicle.model}
+                        </h3>
+                        <p className="text-xs text-slate-400 font-mono">
+                          Lot #{photoPreviewVehicle.lotNo || '—'} • Chassis: {photoPreviewVehicle.vin}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-emerald-400 bg-white/10 px-3 py-1 rounded-full">
+                          Photo {photoPreviewIdx + 1} of {photoPreviewUrls.length}
+                        </span>
+                        <button
+                          onClick={() => setPhotoPreviewVehicle(null)}
+                          className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 flex items-center justify-center py-4 min-h-[300px] overflow-hidden relative">
+                      {photoPreviewUrls.length > 0 ? (
+                        <img
+                          src={photoPreviewUrls[photoPreviewIdx]}
+                          alt="Vehicle full size"
+                          className="max-h-[60vh] max-w-full object-contain rounded-xl shadow-2xl"
+                        />
+                      ) : (
+                        <div className="text-slate-400 text-sm">No photo available</div>
+                      )}
+
+                      {photoPreviewUrls.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setPhotoPreviewIdx((prev) => (prev > 0 ? prev - 1 : photoPreviewUrls.length - 1))}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-black/90 text-white rounded-full cursor-pointer"
+                          >
+                            <ChevronLeft className="w-6 h-6" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPhotoPreviewIdx((prev) => (prev < photoPreviewUrls.length - 1 ? prev + 1 : 0))}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-black/90 text-white rounded-full cursor-pointer"
+                          >
+                            <ChevronRight className="w-6 h-6" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {photoPreviewUrls.length > 1 && (
+                      <div className="flex items-center gap-2 overflow-x-auto py-2 shrink-0 border-t border-white/10">
+                        {photoPreviewUrls.map((u, i) => (
+                          <img
+                            key={i}
+                            src={u}
+                            alt={`thumb-${i}`}
+                            onClick={() => setPhotoPreviewIdx(i)}
+                            className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 transition ${
+                              photoPreviewIdx === i ? 'border-emerald-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* MODAL: EDIT VEHICLE DETAILS (Inactive Auctions Queue) */}
+              {editVehicleTarget && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+                  onClick={() => setEditVehicleTarget(null)}
+                >
+                  <div
+                    className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden my-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                      <div>
+                        <h3 className="text-sm font-bold">Edit Vehicle Details</h3>
+                        <p className="text-xs text-slate-400 font-mono">Lot #{editVehicleTarget.lotNo} • {editVehicleTarget.vin}</p>
+                      </div>
+                      <button onClick={() => setEditVehicleTarget(null)} className="text-slate-300 hover:text-white cursor-pointer">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        setIsSavingVehicleEdit(true);
+                        try {
+                          await api.updateVehicleDetails(editVehicleTarget.id, inactiveEditForm);
+                          alert('Vehicle details updated successfully!');
+                          setEditVehicleTarget(null);
+                          onRefreshInventory();
+                        } catch (err: any) {
+                          alert(`Failed to update vehicle: ${err.message}`);
+                        } finally {
+                          setIsSavingVehicleEdit(false);
+                        }
+                      }}
+                      className="p-6 space-y-4 overflow-y-auto flex-1 text-xs"
+                    >
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Make</label>
+                          <input
+                            type="text"
+                            value={inactiveEditForm.make}
+                            onChange={(e) => setInactiveEditForm({ ...inactiveEditForm, make: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Model</label>
+                          <input
+                            type="text"
+                            value={inactiveEditForm.model}
+                            onChange={(e) => setInactiveEditForm({ ...inactiveEditForm, model: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Manufacturing Year</label>
+                          <input
+                            type="number"
+                            min="1990"
+                            max="2030"
+                            value={inactiveEditForm.manufacturingYear}
+                            onChange={(e) => setInactiveEditForm({ ...inactiveEditForm, manufacturingYear: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Color</label>
+                          <input
+                            type="text"
+                            value={inactiveEditForm.color}
+                            onChange={(e) => setInactiveEditForm({ ...inactiveEditForm, color: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Chassis Number (VIN)</label>
+                          <input
+                            type="text"
+                            value={inactiveEditForm.vin}
+                            onChange={(e) => setInactiveEditForm({ ...inactiveEditForm, vin: e.target.value.toUpperCase() })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono font-semibold"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Number Plate</label>
+                          <input
+                            type="text"
+                            value={inactiveEditForm.registrationNumber}
+                            onChange={(e) => setInactiveEditForm({ ...inactiveEditForm, registrationNumber: e.target.value.toUpperCase() })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono font-semibold"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Target Selling Price (AED)</label>
+                          <input
+                            type="number"
+                            value={inactiveEditForm.targetSellingPrice || ''}
+                            onChange={(e) => setInactiveEditForm({ ...inactiveEditForm, targetSellingPrice: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-900"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Minimum Selling Price (AED)</label>
+                          <input
+                            type="number"
+                            value={inactiveEditForm.minimumSellingPrice || ''}
+                            onChange={(e) => setInactiveEditForm({ ...inactiveEditForm, minimumSellingPrice: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-900"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setEditVehicleTarget(null)}
+                          className="px-4 py-2 rounded-xl border border-slate-300 font-bold hover:bg-slate-50 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSavingVehicleEdit}
+                          className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer disabled:opacity-50"
+                        >
+                          {isSavingVehicleEdit ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* MODAL: CREATE AUCTION BATCH */}
+              {showCreateBatchModal && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+                  onClick={() => setShowCreateBatchModal(false)}
+                >
+                  <div
+                    className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden my-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-5 h-5 text-emerald-400" />
+                        <h3 className="text-sm font-bold">Create New Auction Batch</h3>
+                      </div>
+                      <button onClick={() => setShowCreateBatchModal(false)} className="text-slate-300 hover:text-white cursor-pointer">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        try {
+                          await api.createAuctionBatch(createBatchForm);
+                          setShowCreateBatchModal(false);
+                          loadBatches();
+                          alert('Auction Batch created successfully! You can now add vehicles from Inactive Auctions.');
+                        } catch (err: any) {
+                          alert(`Failed to create batch: ${err.message}`);
+                        }
+                      }}
+                      className="p-6 space-y-4 overflow-y-auto flex-1 text-xs"
+                    >
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">Batch Title</label>
+                        <input
+                          type="text"
+                          value={createBatchForm.title}
+                          onChange={(e) => setCreateBatchForm({ ...createBatchForm, title: e.target.value })}
+                          placeholder="e.g. VIP Luxury Fleet Consignment #4"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-2">Auction Channel Type</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <label
+                            className={`p-3 rounded-xl border-2 cursor-pointer flex items-center gap-2.5 transition ${
+                              createBatchForm.auctionType === 'ONLINE'
+                                ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="batchAuctionType"
+                              value="ONLINE"
+                              checked={createBatchForm.auctionType === 'ONLINE'}
+                              onChange={() => setCreateBatchForm({ ...createBatchForm, auctionType: 'ONLINE' })}
+                              className="text-emerald-600"
+                            />
+                            <div>
+                              <div>Online Auction</div>
+                              <div className="text-[10px] text-slate-500 font-normal">Real-time public live bidding</div>
+                            </div>
+                          </label>
+
+                          <label
+                            className={`p-3 rounded-xl border-2 cursor-pointer flex items-center gap-2.5 transition ${
+                              createBatchForm.auctionType === 'SILENT'
+                                ? 'border-slate-900 bg-slate-100 text-slate-900 font-bold'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="batchAuctionType"
+                              value="SILENT"
+                              checked={createBatchForm.auctionType === 'SILENT'}
+                              onChange={() => setCreateBatchForm({ ...createBatchForm, auctionType: 'SILENT' })}
+                              className="text-slate-900"
+                            />
+                            <div>
+                              <div>Silent Auction</div>
+                              <div className="text-[10px] text-slate-500 font-normal">Confidential sealed offers</div>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Start Date & Time</label>
+                          <input
+                            type="datetime-local"
+                            value={createBatchForm.startTime}
+                            onChange={(e) => setCreateBatchForm({ ...createBatchForm, startTime: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">End Date & Time</label>
+                          <input
+                            type="datetime-local"
+                            value={createBatchForm.endTime}
+                            onChange={(e) => setCreateBatchForm({ ...createBatchForm, endTime: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">Minimum Bid Increment (AED)</label>
+                        <input
+                          type="number"
+                          value={createBatchForm.minBidIncrement}
+                          onChange={(e) => setCreateBatchForm({ ...createBatchForm, minBidIncrement: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                        />
+                      </div>
+
+                      <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setShowCreateBatchModal(false)}
+                          className="px-4 py-2 rounded-xl border border-slate-300 font-bold hover:bg-slate-50 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
+                        >
+                          Create Batch
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* MODAL: ADD VEHICLES TO AUCTION BATCH */}
+              {selectedBatchForAdd && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+                  onClick={() => setSelectedBatchForAdd(null)}
+                >
+                  <div
+                    className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden my-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                      <div>
+                        <h3 className="text-sm font-bold">Add Vehicles to Batch: {selectedBatchForAdd.batchCode}</h3>
+                        <p className="text-xs text-slate-300">Channel: {selectedBatchForAdd.auctionType} • Select vehicles from Inactive Auctions</p>
+                      </div>
+                      <button onClick={() => setSelectedBatchForAdd(null)} className="text-slate-300 hover:text-white cursor-pointer">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="p-6 overflow-y-auto flex-1 text-xs">
+                      {inactiveVehicles.length === 0 ? (
+                        <div className="py-8 text-center text-slate-500">
+                          No vehicles currently waiting in Inactive Auctions. Submit vehicles from Technical Test first.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {inactiveVehicles.map((v) => {
+                            const isChecked = selectedBatchVehicleIds.has(v.id);
+                            return (
+                              <label
+                                key={v.id}
+                                className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition ${
+                                  isChecked ? 'border-emerald-500 bg-emerald-50/60' : 'border-slate-200 hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      const next = new Set(selectedBatchVehicleIds);
+                                      if (next.has(v.id)) next.delete(v.id);
+                                      else next.add(v.id);
+                                      setSelectedBatchVehicleIds(next);
+                                    }}
+                                    className="w-4 h-4 text-emerald-600 rounded cursor-pointer"
+                                  />
+                                  <div>
+                                    <div className="font-extrabold text-slate-900">{v.manufacturingYear} {v.make} {v.model}</div>
+                                    <div className="text-[10px] text-slate-500 font-mono">Lot #{v.lotNo} • VIN: {v.vin}</div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-bold text-slate-900">
+                                    Target: AED {Number(v.targetSellingPrice || 0).toLocaleString()}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500">{v.location || v.branch}</div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between shrink-0 bg-slate-50">
+                      <span className="text-xs font-semibold text-slate-600">
+                        {selectedBatchVehicleIds.size} vehicle(s) selected
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBatchForAdd(null)}
+                          className="px-4 py-2 border border-slate-300 rounded-xl font-bold hover:bg-white cursor-pointer text-xs"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={selectedBatchVehicleIds.size === 0}
+                          onClick={async () => {
+                            try {
+                              await api.addVehiclesToBatch(selectedBatchForAdd.id, Array.from(selectedBatchVehicleIds));
+                              alert(`Added ${selectedBatchVehicleIds.size} vehicle(s) to batch ${selectedBatchForAdd.batchCode}!`);
+                              setSelectedBatchForAdd(null);
+                              loadBatches();
+                              onRefreshInventory();
+                            } catch (err: any) {
+                              alert(`Failed to add vehicles: ${err.message}`);
+                            }
+                          }}
+                          className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer text-xs disabled:opacity-50"
+                        >
+                          Add Selected Vehicles
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODAL: BULK UPLOAD VALIDATION ERRORS (Strict Duplicate Rejection) */}
+              {showBulkErrorModal && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+                  onClick={() => setShowBulkErrorModal(false)}
+                >
+                  <div
+                    className="bg-white rounded-2xl shadow-2xl border border-red-300 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden my-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="px-6 py-4 bg-red-600 text-white flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-2.5">
+                        <AlertCircle className="w-5 h-5 text-white" />
+                        <div>
+                          <h3 className="text-sm font-bold">Bulk Upload Validation Failed</h3>
+                          <p className="text-xs text-red-100">
+                            {bulkUploadErrors.length} duplicate or invalid vehicle row(s) detected. No vehicles were imported.
+                          </p>
+                        </div>
+                      </div>
+                      <button onClick={() => setShowBulkErrorModal(false)} className="text-white/80 hover:text-white cursor-pointer">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="p-6 overflow-y-auto flex-1 text-xs">
+                      <p className="text-slate-600 mb-3">
+                        Please review and correct the following rows in your spreadsheet before re-uploading:
+                      </p>
+                      <div className="border border-red-200 rounded-xl overflow-hidden divide-y divide-red-100 bg-red-50/40">
+                        {bulkUploadErrors.map((err, i) => (
+                          <div key={i} className="p-3 text-red-900 flex items-start gap-2.5">
+                            <span className="font-bold font-mono text-red-700 shrink-0">
+                              Row {err.row || i + 2}:
+                            </span>
+                            <span className="leading-relaxed">{err.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="px-6 py-3 border-t border-slate-100 flex justify-end bg-slate-50 shrink-0">
+                      <button
+                        onClick={() => setShowBulkErrorModal(false)}
+                        className="px-5 py-2 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl cursor-pointer"
+                      >
+                        Understood &amp; Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODAL: ADMIN REVIEW & AWARD SILENT AUCTION SEALED BIDS */}
+              {silentBidsTarget && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+                  onClick={() => setSilentBidsTarget(null)}
+                >
+                  <div
+                    className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden my-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-amber-400" />
+                        <div>
+                          <h3 className="text-sm font-bold">Confidential Sealed Bids — {silentBidsTarget.title}</h3>
+                          <p className="text-[11px] text-slate-300">Batch: {silentBidsTarget.batchCode}</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setSilentBidsTarget(null)} className="text-slate-300 hover:text-white cursor-pointer">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="p-5 overflow-y-auto flex-1 text-xs">
+                      {loadingSilentBids ? (
+                        <div className="py-8 text-center text-slate-500">Loading sealed offers...</div>
+                      ) : silentBidsList.length === 0 ? (
+                        <div className="py-8 text-center text-slate-500">No sealed bids submitted for this vehicle yet.</div>
+                      ) : (
+                        <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+                          {silentBidsList.map((sb, idx) => (
+                            <div key={sb.id} className="p-3.5 flex items-center justify-between gap-3 bg-white hover:bg-slate-50">
+                              <div>
+                                <div className="font-bold text-slate-900">
+                                  #{idx + 1} • {sb.bidderName || sb.bidderEmail}
+                                </div>
+                                <div className="text-[11px] text-slate-500">{sb.bidderEmail}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">
+                                  {sb.submittedAt ? new Date(sb.submittedAt).toLocaleString() : ''}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <div className="text-sm font-black text-emerald-700">
+                                    AED {Number(sb.bidAmount || 0).toLocaleString()}
+                                  </div>
+                                  <span
+                                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      sb.status === 'WON'
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : sb.status === 'REJECTED'
+                                        ? 'bg-slate-100 text-slate-500'
+                                        : 'bg-blue-100 text-blue-700'
+                                    }`}
+                                  >
+                                    {sb.status}
+                                  </span>
+                                </div>
+                                {sb.status === 'SUBMITTED' && (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (!confirm(`Award this Silent Auction to ${sb.bidderEmail} for AED ${Number(sb.bidAmount).toLocaleString()}?`)) return;
+                                      try {
+                                        await api.awardSilentBid(silentBidsTarget.auctionId, sb.id);
+                                        alert(`Silent Auction awarded to ${sb.bidderEmail}!`);
+                                        const refreshed = await api.getAdminSilentBids(silentBidsTarget.auctionId);
+                                        setSilentBidsList(Array.isArray(refreshed) ? refreshed : []);
+                                        loadBatches();
+                                        onRefreshInventory();
+                                      } catch (err: any) {
+                                        alert(`Award failed: ${err.message}`);
+                                      }
+                                    }}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px] cursor-pointer"
+                                  >
+                                    Award Winner
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="px-5 py-3 border-t border-slate-100 flex justify-end bg-slate-50 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSilentBidsTarget(null)}
+                        className="px-4 py-2 border border-slate-300 rounded-xl font-bold text-xs cursor-pointer"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
         </div>
       </main>
     </div>

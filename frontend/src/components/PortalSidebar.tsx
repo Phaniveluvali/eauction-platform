@@ -10,8 +10,12 @@ import {
   Info, 
   Headphones,
   ShieldCheck,
-  Truck
+  Truck,
+  Heart,
+  ShoppingBag,
+  Wallet
 } from 'lucide-react';
+import { User } from '../types';
 import { getAssetUrl } from '../utils/assets';
 
 export type PortalView = 
@@ -26,16 +30,19 @@ export type PortalView =
   | 'AUCTION_ROOM'
   | 'VEHICLE_DETAILS'
   | 'SECURITY_DEPOSIT'
-  | 'FAVORITES';
+  | 'FAVORITES'
+  | 'MY_PURCHASES';
 
 interface PortalSidebarProps {
   currentView: PortalView;
   onNavigate: (view: PortalView) => void;
+  currentUser?: User | null;
 }
 
 export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   currentView,
   onNavigate,
+  currentUser,
 }) => {
   return (
     <aside className="w-56 sm:w-64 bg-white border-r border-slate-200 min-h-screen flex flex-col shrink-0 select-none">
@@ -124,6 +131,47 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             <Calendar className="w-4 h-4 text-slate-400" />
             <span>Silent Auctions</span>
           </button>
+
+          {currentUser?.role === 'BUYER' && (
+            <div className="pt-3 mt-3 border-t border-slate-100 space-y-1">
+              <div className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Buyer Account
+              </div>
+              <button
+                onClick={() => onNavigate('FAVORITES')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
+                  currentView === 'FAVORITES'
+                    ? 'text-red-700 bg-red-50 font-bold border-r-2 border-red-600'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <Heart className="w-4 h-4 text-red-600 fill-red-600" />
+                <span>My Watchlist</span>
+              </button>
+              <button
+                onClick={() => onNavigate('MY_PURCHASES')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
+                  currentView === 'MY_PURCHASES'
+                    ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                <span>My Purchases</span>
+              </button>
+              <button
+                onClick={() => onNavigate('SECURITY_DEPOSIT')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
+                  currentView === 'SECURITY_DEPOSIT'
+                    ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <Wallet className="w-4 h-4 text-blue-600" />
+                <span>Security Deposit</span>
+              </button>
+            </div>
+          )}
 
           <button
             onClick={() => onNavigate('HELP')}
