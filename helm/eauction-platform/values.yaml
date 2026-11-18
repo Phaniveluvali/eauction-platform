@@ -253,7 +253,7 @@ catalogIdentity:
   # Container image definition
   image:
     repository: "krishnaveluvali/eauction-catalog-identity"
-    tag: "0fbcda0"
+    tag: "7a84379"
     pullPolicy: "IfNotPresent"
 
   # Service networking definition
