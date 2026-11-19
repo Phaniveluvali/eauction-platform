@@ -6,12 +6,125 @@ metadata:
   annotations:
     ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "15"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/websocket-services: "eauction-bidding-engine"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
 spec:
   ingressClassName: nginx
   rules:
+    # 1. Primary Production Domain: ajauctions.online
+    - host: ajauctions.online
+      http:
+        paths:
+          - path: /seller-buyer
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: 80
+          - path: /api/v1/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-payment-broker
+                port:
+                  number: 8082
+          - path: /api/v1/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-ai-service
+                port:
+                  number: 8000
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-catalog-identity
+                port:
+                  number: 8080
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-keycloak
+                port:
+                  number: 8080
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-bidding-engine
+                port:
+                  number: 8081
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: 80
+
+    # 2. Canonical WWW Domain: www.ajauctions.online
+    - host: www.ajauctions.online
+      http:
+        paths:
+          - path: /seller-buyer
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: 80
+          - path: /api/v1/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-payment-broker
+                port:
+                  number: 8082
+          - path: /api/v1/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-ai-service
+                port:
+                  number: 8000
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-catalog-identity
+                port:
+                  number: 8080
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-keycloak
+                port:
+                  number: 8080
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-bidding-engine
+                port:
+                  number: 8081
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: 80
+
+    # 3. Legacy Migration Domain: tecnics-internal.online (Zero-Downtime Transition)
     - host: tecnics-internal.online
       http:
         paths:
@@ -57,6 +170,8 @@ spec:
                 name: eauction-bidding-engine
                 port:
                   number: 8081
+
+    # 4. Legacy Alternate: eauction.tecnics-internal.online
     - host: eauction.tecnics-internal.online
       http:
         paths:
@@ -109,7 +224,12 @@ spec:
                 name: eauction-frontend
                 port:
                   number: 80
+
   tls:
+    - hosts:
+        - ajauctions.online
+        - www.ajauctions.online
+      secretName: ajauctions-tls-cert
     - hosts:
         - tecnics-internal.online
         - eauction.tecnics-internal.online

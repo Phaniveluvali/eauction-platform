@@ -105,6 +105,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of(
+                "https://ajauctions.online",
+                "https://www.ajauctions.online",
+                "https://*.ajauctions.online",
                 "https://eauction.tecnics-internal.online",
                 "https://tecnics-internal.online",
                 "http://localhost:*",
