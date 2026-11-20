@@ -89,6 +89,9 @@ export interface Auction {
   batchId?: string;
   version: number;
   vehicle?: Vehicle;
+  hybridClosed?: boolean;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 export interface Bid {

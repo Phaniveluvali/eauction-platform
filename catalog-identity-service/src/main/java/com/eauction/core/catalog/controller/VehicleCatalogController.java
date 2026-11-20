@@ -38,16 +38,19 @@ public class VehicleCatalogController {
     private final UserRepository userRepository;
     private final AuthService authService;
     private final JdbcTemplate jdbcTemplate;
+    private final com.eauction.core.catalog.service.S3StorageService s3StorageService;
 
     public VehicleCatalogController(
             VehicleCatalogService vehicleCatalogService,
             UserRepository userRepository,
             AuthService authService,
-            JdbcTemplate jdbcTemplate) {
+            JdbcTemplate jdbcTemplate,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.eauction.core.catalog.service.S3StorageService s3StorageService) {
         this.vehicleCatalogService = vehicleCatalogService;
         this.userRepository = userRepository;
         this.authService = authService;
         this.jdbcTemplate = jdbcTemplate;
+        this.s3StorageService = s3StorageService;
     }
 
     @PostMapping
@@ -183,6 +186,20 @@ public class VehicleCatalogController {
         try {
             byte[] bytes = file.getBytes();
             UUID adminId = authService.extractUserId(authHeader.substring(7).trim());
+            Vehicle vehicle = vehicleCatalogService.getVehicleById(id).orElse(null);
+            int lotNo = (vehicle != null && vehicle.getLotNo() != null) ? vehicle.getLotNo() : 100001;
+
+            // 1. Upload to S3 under <Month-Year>/<LotNumber>/reports/<filename>
+            String s3Url = null;
+            if (s3StorageService != null) {
+                try {
+                    s3Url = s3StorageService.uploadTechnicalReport(lotNo, originalName, bytes, contentType);
+                } catch (Exception s3Ex) {
+                    org.slf4j.LoggerFactory.getLogger(VehicleCatalogController.class).warn("S3 upload failed, falling back: {}", s3Ex.getMessage());
+                }
+            }
+
+            // 2. Local database fallback
             jdbcTemplate.update("""
                     INSERT INTO vehicle_technical_reports (vehicle_id, file_name, content_type, file_size, file_data, uploaded_by, uploaded_at)
                     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -195,15 +212,15 @@ public class VehicleCatalogController {
                         uploaded_at = CURRENT_TIMESTAMP
                     """, id, originalName, contentType, file.getSize(), bytes, adminId);
 
-            String downloadUrl = "/api/v1/catalog/vehicles/" + id + "/technical-report/file";
-            Vehicle updated = vehicleCatalogService.updateTechnicalReport(id, downloadUrl);
+            String reportUrl = (s3Url != null && !s3Url.isBlank()) ? s3Url : ("/api/v1/catalog/vehicles/" + id + "/technical-report/file");
+            Vehicle updated = vehicleCatalogService.updateTechnicalReport(id, reportUrl);
             Map<String, Object> resp = new LinkedHashMap<>();
             resp.put("success", true);
             resp.put("vehicleId", id);
             resp.put("fileName", originalName);
             resp.put("contentType", contentType);
             resp.put("fileSize", file.getSize());
-            resp.put("reportUrl", downloadUrl);
+            resp.put("reportUrl", reportUrl);
             resp.put("vehicle", updated);
             return ResponseEntity.ok(resp);
         } catch (Exception ex) {
@@ -246,6 +263,72 @@ public class VehicleCatalogController {
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, String> body) {
         return ResponseEntity.ok(vehicleCatalogService.submitTechnicalTest(id));
+    }
+
+    @PutMapping("/{id}/relist")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Vehicle> relistVehicle(@PathVariable UUID id) {
+        return ResponseEntity.ok(vehicleCatalogService.relistVehicle(id));
+    }
+
+    @PutMapping("/{id}/deliver")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Vehicle> deliverVehicle(@PathVariable UUID id) {
+        return ResponseEntity.ok(vehicleCatalogService.deliverVehicle(id));
+    }
+
+    @PutMapping("/{id}/seller-approval")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SELLER')")
+    public ResponseEntity<Vehicle> sellerApprovalDecision(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, Object> body) {
+        boolean approved = true;
+        if (body != null && body.containsKey("decision")) {
+            approved = "APPROVE".equalsIgnoreCase(String.valueOf(body.get("decision")));
+        } else if (body != null && body.containsKey("approved")) {
+            approved = Boolean.parseBoolean(String.valueOf(body.get("approved")));
+        }
+        String comment = body != null ? String.valueOf(body.getOrDefault("comment", "")) : "";
+        return ResponseEntity.ok(vehicleCatalogService.sellerApprovalDecision(id, approved, comment));
+    }
+
+    @PutMapping("/{id}/archive")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Vehicle> archiveVehicle(@PathVariable UUID id) {
+        return ResponseEntity.ok(vehicleCatalogService.archiveVehicle(id));
+    }
+
+    @PostMapping(value = "/{id}/photos/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> uploadVehiclePhotos(
+            @PathVariable UUID id,
+            @RequestParam("files") List<MultipartFile> files) {
+        Vehicle vehicle = vehicleCatalogService.getVehicleById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + id));
+
+        if (files == null || files.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "No photo files provided."));
+        }
+
+        int lotNo = vehicle.getLotNo() != null ? vehicle.getLotNo() : 100001;
+        List<String> uploadedUrls = new ArrayList<>();
+        int count = 0;
+
+        for (MultipartFile f : files) {
+            if (f.isEmpty()) continue;
+            if (++count > 40) break;
+            try {
+                String origName = f.getOriginalFilename() != null ? f.getOriginalFilename() : ("photo_" + count + ".jpg");
+                String ct = f.getContentType() != null ? f.getContentType() : "image/jpeg";
+                String url = s3StorageService != null
+                        ? s3StorageService.uploadVehicleImage(lotNo, origName, f.getBytes(), ct)
+                        : null;
+                if (url != null) uploadedUrls.add(url);
+            } catch (Exception ignored) {}
+        }
+
+        Vehicle updated = vehicleCatalogService.submitPhotoVehicle(id, uploadedUrls);
+        return ResponseEntity.ok(Map.of("success", true, "count", uploadedUrls.size(), "mediaPaths", uploadedUrls, "vehicle", updated));
     }
 
     @PostMapping("/batch-approve")

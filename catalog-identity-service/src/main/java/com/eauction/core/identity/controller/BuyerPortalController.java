@@ -14,7 +14,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1/buyer")
-@PreAuthorize("hasRole('BUYER')")
+@PreAuthorize("hasAnyRole('BUYER', 'ADMIN', 'ACCOUNTANT')")
 public class BuyerPortalController {
 
     private final JdbcTemplate jdbcTemplate;
@@ -252,6 +252,168 @@ public class BuyerPortalController {
         }
 
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Buyer submits payment slip (wire transfer receipt / deposit voucher) for a won vehicle.
+     * Transitions vehicle to 'FBPV' (Buyer Invoice Pending Acknowledgement).
+     */
+    @PostMapping("/purchases/{vehicleId}/payment-slip")
+    @Transactional
+    public ResponseEntity<?> uploadPaymentSlip(
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+            @PathVariable UUID vehicleId,
+            @RequestBody Map<String, Object> body) {
+        UUID buyerId = authService.extractUserId(authHeader.substring(7).trim());
+        java.math.BigDecimal amount = java.math.BigDecimal.ZERO;
+        if (body.get("amount") != null) {
+            try {
+                amount = new java.math.BigDecimal(body.get("amount").toString());
+            } catch (Exception ignored) {}
+        }
+        String bankReference = body.get("bankReference") != null ? body.get("bankReference").toString() : "";
+        String slipFileUrl = body.get("slipFileUrl") != null ? body.get("slipFileUrl").toString() : "";
+
+        jdbcTemplate.update("""
+                INSERT INTO buyer_payment_slips (vehicle_id, buyer_id, amount, bank_reference, slip_file_url, status)
+                VALUES (?, ?, ?, ?, ?, 'PENDING_ACKNOWLEDGEMENT')
+                """, vehicleId, buyerId, amount, bankReference, slipFileUrl);
+
+        jdbcTemplate.update("""
+                UPDATE vehicles SET wf_activity_id = 'FBPV', status = 'BUYER_INVOICE_PENDING', updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """, vehicleId);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Payment slip uploaded successfully. Awaiting business acknowledgement in Buyer Invoice List.",
+                "vehicleId", vehicleId.toString(),
+                "status", "PENDING_ACKNOWLEDGEMENT"
+        ));
+    }
+
+    /**
+     * Business/Admin acknowledges payment from the Buyer Invoice List.
+     * Once acknowledged:
+     * - Vehicle transitions to 'FSL' (Sold Undelivered).
+     * - Gatepass and Sale Document buttons are unlocked for handover.
+     */
+    @PutMapping("/purchases/{vehicleId}/payment-acknowledge")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACCOUNTANT')")
+    @Transactional
+    public ResponseEntity<?> acknowledgePayment(
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+            @PathVariable UUID vehicleId) {
+        UUID adminId = authService.extractUserId(authHeader.substring(7).trim());
+
+        jdbcTemplate.update("""
+                UPDATE buyer_payment_slips
+                SET status = 'ACKNOWLEDGED', acknowledged_by = ?, acknowledged_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                WHERE vehicle_id = ?
+                """, adminId, vehicleId);
+
+        jdbcTemplate.update("""
+                UPDATE vehicles SET wf_activity_id = 'FSL', status = 'SOLD_UNDELIVERED', updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """, vehicleId);
+
+        // Fetch buyer_id from latest slip or auction
+        List<Map<String, Object>> slipRows = jdbcTemplate.queryForList(
+                "SELECT buyer_id FROM buyer_payment_slips WHERE vehicle_id = ? ORDER BY created_at DESC LIMIT 1",
+                vehicleId
+        );
+        UUID buyerId = (!slipRows.isEmpty() && slipRows.get(0).get("buyer_id") != null)
+                ? (UUID) slipRows.get(0).get("buyer_id")
+                : adminId;
+
+        // Auto-generate official Gate Pass voucher
+        String gatePassNo = "GP-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now()) +
+                "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
+        jdbcTemplate.update("""
+                INSERT INTO vehicle_gate_passes (vehicle_id, buyer_id, gate_pass_no, issued_by, issued_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT (gate_pass_no) DO NOTHING
+                """, vehicleId, buyerId, gatePassNo, adminId);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Payment acknowledged! Vehicle transitioned to Sold Undelivered (FSL). Gate Pass generated.",
+                "vehicleId", vehicleId.toString(),
+                "gatePassNo", gatePassNo,
+                "wfActivityId", "FSL"
+        ));
+    }
+
+    /**
+     * Lists all buyer payment slips for the Buyer Invoice List view in Accountant & Operations.
+     */
+    @GetMapping("/purchases/slips")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACCOUNTANT')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getPaymentSlips() {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT s.id, s.vehicle_id, s.buyer_id, s.amount, s.bank_reference, s.slip_file_url,
+                       s.status, s.acknowledged_at, s.created_at,
+                       v.make, v.model, v.manufacturing_year, v.lot_no, v.vin, v.registration_number, v.client_name,
+                       u.full_name AS buyer_name, u.email AS buyer_email, u.phone AS buyer_phone,
+                       gp.gate_pass_no, gp.vehicle_released
+                FROM buyer_payment_slips s
+                JOIN vehicles v ON v.id = s.vehicle_id
+                JOIN users u ON u.id = s.buyer_id
+                LEFT JOIN vehicle_gate_passes gp ON gp.vehicle_id = s.vehicle_id
+                ORDER BY s.created_at DESC
+                """);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", str(r.get("id")));
+            m.put("vehicleId", str(r.get("vehicle_id")));
+            m.put("buyerId", str(r.get("buyer_id")));
+            m.put("amount", r.get("amount"));
+            m.put("bankReference", r.get("bank_reference"));
+            m.put("slipFileUrl", r.get("slip_file_url"));
+            m.put("status", r.get("status"));
+            m.put("acknowledgedAt", iso(r.get("acknowledged_at")));
+            m.put("createdAt", iso(r.get("created_at")));
+            m.put("vehicleTitle", r.get("manufacturing_year") + " " + r.get("make") + " " + r.get("model"));
+            m.put("lotNo", r.get("lot_no"));
+            m.put("vin", r.get("vin"));
+            m.put("registrationNumber", r.get("registration_number"));
+            m.put("clientName", r.get("client_name"));
+            m.put("buyerName", r.get("buyer_name"));
+            m.put("buyerEmail", r.get("buyer_email"));
+            m.put("buyerPhone", r.get("buyer_phone"));
+            m.put("gatePassNo", r.get("gate_pass_no"));
+            m.put("vehicleReleased", r.get("vehicle_released"));
+            result.add(m);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Retrieves gate pass release voucher details for a vehicle.
+     */
+    @GetMapping("/purchases/{vehicleId}/gatepass")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getGatePass(@PathVariable UUID vehicleId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT gp.id, gp.gate_pass_no, gp.issued_at, gp.vehicle_released, gp.released_at,
+                       v.id AS vehicle_id, v.make, v.model, v.manufacturing_year, v.lot_no, v.vin, v.registration_number, v.color, v.branch,
+                       u.full_name AS buyer_name, u.email AS buyer_email, u.phone AS buyer_phone
+                FROM vehicle_gate_passes gp
+                JOIN vehicles v ON v.id = gp.vehicle_id
+                JOIN users u ON u.id = gp.buyer_id
+                WHERE gp.vehicle_id = ?
+                ORDER BY gp.issued_at DESC
+                LIMIT 1
+                """, vehicleId);
+
+        if (rows.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(rows.get(0));
     }
 
     private String str(Object o) {

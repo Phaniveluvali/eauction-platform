@@ -13,6 +13,7 @@ import {
   Lock,
   Search,
   Car,
+  Upload,
 } from 'lucide-react';
 import { User, BuyerPurchase, BuyerPayment, BuyerBidItem } from '../types';
 import { PortalSidebar, PortalView } from './PortalSidebar';
@@ -38,6 +39,10 @@ export const MyPurchasesPage: React.FC<MyPurchasesPageProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
   const [receiptTarget, setReceiptTarget] = useState<BuyerPurchase | BuyerPayment | null>(null);
+  const [slipModalTarget, setSlipModalTarget] = useState<BuyerPurchase | null>(null);
+  const [slipBankRef, setSlipBankRef] = useState<string>('');
+  const [slipSubmitting, setSlipSubmitting] = useState<boolean>(false);
+  const [slipSuccessMsg, setSlipSuccessMsg] = useState<string>('');
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +90,33 @@ export const MyPurchasesPage: React.FC<MyPurchasesPageProps> = ({
       return new Date(iso).toLocaleString();
     } catch {
       return iso;
+    }
+  };
+
+  const handleSlipSubmit = async () => {
+    if (!slipModalTarget) return;
+    if (!slipBankRef.trim()) {
+      alert('Please enter a bank reference or transaction number.');
+      return;
+    }
+    setSlipSubmitting(true);
+    try {
+      const mockSlipUrl = `https://aws-finelet-sa-demo.s3.ap-south-2.amazonaws.com/slips/slip_${Date.now()}.pdf`;
+      await api.uploadBuyerPaymentSlip(slipModalTarget.vehicleId, {
+        amount: Number(slipModalTarget.winningPrice || 0),
+        bankReference: slipBankRef.trim(),
+        slipFileUrl: mockSlipUrl,
+      });
+      setSlipSuccessMsg('Payment slip submitted successfully! Finance/Operations team will verify and acknowledge.');
+      setTimeout(() => {
+        setSlipModalTarget(null);
+        setSlipBankRef('');
+        setSlipSuccessMsg('');
+      }, 2500);
+    } catch (err: any) {
+      alert(`Submission failed: ${err.message || 'Error uploading payment slip'}`);
+    } finally {
+      setSlipSubmitting(false);
     }
   };
 
@@ -421,6 +453,82 @@ export const MyPurchasesPage: React.FC<MyPurchasesPageProps> = ({
           </div>
         )}
       </main>
+
+      {/* Payment Slip Upload Modal */}
+      {slipModalTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSlipModalTarget(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col animate-in fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold">Upload Bank Transfer Payment Slip</h3>
+                <p className="text-[11px] text-slate-300">
+                  Lot #{slipModalTarget.lotNo || '—'} • {slipModalTarget.make} {slipModalTarget.model}
+                </p>
+              </div>
+              <button onClick={() => setSlipModalTarget(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              {slipSuccessMsg ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl text-emerald-900 text-xs font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span>{slipSuccessMsg}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 text-[11px]">
+                    <span className="font-bold text-slate-900">AJ Auctions Bank Account Details:</span>
+                    <div className="text-slate-600">Beneficiary: <strong className="text-slate-800">AJ Auctions LLC</strong></div>
+                    <div className="text-slate-600">Bank: <strong className="text-slate-800">Abu Dhabi Islamic Bank (ADIB)</strong></div>
+                    <div className="text-slate-600 font-mono">IBAN: <strong className="text-emerald-700">AE070331234567890123456</strong></div>
+                    <div className="text-slate-600 font-mono">SWIFT: <strong className="text-slate-800">ADIBEAA</strong></div>
+                    <div className="text-slate-600">Amount Due: <strong className="text-emerald-700 text-sm">AED {Number(slipModalTarget.winningPrice || 0).toLocaleString()}</strong></div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Bank Transaction / Reference #</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. ADIB-TX-98234190"
+                      value={slipBankRef}
+                      onChange={(e) => setSlipBankRef(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Attach Wire Receipt / Deposit Slip</label>
+                    <div className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-4 text-center cursor-pointer bg-slate-50">
+                      <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
+                      <span className="text-slate-600 font-medium text-[11px]">Click to choose payment slip (PDF, JPG, PNG)</span>
+                      <input type="file" accept="image/*,application/pdf" className="hidden" />
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleSlipSubmit}
+                      disabled={slipSubmitting}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      {slipSubmitting ? 'Uploading Slip...' : 'Submit Payment Slip for Acknowledgement'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Printable Receipt Modal */}
       {receiptTarget && (

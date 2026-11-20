@@ -71,6 +71,9 @@ public class Auction {
     @Column(name = "batch_id")
     private UUID batchId;
 
+    @Column(name = "hybrid_closed")
+    private Boolean hybridClosed = false;
+
     @Version
     @Column(name = "version", nullable = false)
     private Long version = 0L;
@@ -222,6 +225,18 @@ public class Auction {
 
     public void setAuctionType(String auctionType) {
         this.auctionType = auctionType != null ? auctionType : "ONLINE";
+    }
+
+    public Boolean getHybridClosed() {
+        return hybridClosed != null && hybridClosed;
+    }
+
+    public void setHybridClosed(Boolean hybridClosed) {
+        this.hybridClosed = hybridClosed;
+    }
+
+    public boolean isHybridClosed() {
+        return hybridClosed != null && hybridClosed;
     }
 
     public Long getVersion() {

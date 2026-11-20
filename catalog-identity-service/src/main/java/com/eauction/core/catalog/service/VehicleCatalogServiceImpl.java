@@ -216,6 +216,51 @@ public class VehicleCatalogServiceImpl implements VehicleCatalogService {
 
     @Override
     @Transactional
+    public Vehicle relistVehicle(UUID id) {
+        Vehicle vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + id));
+        vehicle.setWfActivityId("FIA");
+        vehicle.setStatus("INACTIVE_AUCTION");
+        return vehicleRepository.save(vehicle);
+    }
+
+    @Override
+    @Transactional
+    public Vehicle deliverVehicle(UUID id) {
+        Vehicle vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + id));
+        vehicle.setWfActivityId("FSD");
+        vehicle.setStatus("SOLD_DELIVERED");
+        return vehicleRepository.save(vehicle);
+    }
+
+    @Override
+    @Transactional
+    public Vehicle sellerApprovalDecision(UUID id, boolean approved, String comment) {
+        Vehicle vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + id));
+        if (approved) {
+            vehicle.setWfActivityId("FABS");
+            vehicle.setStatus("APPROVED_BY_SELLER");
+        } else {
+            vehicle.setWfActivityId("FU");
+            vehicle.setStatus("UNSOLD");
+        }
+        return vehicleRepository.save(vehicle);
+    }
+
+    @Override
+    @Transactional
+    public Vehicle archiveVehicle(UUID id) {
+        Vehicle vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + id));
+        vehicle.setWfActivityId("ARCHIVED");
+        vehicle.setStatus("ARCHIVED");
+        return vehicleRepository.save(vehicle);
+    }
+
+    @Override
+    @Transactional
     public List<Vehicle> batchApprove(List<UUID> ids) {
         List<Vehicle> updated = new ArrayList<>();
         for (UUID id : ids) {

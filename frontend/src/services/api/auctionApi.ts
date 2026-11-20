@@ -350,4 +350,58 @@ export const auctionApi = {
     if (!res.ok) throw new Error('Failed to load bids');
     return res.json();
   },
+
+  async hybridCloseAuction(auctionId: string, action: 'KNOCK_DOWN' | 'UNSOLD' | 'PAUSE' | 'RESUME', reason?: string): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/auctions/${auctionId}/hybrid-close`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ action, reason }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to close auction (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async uploadBuyerPaymentSlip(vehicleId: string, payload: { amount: number; bankReference: string; slipFileUrl?: string }): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/purchases/${vehicleId}/payment-slip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to submit payment slip');
+    }
+    return res.json();
+  },
+
+  async acknowledgeBuyerPayment(vehicleId: string): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/purchases/${vehicleId}/payment-acknowledge`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to acknowledge payment');
+    }
+    return res.json();
+  },
+
+  async getBuyerPaymentSlips(): Promise<any[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/purchases/slips`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  async getGatePass(vehicleId: string): Promise<any> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/buyer/purchases/${vehicleId}/gatepass`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  },
 };

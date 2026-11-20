@@ -243,4 +243,41 @@ export const catalogApi = {
     if (!res.ok) throw new Error('Failed to fetch user stats');
     return res.json();
   },
+
+  async relistVehicle(vehicleId: string): Promise<Vehicle> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/relist`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to relist vehicle');
+    return res.json();
+  },
+
+  async deliverVehicle(vehicleId: string): Promise<Vehicle> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/deliver`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to mark vehicle as delivered');
+    return res.json();
+  },
+
+  async sellerApprovalDecision(vehicleId: string, decision: 'APPROVE' | 'REJECT', comment?: string): Promise<Vehicle> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/seller-approval`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ decision, comment: comment || '' }),
+    });
+    if (!res.ok) throw new Error(`Failed to record seller approval decision (HTTP ${res.status})`);
+    return res.json();
+  },
+
+  async archiveVehicle(vehicleId: string): Promise<Vehicle> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/archive`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to archive vehicle');
+    return res.json();
+  },
 };

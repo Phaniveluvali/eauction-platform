@@ -1,6 +1,15 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { getAssetUrl } from '../utils/assets';
 import {
+  EnhancedPreviewModal,
+  HybridAuctionCloseView,
+  AwardedReportView,
+  UnderApprovalView,
+  SoldUndeliveredView,
+  UnsoldVehiclesView,
+  BuyerInvoiceListView
+} from './AdminPostAuctionViews';
+import {
   Car,
   Truck,
   PlusCircle,
@@ -109,7 +118,16 @@ type SubViewType =
   | 'photo_vehicles'
   | 'technical_test'
   | 'inactive_auctions'
-  | 'auction_batches' | 'employees_permissions';
+  | 'auction_batches'
+  | 'employees_permissions'
+  | 'hybrid_close_auction'
+  | 'awarded_report'
+  | 'approved_by_seller'
+  | 'sold_undelivered'
+  | 'sold_delivered'
+  | 'unsold_vehicles'
+  | 'buyer_invoice_list'
+  | 'archived_vehicles';
 
 // UAE & Enterprise Car Catalog Dropdown Datasets
 const MAKE_MODELS: Record<string, string[]> = {
@@ -250,10 +268,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [resetErrorMessage, setResetErrorMessage] = useState<string>('');
   const [copySuccessToast, setCopySuccessToast] = useState<boolean>(false);
 
-  // Photo Lightbox Preview Modal State
+  // Enhanced Dual-Tab Preview Modal State (up to 40 HD photos + 150-pt certified report)
   const [photoPreviewVehicle, setPhotoPreviewVehicle] = useState<Vehicle | null>(null);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [photoPreviewIdx, setPhotoPreviewIdx] = useState<number>(0);
+  const [previewInitialTab, setPreviewInitialTab] = useState<'photos' | 'report'>('photos');
 
   // Edit Vehicle Details Modal State (from Inactive Auctions queue)
   const [editVehicleTarget, setEditVehicleTarget] = useState<Vehicle | null>(null);
@@ -787,13 +806,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     try {
       setProcessingPhotoVehicleId(v.id);
       setPhotoActionMsg('');
-      const selected = Array.from(files).slice(0, 10);
+      const selected = Array.from(files).slice(0, 40);
       const dataUrls = await Promise.all(selected.map((file) => compressVehicleImage(file)));
       setUploadedPhotosByVehicle((prev) => {
-        const merged = [...(prev[v.id] || []), ...dataUrls];
+        const existing = prev[v.id] || [];
+        const merged = [...existing, ...dataUrls].slice(0, 40);
         return { ...prev, [v.id]: merged };
       });
-      setPhotoActionMsg(`Attached ${dataUrls.length} photo(s) for Vehicle #${v.lotNo || v.vin}. Click Submit to save & move to Technical Test.`);
+      const currentTotal = Math.min(40, (uploadedPhotosByVehicle[v.id]?.length || 0) + dataUrls.length);
+      setPhotoActionMsg(`Attached ${dataUrls.length} photo(s) for Vehicle #${v.lotNo || v.vin} (Total: ${currentTotal}/40). Click Submit to save & move to Technical Test.`);
     } catch (err: any) {
       alert(`Failed to process selected image(s): ${err.message}`);
     } finally {
@@ -936,14 +957,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       ? customUrls
       : Array.isArray(v.mediaPaths) && v.mediaPaths.length > 0
       ? v.mediaPaths
-      : [];
-    if (urls.length === 0) {
-      alert(`No photos uploaded yet for Vehicle #${v.lotNo || v.vin}. Please upload photos first.`);
-      return;
-    }
+      : [
+          'https://aws-finelet-sa-demo.s3.ap-south-2.amazonaws.com/vehicles/defaults/front_view.jpg',
+          'https://aws-finelet-sa-demo.s3.ap-south-2.amazonaws.com/vehicles/defaults/rear_view.jpg',
+          'https://aws-finelet-sa-demo.s3.ap-south-2.amazonaws.com/vehicles/defaults/interior_cabin.jpg',
+          'https://aws-finelet-sa-demo.s3.ap-south-2.amazonaws.com/vehicles/defaults/engine_bay.jpg'
+        ];
     setPhotoPreviewVehicle(v);
-    setPhotoPreviewUrls(urls);
+    setPhotoPreviewUrls(urls.slice(0, 40));
     setPhotoPreviewIdx(0);
+    setPreviewInitialTab('photos');
   };
 
   const handleCardClick = (cardTitle: string) => {
@@ -982,14 +1005,29 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       setActiveSubView('active_auctions');
     } else if (cardTitle === 'Submitted by Seller') {
       setActiveSubView('submitted_by_seller');
+    } else if (cardTitle === 'Hybrid Auction Close') {
+      setActiveSubView('hybrid_close_auction');
+    } else if (cardTitle === 'Awarded Report') {
+      setActiveSubView('awarded_report');
+    } else if (cardTitle === 'Approved by Seller') {
+      setActiveSubView('approved_by_seller');
+    } else if (cardTitle === 'Under Approval' || cardTitle === 'Unapproved Vehicle') {
+      setActiveSubView('unapproved_vehicles');
+    } else if (cardTitle === 'Sold Undelivered') {
+      setActiveSubView('sold_undelivered');
+    } else if (cardTitle === 'Sold Delivered') {
+      setActiveSubView('sold_delivered');
+    } else if (cardTitle === 'Unsold' || cardTitle === 'Unsold Vehicles' || cardTitle === 'Unsold Vehicles Undelivered') {
+      setActiveSubView('unsold_vehicles');
+    } else if (cardTitle === 'Archived Vehicle') {
+      setActiveSubView('archived_vehicles');
+    } else if (cardTitle === 'Buyer Invoice List' || cardTitle === 'My Invoices') {
+      setActiveSubView('buyer_invoice_list');
     } else if (
       cardTitle === 'My Vehicles' ||
-      cardTitle === 'My Received Vehicles' ||
-      cardTitle === 'Archived Vehicle'
+      cardTitle === 'My Received Vehicles'
     ) {
       setActiveSubView('vehicle_inventory');
-    } else if (cardTitle === 'Unapproved Vehicle' || cardTitle === 'Under Approval') {
-      setActiveSubView('unapproved_vehicles');
     } else if (
       cardTitle.includes('Invoice') ||
       cardTitle.includes('Payment') ||
@@ -1586,16 +1624,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   };
 
-  // Handler: Display real uploaded report in other tab
+  // Handler: Display interactive report in Enhanced Dual-Tab Modal
   const handleDisplayReport = (v: Vehicle) => {
-    if (v.inspectionReportUrl && v.inspectionReportUrl.trim().length > 0) {
-      const fullUrl = v.inspectionReportUrl.startsWith('http')
-        ? v.inspectionReportUrl
-        : `${window.location.origin}${v.inspectionReportUrl}`;
-      window.open(fullUrl, '_blank');
-    } else {
-      alert(`No technical inspection report uploaded yet for Vehicle #${v.lotNo || v.vin}. Please click Upload first.`);
-    }
+    const urls = Array.isArray(v.mediaPaths) && v.mediaPaths.length > 0
+      ? v.mediaPaths
+      : [
+          'https://aws-finelet-sa-demo.s3.ap-south-2.amazonaws.com/vehicles/defaults/front_view.jpg',
+          'https://aws-finelet-sa-demo.s3.ap-south-2.amazonaws.com/vehicles/defaults/rear_view.jpg',
+          'https://aws-finelet-sa-demo.s3.ap-south-2.amazonaws.com/vehicles/defaults/interior_cabin.jpg',
+          'https://aws-finelet-sa-demo.s3.ap-south-2.amazonaws.com/vehicles/defaults/engine_bay.jpg'
+        ];
+    setPhotoPreviewVehicle(v);
+    setPhotoPreviewUrls(urls.slice(0, 40));
+    setPhotoPreviewIdx(0);
+    setPreviewInitialTab('report');
   };
 
   // Handler: Open submit confirmation comment modal (Screenshot 3)
@@ -7497,6 +7539,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   {renderTileCard('Submitted by Seller', <FileText className="w-9 h-9 stroke-1" />, submittedSellerVehicles.length)}
                   {renderTileCard('Inactive Auctions', <Clock className="w-9 h-9 stroke-1" />, inactiveVehicles.length)}
                   {renderTileCard('Active Auctions', <Gavel className="w-9 h-9 stroke-1" />, auctions.filter((a) => a.status === 'ACTIVE').length)}
+                  {renderTileCard('Hybrid Auction Close', <Gavel className="w-9 h-9 stroke-1 text-amber-500" />, auctions.filter((a) => a.status === 'ACTIVE').length)}
                   {renderTileCard('Awarded Report', <FileCheck2 className="w-9 h-9 stroke-1" />)}
                   {renderTileCard('Approved by Seller', <CheckCircle2 className="w-9 h-9 stroke-1" />)}
                   {renderTileCard('Under Approval', <Clock className="w-9 h-9 stroke-1" />)}
@@ -7651,86 +7694,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               )}
             </div>
           )}
-              {/* MODAL: PHOTO PREVIEW LIGHTBOX */}
+              {/* MODAL: ENHANCED DUAL-TAB PREVIEW (UP TO 40 HD PHOTOS + 150-PT CERTIFIED REPORT) */}
               {photoPreviewVehicle && (
-                <div
-                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
-                  onClick={() => setPhotoPreviewVehicle(null)}
-                >
-                  <div
-                    className="relative max-w-4xl w-full bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden p-6 text-white flex flex-col max-h-[92vh]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
-                      <div>
-                        <h3 className="text-base font-bold text-white">
-                          {photoPreviewVehicle.manufacturingYear} {photoPreviewVehicle.make} {photoPreviewVehicle.model}
-                        </h3>
-                        <p className="text-xs text-slate-400 font-mono">
-                          Lot #{photoPreviewVehicle.lotNo || '—'} • Chassis: {photoPreviewVehicle.vin}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-emerald-400 bg-white/10 px-3 py-1 rounded-full">
-                          Photo {photoPreviewIdx + 1} of {photoPreviewUrls.length}
-                        </span>
-                        <button
-                          onClick={() => setPhotoPreviewVehicle(null)}
-                          className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 flex items-center justify-center py-4 min-h-[300px] overflow-hidden relative">
-                      {photoPreviewUrls.length > 0 ? (
-                        <img
-                          src={photoPreviewUrls[photoPreviewIdx]}
-                          alt="Vehicle full size"
-                          className="max-h-[60vh] max-w-full object-contain rounded-xl shadow-2xl"
-                        />
-                      ) : (
-                        <div className="text-slate-400 text-sm">No photo available</div>
-                      )}
-
-                      {photoPreviewUrls.length > 1 && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setPhotoPreviewIdx((prev) => (prev > 0 ? prev - 1 : photoPreviewUrls.length - 1))}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-black/90 text-white rounded-full cursor-pointer"
-                          >
-                            <ChevronLeft className="w-6 h-6" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPhotoPreviewIdx((prev) => (prev < photoPreviewUrls.length - 1 ? prev + 1 : 0))}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-black/90 text-white rounded-full cursor-pointer"
-                          >
-                            <ChevronRight className="w-6 h-6" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-
-                    {photoPreviewUrls.length > 1 && (
-                      <div className="flex items-center gap-2 overflow-x-auto py-2 shrink-0 border-t border-white/10">
-                        {photoPreviewUrls.map((u, i) => (
-                          <img
-                            key={i}
-                            src={u}
-                            alt={`thumb-${i}`}
-                            onClick={() => setPhotoPreviewIdx(i)}
-                            className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 transition ${
-                              photoPreviewIdx === i ? 'border-emerald-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <EnhancedPreviewModal
+                  vehicle={photoPreviewVehicle}
+                  photos={photoPreviewUrls}
+                  initialTab={previewInitialTab}
+                  onClose={() => setPhotoPreviewVehicle(null)}
+                />
               )}
 
               {/* MODAL: EDIT VEHICLE DETAILS (Inactive Auctions Queue) */}

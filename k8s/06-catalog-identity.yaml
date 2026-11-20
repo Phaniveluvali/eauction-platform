@@ -98,6 +98,31 @@ spec:
                 configMapKeyRef:
                   name: eauction-config
                   key: SPRING_MAIL_PORT
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-s3-credentials
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-s3-credentials
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-s3-credentials
+                  key: AWS_REGION
+            - name: S3_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-s3-credentials
+                  key: S3_BUCKET_NAME
+            - name: S3_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: eauction-s3-credentials
+                  key: S3_BASE_URL
           resources:
             requests:
               cpu: 250m

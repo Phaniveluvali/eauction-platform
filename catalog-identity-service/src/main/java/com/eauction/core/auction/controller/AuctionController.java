@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -267,5 +268,111 @@ public class AuctionController {
                 .orElseThrow(() -> new IllegalArgumentException("Auction not found with ID: " + id));
         auction.setStatus("ENDED");
         return ResponseEntity.ok(auctionRepository.save(auction));
+    }
+
+    /**
+     * Hybrid Auction Live Hammer Close:
+     * - Atomically sets status = 'ENDED' and hybrid_closed = true.
+     * - If highest bid > 0, transitions vehicle to 'FPSA' (Under Approval) and seeds settlement entry in buyer_payment_slips.
+     * - If unsold or no bids, transitions vehicle to 'FU' (Unsold Vehicles) for relisting.
+     * - Broadcasts 'LOT_HAMMER_CLOSED' frame directly to Redis Pub/Sub backplane channel: auction:<auctionId>:broadcast.
+     */
+    @PutMapping("/{id}/hybrid-close")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ResponseEntity<?> hybridCloseAuction(
+            @PathVariable UUID id,
+            @RequestBody(required = false) java.util.Map<String, Object> body) {
+        Auction auction = auctionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Auction not found with ID: " + id));
+
+        String action = body != null && body.get("action") != null
+                ? body.get("action").toString().toUpperCase()
+                : "KNOCK_DOWN";
+
+        auction.setStatus("ENDED");
+        auction.setHybridClosed(true);
+        auction.setEndTime(java.time.Instant.now());
+        auctionRepository.save(auction);
+
+        com.eauction.core.catalog.model.Vehicle vehicle = null;
+        if (auction.getVehicleId() != null) {
+            vehicle = vehicleRepository.findById(auction.getVehicleId()).orElse(null);
+        }
+
+        java.math.BigDecimal finalBid = auction.getCurrentHighestBid() != null ? auction.getCurrentHighestBid() : java.math.BigDecimal.ZERO;
+        UUID winnerId = auction.getHighestBidderId();
+
+        if (vehicle != null) {
+            if ("UNSOLD".equals(action) || finalBid.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                vehicle.setWfActivityId("FU");
+                vehicle.setStatus("UNSOLD");
+            } else {
+                vehicle.setWfActivityId("FPSA");
+                vehicle.setStatus("UNDER_APPROVAL");
+
+                if (winnerId != null && jdbcTemplate != null) {
+                    try {
+                        jdbcTemplate.update("""
+                            INSERT INTO buyer_payment_slips (vehicle_id, auction_id, buyer_id, amount, status)
+                            VALUES (?, ?, ?, ?, 'PENDING_ACKNOWLEDGEMENT')
+                            ON CONFLICT DO NOTHING
+                        """, vehicle.getId(), auction.getId(), winnerId, finalBid);
+                    } catch (Exception ignored) {}
+                }
+            }
+            vehicleRepository.save(vehicle);
+        }
+
+        // Broadcast LOT_HAMMER_CLOSED to Redis Pub/Sub -> Go WebSocket Clients
+        broadcastHammerCloseToRedis(id.toString(), auction, vehicle, action, finalBid, winnerId);
+
+        java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("auctionId", id.toString());
+        resp.put("status", "ENDED");
+        resp.put("hybridClosed", true);
+        resp.put("action", action);
+        resp.put("finalBid", finalBid);
+        resp.put("winnerId", winnerId != null ? winnerId.toString() : null);
+        resp.put("vehicle", vehicle);
+        return ResponseEntity.ok(resp);
+    }
+
+    private void broadcastHammerCloseToRedis(String auctionId, Auction auction, com.eauction.core.catalog.model.Vehicle vehicle, String action, java.math.BigDecimal finalBid, UUID winnerId) {
+        try {
+            String redisHost = System.getenv("REDIS_HOST");
+            if (redisHost == null || redisHost.isBlank()) redisHost = "eauction-redis";
+            int redisPort = 6379;
+            String portStr = System.getenv("REDIS_PORT");
+            if (portStr != null && !portStr.isBlank()) {
+                try { redisPort = Integer.parseInt(portStr); } catch (Exception ignored) {}
+            }
+
+            int lotNo = vehicle != null && vehicle.getLotNo() != null ? vehicle.getLotNo() : 0;
+            String message = "UNSOLD".equals(action)
+                    ? String.format("🔨 LOT #%d CLOSED AS UNSOLD.", lotNo)
+                    : String.format("🔨 LOT #%d HAMMER KNOCKED DOWN! Awarded at AED %s.", lotNo, finalBid != null ? finalBid.toPlainString() : "0");
+
+            String payload = String.format(
+                    "{\"type\":\"LOT_HAMMER_CLOSED\",\"status\":\"LOT_HAMMER_CLOSED\",\"auctionId\":\"%s\",\"lotNo\":%d,\"finalBid\":%s,\"winnerId\":\"%s\",\"action\":\"%s\",\"message\":\"%s\",\"timestamp\":%d}",
+                    auctionId, lotNo, finalBid != null ? finalBid.toPlainString() : "0", winnerId != null ? winnerId.toString() : "", action, message, System.currentTimeMillis()
+            );
+
+            try (java.net.Socket socket = new java.net.Socket(redisHost, redisPort);
+                 java.io.OutputStream out = socket.getOutputStream()) {
+                socket.setSoTimeout(2000);
+                String channel = "auction:" + auctionId + ":broadcast";
+                byte[] channelBytes = channel.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                byte[] payloadBytes = payload.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                String cmd = String.format("*3\r\n$7\r\nPUBLISH\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n",
+                        channelBytes.length, channel, payloadBytes.length, payload);
+                out.write(cmd.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                out.flush();
+            }
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(AuctionController.class)
+                    .warn("Could not publish hammer close to Redis (non-fatal): {}", e.getMessage());
+        }
     }
 }

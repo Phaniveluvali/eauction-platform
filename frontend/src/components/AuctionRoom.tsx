@@ -27,7 +27,7 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
   const [bidHistory, setBidHistory] = useState<Bid[]>([]);
   const [socketStatus, setSocketStatus] = useState<'CONNECTING' | 'CONNECTED' | 'DISCONNECTED'>('DISCONNECTED');
   const [customBidAmount, setCustomBidAmount] = useState<string>('');
-  const [alertNotice, setAlertNotice] = useState<{ type: 'SUCCESS' | 'ERROR'; message: string } | null>(null);
+  const [alertNotice, setAlertNotice] = useState<{ type: 'SUCCESS' | 'ERROR' | 'WARNING'; message: string } | null>(null);
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   const socketRef = useRef<AuctionSocket | null>(null);
@@ -77,6 +77,18 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
       (data: BidResponse) => {
         console.log('[AuctionRoom] Received real-time broadcast:', data);
 
+        if ((data as any).type === 'LOT_HAMMER_CLOSED' || (data as any).status === 'LOT_HAMMER_CLOSED') {
+          const lotNo = (data as any).lotNo || auction.vehicle?.lotNo || '—';
+          const finalBid = (data as any).finalBid || data.currentHighestBid;
+          const msg = (data as any).message || `🔨 LOT #${lotNo} HAMMER KNOCKED DOWN! Lot closed at AED ${Number(finalBid || 0).toLocaleString()}.`;
+          setAlertNotice({
+            type: 'WARNING',
+            message: msg,
+          });
+          setIsHammerClosed(true);
+          return;
+        }
+
         if (data.status === 'SUCCESS') {
           setCurrentHighestBid(data.currentHighestBid);
           if (data.bidderId) setHighestBidderId(data.bidderId);
@@ -118,8 +130,9 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
   const [selfOutbidConfirmed, setSelfOutbidConfirmed] = useState(false);
   const [pendingBidAmount, setPendingBidAmount] = useState<number | null>(null);
   const [showDegradedModal, setShowDegradedModal] = useState(false);
+  const [isHammerClosed, setIsHammerClosed] = useState<boolean>(Boolean((auction as any).hybridClosed));
 
-  const isAuctionEnded = auction.status === 'ENDED' || auction.status === 'COMPLETED' || (new Date(auction.endTime).getTime() <= Date.now());
+  const isAuctionEnded = isHammerClosed || auction.status === 'ENDED' || auction.status === 'COMPLETED' || (new Date(auction.endTime).getTime() <= Date.now());
 
   // 3. Dispatch Bid Handler
   const handlePlaceBid = (proposedAmount: number) => {
@@ -300,13 +313,15 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
               className={`p-4 rounded-xl flex items-center space-x-3 text-sm font-medium border ${
                 alertNotice.type === 'SUCCESS'
                   ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-300'
+                  : alertNotice.type === 'WARNING'
+                  ? 'bg-amber-950/50 border-amber-500/30 text-amber-300'
                   : 'bg-red-950/50 border-red-500/30 text-red-300'
               }`}
             >
               {alertNotice.type === 'SUCCESS' ? (
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
               ) : (
-                <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${alertNotice.type === 'WARNING' ? 'text-amber-400' : 'text-red-400'}`} />
               )}
               <span>{alertNotice.message}</span>
             </div>
