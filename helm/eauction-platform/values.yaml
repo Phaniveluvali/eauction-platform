@@ -258,7 +258,7 @@ catalogIdentity:
   # Container image definition
   image:
     repository: "krishnaveluvali/eauction-catalog-identity"
-    tag: "6256161"
+    tag: "1a53cc4"
     pullPolicy: "IfNotPresent"
 
   # Service networking definition
