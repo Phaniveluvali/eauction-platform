@@ -5,6 +5,8 @@ import com.eauction.core.auction.repository.AuctionRepository;
 import com.eauction.core.catalog.dto.CreateVehicleRequest;
 import com.eauction.core.catalog.model.Vehicle;
 import com.eauction.core.catalog.repository.VehicleRepository;
+import com.eauction.core.identity.model.User;
+import com.eauction.core.identity.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,19 +23,21 @@ public class VehicleCatalogServiceImpl implements VehicleCatalogService {
 
     private final VehicleRepository vehicleRepository;
     private final AuctionRepository auctionRepository;
+    private final UserRepository userRepository;
 
-    public VehicleCatalogServiceImpl(VehicleRepository vehicleRepository, AuctionRepository auctionRepository) {
+    public VehicleCatalogServiceImpl(
+            VehicleRepository vehicleRepository,
+            AuctionRepository auctionRepository,
+            UserRepository userRepository) {
         this.vehicleRepository = vehicleRepository;
         this.auctionRepository = auctionRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
     @Transactional
     public Vehicle createVehicle(UUID sellerId, CreateVehicleRequest request) {
-        String vin = request.getVin() != null && !request.getVin().isBlank()
-                ? request.getVin().trim().toUpperCase()
-                : UUID.randomUUID().toString().replace("-", "").substring(0, 17).toUpperCase();
-
+        String vin = request.getVin().toUpperCase().trim();
         if (vehicleRepository.existsByVin(vin)) {
             throw new IllegalArgumentException("Vehicle with VIN already exists: " + vin);
         }
@@ -43,7 +47,7 @@ public class VehicleCatalogServiceImpl implements VehicleCatalogService {
             if (request.getPreviousNumberplate() != null && !request.getPreviousNumberplate().isBlank()) {
                 regNo = request.getPreviousNumberplate().trim().toUpperCase();
             } else {
-                regNo = "AWA-" + (int)(Math.random() * 900000 + 100000);
+                regNo = "AJ-" + (int)(Math.random() * 900000 + 100000);
             }
         } else {
             regNo = regNo.trim().toUpperCase();
@@ -89,7 +93,7 @@ public class VehicleCatalogServiceImpl implements VehicleCatalogService {
         vehicle.setPreviousNumberplate(request.getPreviousNumberplate() != null ? request.getPreviousNumberplate() : regNo);
         vehicle.setOldId(request.getOldId());
         vehicle.setLocation(request.getLocation() != null ? request.getLocation() : (request.getBranch() != null ? request.getBranch() : "Sharjah"));
-        vehicle.setClientName(request.getClientName() != null ? request.getClientName() : "AWA Consignment Seller");
+        vehicle.setClientName(request.getClientName() != null ? request.getClientName() : "AJ Consignment Seller");
         vehicle.setMulkiyaDocumentUrl(request.getMulkiyaDocumentUrl());
         vehicle.setWfActivityId(request.getWfActivityId() != null ? request.getWfActivityId() : "FVSA");
         vehicle.setStatus(request.getStatus() != null ? request.getStatus() : "SUBMISSION_PENDING");
@@ -219,28 +223,50 @@ public class VehicleCatalogServiceImpl implements VehicleCatalogService {
     public List<Vehicle> batchCreateVehicles(UUID sellerId, List<CreateVehicleRequest> requests) {
         List<Vehicle> savedList = new ArrayList<>();
         for (CreateVehicleRequest req : requests) {
-            String vin = req.getVin() != null && !req.getVin().isBlank()
-                    ? req.getVin().trim().toUpperCase()
-                    : UUID.randomUUID().toString().replace("-", "").substring(0, 17).toUpperCase();
+            // Defect D33 Fix: Validate mandatory fields - do not silently default
+            String vin = req.getVin() != null ? req.getVin().trim().toUpperCase() : null;
+            if (vin == null || vin.isBlank()) {
+                continue; // Skip invalid rows in partial-success mode (D38)
+            }
 
             if (vehicleRepository.existsByVin(vin)) continue;
 
+            if (req.getMake() == null || req.getMake().isBlank()) continue;
+            if (req.getModel() == null || req.getModel().isBlank()) continue;
+            if (req.getTargetSellingPrice() == null || req.getTargetSellingPrice().compareTo(BigDecimal.ZERO) <= 0) continue;
+            if (req.getMinimumSellingPrice() == null || req.getMinimumSellingPrice().compareTo(BigDecimal.ZERO) <= 0) continue;
+
+            // Defect D34 Fix: Check registered seller if client name/email given
+            UUID assignedSellerId = sellerId;
+            String sellerDisplayName = req.getClientName();
+            if (sellerDisplayName != null && sellerDisplayName.contains("@")) {
+                Optional<User> found = userRepository.findByEmail(sellerDisplayName.trim().toLowerCase());
+                if (found.isPresent()) {
+                    assignedSellerId = found.get().getId();
+                    sellerDisplayName = found.get().getFullName() != null ? found.get().getFullName() : found.get().getEmail();
+                }
+            } else if (sellerDisplayName == null || sellerDisplayName.isBlank()) {
+                // If not provided, fetch current seller name
+                Optional<User> sellerUser = userRepository.findById(sellerId);
+                sellerDisplayName = sellerUser.map(User::getFullName).orElse("Registered Seller");
+            }
+
             String regNo = req.getRegistrationNumber();
             if (regNo == null || regNo.isBlank()) {
-                regNo = req.getPreviousNumberplate() != null ? req.getPreviousNumberplate().trim().toUpperCase() : "AWA-" + (int)(Math.random() * 900000 + 100000);
+                regNo = req.getPreviousNumberplate() != null ? req.getPreviousNumberplate().trim().toUpperCase() : "AJ-" + (int)(Math.random() * 900000 + 100000);
             }
             if (vehicleRepository.existsByRegistrationNumber(regNo)) {
                 regNo = regNo + "-" + (int)(Math.random() * 900 + 100);
             }
 
             Vehicle v = new Vehicle();
-            v.setSellerId(sellerId);
+            v.setSellerId(assignedSellerId);
             v.setVin(vin);
             v.setRegistrationNumber(regNo);
             v.setEngineNumber("ENG-" + vin.substring(Math.max(0, vin.length() - 8)));
             v.setVehicleType("CAR");
-            v.setMake(req.getMake() != null ? req.getMake().trim() : "Toyota");
-            v.setModel(req.getModel() != null ? req.getModel().trim() : "Sedan");
+            v.setMake(req.getMake().trim());
+            v.setModel(req.getModel().trim());
             v.setManufacturingYear(req.getManufacturingYear() != null ? req.getManufacturingYear() : 2024);
             v.setOdometerReadingKm(req.getOdometerReadingKm() != null ? req.getOdometerReadingKm() : BigDecimal.ZERO);
             v.setFuelType(req.getFuelType() != null ? req.getFuelType().trim().toUpperCase() : "PETROL");
@@ -251,10 +277,10 @@ public class VehicleCatalogServiceImpl implements VehicleCatalogService {
             v.setOldId(req.getOldId());
             v.setNoOfKeys(req.getNoOfKeys() != null ? req.getNoOfKeys() : "2 Keys");
             v.setColor(req.getColor() != null ? req.getColor() : "White");
-            v.setTargetSellingPrice(req.getTargetSellingPrice() != null ? req.getTargetSellingPrice() : BigDecimal.ZERO);
-            v.setMinimumSellingPrice(req.getMinimumSellingPrice() != null ? req.getMinimumSellingPrice() : BigDecimal.ZERO);
+            v.setTargetSellingPrice(req.getTargetSellingPrice());
+            v.setMinimumSellingPrice(req.getMinimumSellingPrice());
             v.setPreviousNumberplate(req.getPreviousNumberplate() != null ? req.getPreviousNumberplate() : regNo);
-            v.setClientName(req.getClientName() != null ? req.getClientName() : "Batch Consignment Seller");
+            v.setClientName(sellerDisplayName);
             v.setWfActivityId("FVSA");
             v.setStatus("SUBMISSION_PENDING");
 

@@ -23,6 +23,9 @@ export const authApi = {
     role: string;
     panNumber?: string;
     gstNumber?: string;
+    emiratesId?: string;
+    trn?: string;
+    companyName?: string;
   }): Promise<AuthResponse> {
     const res = await fetch(`${CATALOG_BASE}/api/v1/auth/register`, {
       method: 'POST',
@@ -32,6 +35,63 @@ export const authApi = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Registration failed');
+    }
+    return res.json();
+  },
+
+  async checkFullNameDuplicate(fullName: string): Promise<boolean> {
+    if (!fullName || !fullName.trim()) return false;
+    try {
+      const res = await fetch(`${CATALOG_BASE}/api/v1/auth/check-name?fullName=${encodeURIComponent(fullName.trim())}`);
+      if (!res.ok) return false;
+      const data = await res.json();
+      return Boolean(data.exists);
+    } catch {
+      return false;
+    }
+  },
+
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to submit password reset request');
+    }
+    return res.json();
+  },
+
+  async updateUser(userId: string, data: Partial<User>): Promise<User> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/auth/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update user');
+    }
+    return res.json();
+  },
+
+  async updateSellerContract(userId: string, contractStatus: string, docUrl?: string): Promise<User> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/auth/users/${userId}/contract`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ contractStatus, contractDocumentUrl: docUrl }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update seller contract');
     }
     return res.json();
   },
@@ -59,7 +119,8 @@ export const authApi = {
     const storedBank = localStorage.getItem('user_bank_' + user.id);
     const storedIban = localStorage.getItem('user_iban_' + user.id);
 
-    const depositNum = storedDeposit !== null ? Number(storedDeposit) : (user.securityDeposit ?? 4000);
+    // Defect D19 Fix: Do not default unauthenticated or initial deposit to 4000
+    const depositNum = storedDeposit !== null ? Number(storedDeposit) : (user.securityDeposit ?? 0);
     const limitNum = storedLimit !== null ? Number(storedLimit) : (user.biddingLimit ?? (depositNum * 200));
     const usedNum = storedUsed !== null ? Number(storedUsed) : (user.usedBiddingLimit ?? 0);
 

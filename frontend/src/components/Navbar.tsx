@@ -256,7 +256,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* 4. Sell Your Car */}
             <button
-              onClick={onOpenCreateVehicle}
+              onClick={() => {
+                if (!currentUser) {
+                  onOpenAuth();
+                  return;
+                }
+                if (currentUser.role === 'BUYER') {
+                  alert('Vehicle consignment and auction listing requires a Seller account. Please log in or register as a Seller.');
+                  return;
+                }
+                if (currentUser.role === 'SELLER' && currentUser.contractStatus !== 'APPROVED') {
+                  alert(`Your Seller Consignment Contract is currently ${currentUser.contractStatus || 'PENDING'} approval. You will be able to list vehicles as soon as an administrator verifies and approves your contract.`);
+                  return;
+                }
+                onOpenCreateVehicle();
+              }}
               className="px-2.5 py-1 text-[#231F20] font-medium hover:text-emerald-700 transition cursor-pointer"
             >
               Sell Your Car
@@ -604,6 +618,28 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="w-full text-left py-2 text-slate-700 font-semibold"
             >
               Help & Branches
+            </button>
+
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                if (!currentUser) {
+                  onOpenAuth();
+                  return;
+                }
+                if (currentUser.role === 'BUYER') {
+                  alert('Vehicle consignment and auction listing requires a Seller account. Please log in or register as a Seller.');
+                  return;
+                }
+                if (currentUser.role === 'SELLER' && currentUser.contractStatus !== 'APPROVED') {
+                  alert(`Your Seller Consignment Contract is currently ${currentUser.contractStatus || 'PENDING'} approval. You will be able to list vehicles as soon as an administrator verifies and approves your contract.`);
+                  return;
+                }
+                onOpenCreateVehicle();
+              }}
+              className="w-full text-left py-2 text-slate-700 font-semibold"
+            >
+              Sell Your Car
             </button>
 
             {currentUser ? (

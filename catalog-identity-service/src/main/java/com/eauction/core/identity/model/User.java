@@ -11,8 +11,8 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -51,13 +51,35 @@ public class User {
     @Column(name = "kyc_verified", nullable = false)
     private Boolean kycVerified = false;
 
-    @Pattern(regexp = "^[A-Z]{5}[0-9]{4}[A-Z]{1}$", message = "Invalid Indian PAN number format")
-    @Column(name = "pan_number", length = 10)
+    @Column(name = "pan_number", length = 20)
     private String panNumber;
 
-    @Pattern(regexp = "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$", message = "Invalid Indian GST number format")
-    @Column(name = "gst_number", length = 15)
+    @Column(name = "gst_number", length = 30)
     private String gstNumber;
+
+    @Column(name = "emirates_id", length = 25)
+    private String emiratesId;
+
+    @Column(name = "trn", length = 25)
+    private String trn;
+
+    @Column(name = "company_name", length = 255)
+    private String companyName;
+
+    @Column(name = "contract_status", length = 20)
+    private String contractStatus = "APPROVED"; // PENDING, APPROVED, REJECTED
+
+    @Column(name = "contract_document_url", length = 500)
+    private String contractDocumentUrl;
+
+    @Column(name = "security_deposit", precision = 12, scale = 2)
+    private BigDecimal securityDeposit = BigDecimal.ZERO;
+
+    @Column(name = "bidding_limit", precision = 12, scale = 2)
+    private BigDecimal biddingLimit = BigDecimal.ZERO;
+
+    @Column(name = "used_bidding_limit", precision = 12, scale = 2)
+    private BigDecimal usedBiddingLimit = BigDecimal.ZERO;
 
     @NotNull
     @Column(name = "is_active", nullable = false)
@@ -70,23 +92,6 @@ public class User {
     private Instant updatedAt;
 
     public User() {
-    }
-
-    public User(UUID id, String email, String passwordHash, String fullName, String phoneNumber,
-                String role, Boolean kycVerified, String panNumber, String gstNumber,
-                Boolean isActive, Instant createdAt, Instant updatedAt) {
-        this.id = id;
-        this.email = email;
-        this.passwordHash = passwordHash;
-        this.fullName = fullName;
-        this.phoneNumber = phoneNumber;
-        this.role = role;
-        this.kycVerified = kycVerified != null ? kycVerified : false;
-        this.panNumber = panNumber;
-        this.gstNumber = gstNumber;
-        this.isActive = isActive != null ? isActive : true;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
     }
 
     @PrePersist
@@ -103,6 +108,18 @@ public class User {
         }
         if (this.isActive == null) {
             this.isActive = true;
+        }
+        if (this.contractStatus == null) {
+            this.contractStatus = "APPROVED";
+        }
+        if (this.securityDeposit == null) {
+            this.securityDeposit = BigDecimal.ZERO;
+        }
+        if (this.biddingLimit == null) {
+            this.biddingLimit = BigDecimal.ZERO;
+        }
+        if (this.usedBiddingLimit == null) {
+            this.usedBiddingLimit = BigDecimal.ZERO;
         }
     }
 
@@ -183,6 +200,70 @@ public class User {
         this.gstNumber = gstNumber;
     }
 
+    public String getEmiratesId() {
+        return emiratesId;
+    }
+
+    public void setEmiratesId(String emiratesId) {
+        this.emiratesId = emiratesId;
+    }
+
+    public String getTrn() {
+        return trn;
+    }
+
+    public void setTrn(String trn) {
+        this.trn = trn;
+    }
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
+
+    public String getContractStatus() {
+        return contractStatus;
+    }
+
+    public void setContractStatus(String contractStatus) {
+        this.contractStatus = contractStatus;
+    }
+
+    public String getContractDocumentUrl() {
+        return contractDocumentUrl;
+    }
+
+    public void setContractDocumentUrl(String contractDocumentUrl) {
+        this.contractDocumentUrl = contractDocumentUrl;
+    }
+
+    public BigDecimal getSecurityDeposit() {
+        return securityDeposit;
+    }
+
+    public void setSecurityDeposit(BigDecimal securityDeposit) {
+        this.securityDeposit = securityDeposit;
+    }
+
+    public BigDecimal getBiddingLimit() {
+        return biddingLimit;
+    }
+
+    public void setBiddingLimit(BigDecimal biddingLimit) {
+        this.biddingLimit = biddingLimit;
+    }
+
+    public BigDecimal getUsedBiddingLimit() {
+        return usedBiddingLimit;
+    }
+
+    public void setUsedBiddingLimit(BigDecimal usedBiddingLimit) {
+        this.usedBiddingLimit = usedBiddingLimit;
+    }
+
     public Boolean getIsActive() {
         return isActive;
     }
@@ -218,22 +299,5 @@ public class User {
     @Override
     public int hashCode() {
         return Objects.hash(id, email);
-    }
-
-    @Override
-    public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", email='" + email + '\'' +
-                ", fullName='" + fullName + '\'' +
-                ", phoneNumber='" + phoneNumber + '\'' +
-                ", role='" + role + '\'' +
-                ", kycVerified=" + kycVerified +
-                ", panNumber='" + panNumber + '\'' +
-                ", gstNumber='" + gstNumber + '\'' +
-                ", isActive=" + isActive +
-                ", createdAt=" + createdAt +
-                ", updatedAt=" + updatedAt +
-                '}';
     }
 }

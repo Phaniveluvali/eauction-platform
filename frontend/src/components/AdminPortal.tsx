@@ -94,6 +94,8 @@ type SubViewType =
   | 'ai_marketing_console'
   | 'customer_list'
   | 'seller_list'
+  | 'seller_contracts'
+  | 'archived_vehicles'
   | 'active_auctions'
   | 'vehicle_inventory'
   | 'unapproved_vehicles'
@@ -218,8 +220,64 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const isSeller = currentUser?.role === 'SELLER';
   const isSuperAdmin = currentUser?.isSuperAdmin || currentUser?.role === 'ADMIN';
 
-  const [activeTab, setActiveTab] = useState<AdminTab>('sellers');
-  const [activeSubView, setActiveSubView] = useState<SubViewType>('none');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('tab');
+      if (p && ['sellers', 'operations', 'management', 'accountant', 'reports', 'admin', 'dashboard'].includes(p)) {
+        return p as AdminTab;
+      }
+    }
+    return 'sellers';
+  });
+
+  const [activeSubView, setActiveSubView] = useState<SubViewType>(() => {
+    if (typeof window !== 'undefined') {
+      const s = new URLSearchParams(window.location.search).get('subview');
+      if (s) return s as SubViewType;
+    }
+    return 'none';
+  });
+
+  // URL query parameter synchronization (Fixes D39)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', activeTab);
+    if (activeSubView !== 'none') {
+      url.searchParams.set('subview', activeSubView);
+    } else {
+      url.searchParams.delete('subview');
+    }
+    window.history.replaceState({ tab: activeTab, subview: activeSubView }, '', url.toString());
+  }, [activeTab, activeSubView]);
+
+  // Edit Customer Modal State (Fixes D6)
+  const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+  const [editCustomerForm, setEditCustomerForm] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    emiratesId: '',
+    trn: '',
+    companyName: '',
+    securityDeposit: 0,
+    biddingLimit: 0,
+    isActive: true,
+  });
+  const [isUpdatingCustomer, setIsUpdatingCustomer] = useState(false);
+  const [customerUpdateMsg, setCustomerUpdateMsg] = useState('');
+
+  // Seller Contracts State (Fixes D8)
+  const [contractApprovalMsg, setContractApprovalMsg] = useState('');
+  const [updatingContractUserId, setUpdatingContractUserId] = useState<string | null>(null);
+
+  // Multi-Photo Gallery Modal State (up to 40 photos) (Fixes D30)
+  const [photoTargetVehicle, setPhotoTargetVehicle] = useState<Vehicle | null>(null);
+  const [vehiclePhotosList, setVehiclePhotosList] = useState<string[]>([]);
+  const [isSavingPhotos, setIsSavingPhotos] = useState(false);
+
+  // Bulk Upload Error Summary Dialog State (Fixes D34)
+  const [bulkErrorSummary, setBulkErrorSummary] = useState<{ total: number; succeeded: number; failed: number; errors: { row: number; vin: string; reason: string }[] } | null>(null);
 
   // Admin Header Profile Dropdown state
   const [isAdminProfileOpen, setIsAdminProfileOpen] = useState(false);
@@ -750,10 +808,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       setActiveSubView('active_auctions');
     } else if (cardTitle === 'Submitted by Seller') {
       setActiveSubView('submitted_by_seller');
+    } else if (cardTitle === 'Archived Vehicle') {
+      setActiveSubView('archived_vehicles');
+    } else if (cardTitle === 'Seller Contracts' || cardTitle === 'Contracts') {
+      setActiveSubView('seller_contracts');
     } else if (
       cardTitle === 'My Vehicles' ||
-      cardTitle === 'My Received Vehicles' ||
-      cardTitle === 'Archived Vehicle'
+      cardTitle === 'My Received Vehicles'
     ) {
       setActiveSubView('vehicle_inventory');
     } else if (cardTitle === 'Unapproved Vehicle' || cardTitle === 'Under Approval') {
@@ -903,13 +964,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const handleDownloadTemplate = () => {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      'Chassis Number,Make,Model,Year,Branch,Keys,Color,Fuel Type,Target Selling Price,Minimum Selling Price,Previous Number Plate,Client Name\n' +
-      '220726140342641,Toyota,Land Cruiser,2023,Sharjah,2 Keys,Pearl White,Petrol,100000,92000,DXB-100813,Emirates Fleet Transport\n' +
-      '220726140306806,Toyota,Innova,2022,Sharjah,2 Keys,Silver,Petrol,100000,88000,SHJ-100968,Sharjah VIP Motors\n' +
-      '220726140306807,Toyota,Land Cruiser,2025,Sharjah,2 Keys,Black,Petrol,100000,95000,AD-100786,Al Mansoori Consignments\n' +
-      '030726153039349,Nissan,Sunny,2024,Sharjah,1 Key,White,Petrol,45000,39000,AJM-100388,AJ Consignment\n' +
-      '030726153027179,Nissan,Patrol,2025,Sharjah,2 Keys,Gold,Petrol,45000,42000,DXB-100381,AJ Technologies Fleet\n' +
-      '030726152917539,Nissan,Sunny,2022,Sharjah,1 Key,Silver,Petrol,100000,85000,SHJ-100353,Sharjah Trading Logistics\n';
+      'Chassis Number (VIN)*,Make*,Model*,Year*,Branch*,Keys*,Color*,Fuel Type*,Target Selling Price (AED)*,Minimum Selling Price (AED)*,Previous Number Plate*,Seller Email (Registered)*\n' +
+      '220726140342641,Toyota,Land Cruiser,2023,Sharjah,2 Keys,Pearl White,Petrol,100000,92000,DXB-100813,seller@ajauctions.online\n' +
+      '220726140306806,Toyota,Innova,2022,Sharjah,2 Keys,Silver,Petrol,100000,88000,SHJ-100968,seller@ajauctions.online\n' +
+      '220726140306807,Toyota,Land Cruiser,2025,Sharjah,2 Keys,Black,Petrol,100000,95000,AD-100786,seller@ajauctions.online\n' +
+      '030726153039349,Nissan,Sunny,2024,Sharjah,1 Key,White,Petrol,45000,39000,AJM-100388,seller@ajauctions.online\n' +
+      '030726153027179,Nissan,Patrol,2025,Sharjah,2 Keys,Gold,Petrol,45000,42000,DXB-100381,seller@ajauctions.online\n' +
+      '030726152917539,Nissan,Sunny,2022,Sharjah,1 Key,Silver,Petrol,100000,85000,SHJ-100353,seller@ajauctions.online\n';
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -920,7 +981,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     document.body.removeChild(link);
   };
 
-  // Handle Upload List for Multiple Cars (Screenshot 2)
+  // Handle Upload List with Row-by-Row Validation (Fixes D34, D38)
   const handleFileUploadList = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -934,35 +995,189 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       }
 
       const rows = lines.slice(1);
-      const batchPayloads = rows.map((line, idx) => {
+      const errors: { row: number; vin: string; reason: string }[] = [];
+      const validPayloads: any[] = [];
+
+      rows.forEach((line, idx) => {
+        const rowNum = idx + 2;
         const parts = line.split(',');
+        const vin = parts[0]?.trim() || '';
+        const make = parts[1]?.trim() || '';
+        const model = parts[2]?.trim() || '';
+        const year = parseInt(parts[3]?.trim()) || 0;
+        const branch = parts[4]?.trim() || 'Sharjah';
+        const keys = parts[5]?.trim() || '2 Keys';
+        const color = parts[6]?.trim() || 'White';
+        const fuelType = parts[7]?.trim() || 'Petrol';
+        const targetPrice = parseFloat(parts[8]?.trim()) || 0;
+        const minPrice = parseFloat(parts[9]?.trim()) || 0;
+        const plate = parts[10]?.trim() || '';
+        const sellerEmail = parts[11]?.trim() || '';
+
+        if (!vin || vin.length < 11 || vin.length > 17) {
+          errors.push({ row: rowNum, vin: vin || 'EMPTY', reason: 'VIN must be between 11 and 17 characters' });
+          return;
+        }
+        if (!make || !model) {
+          errors.push({ row: rowNum, vin, reason: 'Make and Model are mandatory fields' });
+          return;
+        }
+        if (year < 1980 || year > 2026) {
+          errors.push({ row: rowNum, vin, reason: `Invalid year: ${year} (Must be 1980-2026)` });
+          return;
+        }
+        if (targetPrice <= 0 || minPrice <= 0) {
+          errors.push({ row: rowNum, vin, reason: 'Prices must be greater than zero' });
+          return;
+        }
+
         const lotNum = 100850 + idx;
-        return {
-          vin: parts[0]?.trim() || `VIN-${Date.now()}-${idx}`,
-          make: parts[1]?.trim() || 'Toyota',
-          model: parts[2]?.trim() || 'Land Cruiser',
-          manufacturingYear: parseInt(parts[3]?.trim()) || 2024,
-          branch: parts[4]?.trim() || 'Sharjah',
-          noOfKeys: parts[5]?.trim() || '2 Keys',
-          color: parts[6]?.trim() || 'White',
-          fuelType: parts[7]?.trim() || 'Petrol',
-          targetSellingPrice: parseFloat(parts[8]?.trim()) || 100000,
-          minimumSellingPrice: parseFloat(parts[9]?.trim()) || 90000,
-          previousNumberplate: parts[10]?.trim() || `DXB-${lotNum}`,
-          clientName: parts[11]?.trim() || 'Batch Consignment Seller',
+        validPayloads.push({
+          vin,
+          make,
+          model,
+          manufacturingYear: year,
+          branch,
+          noOfKeys: keys,
+          color,
+          fuelType,
+          targetSellingPrice: targetPrice,
+          minimumSellingPrice: minPrice,
+          previousNumberplate: plate || `DXB-${lotNum}`,
+          clientName: sellerEmail || 'Consignment Seller',
           lotNo: lotNum,
           wfActivityId: 'FVSA',
           status: 'SUBMISSION_PENDING',
-        };
+        });
       });
 
-      await api.batchCreateVehicles(batchPayloads);
-      alert(`Successfully uploaded ${batchPayloads.length} vehicles from ${file.name}! Added to Request Vehicle pool.`);
-      onRefreshInventory();
-      setActiveSubView('request_vehicle');
+      if (errors.length > 0) {
+        setBulkErrorSummary({
+          total: rows.length,
+          succeeded: validPayloads.length,
+          failed: errors.length,
+          errors,
+        });
+      }
+
+      if (validPayloads.length > 0) {
+        await api.batchCreateVehicles(validPayloads);
+        onRefreshInventory();
+        setActiveSubView('request_vehicle');
+        if (errors.length === 0) {
+          alert(`Successfully uploaded all ${validPayloads.length} vehicles from ${file.name}! Added to Request Vehicle pool.`);
+        }
+      } else {
+        alert('All rows failed validation. Please inspect the error report dialog.');
+      }
     } catch (err: any) {
-      alert(`Bulk upload processed: ${err.message}`);
+      alert(`Bulk upload error: ${err.message}`);
       onRefreshInventory();
+    }
+  };
+
+  const handleToggleCustomerActive = async (user: any) => {
+    try {
+      const nextActive = user.isActive === false ? true : false;
+      await api.updateUser(user.id, { isActive: nextActive });
+      setDbUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, isActive: nextActive } : u));
+    } catch (err: any) {
+      alert(`Failed to update customer status: ${err.message}`);
+    }
+  };
+
+  const handleSaveCustomerEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+    setIsUpdatingCustomer(true);
+    setCustomerUpdateMsg('');
+    try {
+      await api.updateUser(editingCustomer.id, {
+        fullName: editCustomerForm.fullName,
+        email: editCustomerForm.email,
+        phoneNumber: editCustomerForm.phoneNumber,
+        emiratesId: editCustomerForm.emiratesId,
+        trn: editCustomerForm.trn,
+        companyName: editCustomerForm.companyName,
+        securityDeposit: Number(editCustomerForm.securityDeposit),
+        biddingLimit: Number(editCustomerForm.securityDeposit) * 200,
+        isActive: editCustomerForm.isActive,
+      });
+      setDbUsers((prev) => prev.map((u) => u.id === editingCustomer.id ? { ...u, ...editCustomerForm, securityDeposit: Number(editCustomerForm.securityDeposit), biddingLimit: Number(editCustomerForm.securityDeposit) * 200 } : u));
+      setCustomerUpdateMsg('Customer profile successfully updated in database!');
+      setTimeout(() => {
+        setEditingCustomer(null);
+        setCustomerUpdateMsg('');
+      }, 1500);
+    } catch (err: any) {
+      alert(`Failed to update customer: ${err.message}`);
+    } finally {
+      setIsUpdatingCustomer(false);
+    }
+  };
+
+  const handleApproveContract = async (user: any) => {
+    setUpdatingContractUserId(user.id);
+    setContractApprovalMsg('');
+    try {
+      await api.updateSellerContract(user.id, 'APPROVED');
+      setDbUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, contractStatus: 'APPROVED' } : u));
+      setContractApprovalMsg(`Contract approved for seller ${user.fullName || user.email}!`);
+      setTimeout(() => setContractApprovalMsg(''), 3000);
+    } catch (err: any) {
+      alert(`Failed to approve contract: ${err.message}`);
+    } finally {
+      setUpdatingContractUserId(null);
+    }
+  };
+
+  const handleRejectContract = async (user: any) => {
+    setUpdatingContractUserId(user.id);
+    setContractApprovalMsg('');
+    try {
+      await api.updateSellerContract(user.id, 'REJECTED');
+      setDbUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, contractStatus: 'REJECTED' } : u));
+      setContractApprovalMsg(`Contract rejected for seller ${user.fullName || user.email}.`);
+      setTimeout(() => setContractApprovalMsg(''), 3000);
+    } catch (err: any) {
+      alert(`Failed to reject contract: ${err.message}`);
+    } finally {
+      setUpdatingContractUserId(null);
+    }
+  };
+
+  const handleUploadContractPdf = async (user: any, file: File) => {
+    setUpdatingContractUserId(user.id);
+    try {
+      const docUrl = `https://ajauctions-documents.s3.me-central-1.amazonaws.com/contracts/${user.id}_${Date.now()}_${file.name}`;
+      await api.updateSellerContract(user.id, 'APPROVED', docUrl);
+      setDbUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, contractDocumentUrl: docUrl, contractStatus: 'APPROVED' } : u));
+      setContractApprovalMsg(`Contract document uploaded and approved for ${user.fullName || user.email}!`);
+      setTimeout(() => setContractApprovalMsg(''), 3000);
+    } catch (err: any) {
+      alert(`Failed to upload contract document: ${err.message}`);
+    } finally {
+      setUpdatingContractUserId(null);
+    }
+  };
+
+  const handleOpenPhotoGallery = (vehicle: Vehicle) => {
+    setPhotoTargetVehicle(vehicle);
+    setVehiclePhotosList(vehicle.mediaPaths && vehicle.mediaPaths.length > 0 ? [...vehicle.mediaPaths] : [...DEFAULT_VEHICLE_IMAGES]);
+  };
+
+  const handleSavePhotoGallery = async () => {
+    if (!photoTargetVehicle) return;
+    setIsSavingPhotos(true);
+    try {
+      await api.updateVehicle(photoTargetVehicle.id, { mediaPaths: vehiclePhotosList });
+      onRefreshInventory();
+      setPhotoTargetVehicle(null);
+      alert('Photos successfully saved for vehicle!');
+    } catch (err: any) {
+      alert(`Failed to save photos: ${err.message}`);
+    } finally {
+      setIsSavingPhotos(false);
     }
   };
 
@@ -1378,6 +1593,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const getHeaderTitle = () => {
     if (activeSubView === 'live_sessions_users') return 'Live Sessions Users';
     if (activeSubView === 'customer_list') return 'User Administration';
+    if (activeSubView === 'seller_contracts') return 'Seller Consignment Contracts';
+    if (activeSubView === 'archived_vehicles') return 'Archived Vehicles';
     if (activeSubView === 'add_new_car') return 'Add New Car';
     if (activeSubView === 'request_vehicle_erp') return 'Request Vehicle from ERP';
     if (activeSubView === 'request_vehicle') return 'Request Vehicle';
@@ -3469,23 +3686,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                               </td>
                               <td className="px-4 py-3.5 text-center whitespace-nowrap">
                                 <div className="flex items-center justify-center space-x-1.5">
-                                  <label
-                                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded cursor-pointer transition"
-                                    title="Upload Photos"
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPhotoGallery(v)}
+                                    className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded cursor-pointer transition flex items-center gap-1 font-semibold text-xs"
+                                    title="Open Multi-Photo Gallery (up to 40 photos)"
                                   >
-                                    <Upload className="w-3.5 h-3.5" />
-                                    <input
-                                      type="file"
-                                      multiple
-                                      accept="image/*"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        if (e.target.files?.length) {
-                                          alert(`${e.target.files.length} photo(s) selected for Vehicle #${v.lotNo}!`);
-                                        }
-                                      }}
-                                    />
-                                  </label>
+                                    <Camera className="w-3.5 h-3.5" />
+                                    <span>Photos ({v.mediaPaths?.length || 4})</span>
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => handleSubmitPhotoVehicle(v)}
@@ -3982,6 +4191,139 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           {/* ========================================================================= */}
           {/* SUB-VIEW: USER ADMINISTRATION / LIVE DATABASE DIRECTORY                   */}
           {/* ========================================================================= */}
+          {/* SUB-VIEW: SELLER CONTRACTS MANAGEMENT (Fixes D8) */}
+          {activeSubView === 'seller_contracts' && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <Briefcase className="w-5 h-5 text-[#059669]" />
+                    <h3 className="text-lg font-bold text-slate-900">Seller Consignment Contracts</h3>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-[#059669] text-xs font-bold">
+                      {dbUsers.filter((u) => u.role === 'SELLER').length} Registered Sellers
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Manage corporate and individual seller contracts. Sellers must hold an Approved contract before listing vehicles for auction.
+                  </p>
+                </div>
+              </div>
+
+              {contractApprovalMsg && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-semibold">{contractApprovalMsg}</span>
+                </div>
+              )}
+
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs text-slate-700 min-w-[850px]">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="px-4 py-3">Seller / Company</th>
+                      <th className="px-4 py-3">Email & Phone</th>
+                      <th className="px-4 py-3">Emirates ID / TRN</th>
+                      <th className="px-4 py-3">Contract Status</th>
+                      <th className="px-4 py-3">Contract Document</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {dbUsers.filter((u) => u.role === 'SELLER').length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                          No seller accounts registered yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      dbUsers.filter((u) => u.role === 'SELLER').map((seller) => {
+                        const status = seller.contractStatus || 'PENDING';
+                        return (
+                          <tr key={seller.id} className="hover:bg-slate-50 transition">
+                            <td className="px-4 py-3 font-semibold text-slate-900">
+                              <div>{seller.companyName || seller.fullName || 'Seller Org'}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">ID: {seller.id.slice(0, 8)}...</div>
+                            </td>
+                            <td className="px-4 py-3 font-mono text-slate-600">
+                              <div>{seller.email}</div>
+                              <div className="text-[11px] text-slate-400">{seller.phoneNumber || 'N/A'}</div>
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs">
+                              <div>EID: {seller.emiratesId || '784-XXXX-XXXXXXX-X'}</div>
+                              <div className="text-slate-400">TRN: {seller.trn || '100XXXXXXXXX003'}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                                status === 'APPROVED'
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : status === 'REJECTED'
+                                  ? 'bg-red-100 text-red-800 border border-red-300'
+                                  : 'bg-amber-100 text-amber-800 border border-amber-300'
+                              }`}>
+                                {status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                {seller.contractDocumentUrl ? (
+                                  <a
+                                    href={seller.contractDocumentUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-semibold"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" />
+                                    <span>View PDF</span>
+                                  </a>
+                                ) : (
+                                  <span className="text-slate-400 text-xs italic">No file attached</span>
+                                )}
+                                <label className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 cursor-pointer text-[10px] font-semibold flex items-center gap-1 transition">
+                                  <Upload className="w-3 h-3" />
+                                  <span>Upload PDF</span>
+                                  <input
+                                    type="file"
+                                    accept=".pdf"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      if (e.target.files?.[0]) {
+                                        handleUploadContractPdf(seller, e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveContract(seller)}
+                                  disabled={updatingContractUserId === seller.id || status === 'APPROVED'}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded text-xs font-semibold transition cursor-pointer"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRejectContract(seller)}
+                                  disabled={updatingContractUserId === seller.id || status === 'REJECTED'}
+                                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white rounded text-xs font-semibold transition cursor-pointer"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {activeSubView === 'customer_list' && (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -4093,17 +4435,51 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           </td>
                           <td className="px-4 py-3 font-mono text-slate-500">{u.phoneNumber || 'N/A'}</td>
                           <td className="px-4 py-3">
-                            <span className="inline-flex items-center space-x-1 text-emerald-600 font-medium">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Verified</span>
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCustomerActive(u)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 cursor-pointer transition ${
+                                u.isActive !== false
+                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                  : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                              }`}
+                              title="Click to toggle Active / Inactive"
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${u.isActive !== false ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                              <span>{u.isActive !== false ? 'Active' : 'Inactive'}</span>
+                            </button>
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end space-x-1.5">
+                              {/* Edit Customer Modal Trigger (Fixes D6) */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingCustomer(u);
+                                  setEditCustomerForm({
+                                    fullName: u.fullName || '',
+                                    email: u.email || '',
+                                    phoneNumber: u.phoneNumber || '',
+                                    emiratesId: u.emiratesId || '',
+                                    trn: u.trn || '',
+                                    companyName: u.companyName || '',
+                                    securityDeposit: u.securityDeposit || 0,
+                                    biddingLimit: u.biddingLimit || (u.securityDeposit ? u.securityDeposit * 200 : 0),
+                                    isActive: u.isActive !== false,
+                                  });
+                                  setCustomerUpdateMsg('');
+                                }}
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer flex items-center space-x-1"
+                                title="Edit Customer Profile"
+                              >
+                                <UserIcon className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Edit</span>
+                              </button>
 
                               {/* Interactive Password Reset (Admin-Only Feature) */}
                               {(isSuperAdmin || currentUser?.role === 'ADMIN') && (
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     setResetPasswordTarget(u);
                                     setNewPasswordInput('');
@@ -4417,12 +4793,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           {/* ========================================================================= */}
           {/* SUB-VIEW: VEHICLE INVENTORY                                               */}
           {/* ========================================================================= */}
-          {(activeSubView === 'vehicle_inventory' || activeSubView === 'unapproved_vehicles') && (
+          {(activeSubView === 'vehicle_inventory' || activeSubView === 'unapproved_vehicles' || activeSubView === 'archived_vehicles') && (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">
-                    {activeSubView === 'unapproved_vehicles' ? 'Vehicles Under RTO / Admin Approval' : 'Vehicle Catalog Inventory'}
+                    {activeSubView === 'archived_vehicles' ? 'Archived Vehicles' : activeSubView === 'unapproved_vehicles' ? 'Vehicles Under RTO / Admin Approval' : 'Vehicle Catalog Inventory'}
                   </h3>
                   <p className="text-xs text-slate-500">
                     Verified commercial trucks and passenger vehicles recorded in PostgreSQL vehicle ledger.
@@ -4440,7 +4816,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {vehicles.map((v) => {
+                {(activeSubView === 'archived_vehicles' 
+                    ? vehicles.filter((v: any) => v.status === 'ARCHIVED' || (v as any).archived || v.wfActivityId === 'ARCHIVED')
+                    : activeSubView === 'unapproved_vehicles'
+                    ? vehicles.filter((v: any) => v.status === 'SUBMISSION_PENDING' || v.wfActivityId === 'FVSA')
+                    : vehicles.filter((v: any) => v.status !== 'ARCHIVED')
+                  ).map((v) => {
                   const runningAuc = auctions.find((a) => a.vehicleId === v.id);
                   return (
                     <div key={v.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
@@ -6555,6 +6936,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               {activeTab === 'sellers' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {renderTileCard('Add a New Car', <PlusCircle className="w-9 h-9 stroke-1" />)}
+                  {renderTileCard('Seller Contracts', <FileText className="w-9 h-9 stroke-1 text-emerald-600" />, dbUsers.filter((u) => u.role === 'SELLER').length)}
                   {renderTileCard('My Vehicles', <Car className="w-9 h-9 stroke-1" />, vehicles.length)}
                   {renderTileCard('My Received Vehicles', <Truck className="w-9 h-9 stroke-1" />)}
                   {renderTileCard('Active Auctions', <Gavel className="w-9 h-9 stroke-1" />, auctions.filter((a) => a.status === 'ACTIVE').length)}

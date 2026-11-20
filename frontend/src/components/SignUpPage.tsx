@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PortalSidebar, PortalView } from './PortalSidebar';
-import { X, Shield, Lock, UserPlus, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { X, Shield, Lock, UserPlus, ArrowLeft, CheckCircle2, FileText } from 'lucide-react';
 import { initiateKeycloakLogin } from '../utils/oidc';
 
 interface SignUpPageProps {
@@ -15,6 +15,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   onBackHome,
   onNavigate,
 }) => {
+  const [showTerms, setShowTerms] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-row font-sans">
       
@@ -41,16 +43,29 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
         {/* Centered Auth Prompt Card */}
         <div className="flex-1 flex flex-col items-center justify-center -mt-16 text-center max-w-xl mx-auto px-4">
           
-          <div className="w-16 h-16 rounded-2xl bg-red-50 text-[#059669] flex items-center justify-center mx-auto mb-6 shadow-sm border border-red-100">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-[#059669] flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100">
             <UserPlus className="w-8 h-8" />
           </div>
 
           <h2 className="text-xl sm:text-2xl font-bold text-[#231F20] mb-3 leading-snug">
             Register for AJ Auctions
           </h2>
-          <p className="text-sm text-slate-600 mb-8 max-w-md mx-auto leading-relaxed">
+          <p className="text-sm text-slate-600 mb-6 max-w-md mx-auto leading-relaxed">
             Create your account securely via our Keycloak Single Sign-On service to participate in live vehicle auctions and manage bids.
           </p>
+
+          {/* Terms Agreement Link (D2) */}
+          <div className="text-xs text-slate-500 mb-6 max-w-md mx-auto">
+            By proceeding, you agree to our{' '}
+            <button
+              type="button"
+              onClick={() => setShowTerms(true)}
+              className="text-[#059669] font-bold hover:underline cursor-pointer"
+            >
+              Terms and Conditions
+            </button>{' '}
+            and UAE Escrow Bidding Regulations.
+          </div>
 
           {/* Keycloak Register CTA */}
           <div className="w-full space-y-3.5 max-w-md mx-auto mb-8">
@@ -93,6 +108,40 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
         </div>
 
       </main>
+
+      {/* Terms and Conditions Modal Popup (D2) */}
+      {showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 text-left">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2 text-slate-900 font-bold">
+                <FileText className="w-5 h-5 text-[#059669]" />
+                <h3>AJ Auctions Terms & Conditions</h3>
+              </div>
+              <button
+                onClick={() => setShowTerms(false)}
+                className="text-slate-400 hover:text-slate-700 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="text-xs text-slate-600 space-y-3 max-h-64 overflow-y-auto pr-2 leading-relaxed">
+              <p>1. <strong>Binding Bids:</strong> Every bid submitted on AJ Auctions constitutes an irrevocable offer to purchase the vehicle under UAE Federal Law.</p>
+              <p>2. <strong>Security Deposit Escrow:</strong> Bidders must place a refundable security deposit to unlock 200x bidding leverage. Deposits are returned in full within 2 business days upon request if no outstanding bid liabilities exist.</p>
+              <p>3. <strong>Inspection & Warranty:</strong> Vehicles are cataloged with genuine high-resolution photo sets and official 150-point technical inspection certificates.</p>
+              <p>4. <strong>Settlement Terms:</strong> The winning bidder agrees to pay the final purchase price plus administrative fees within 48 hours of auction completion.</p>
+            </div>
+            <div className="pt-4 mt-4 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setShowTerms(false)}
+                className="px-5 py-2 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-lg text-xs transition"
+              >
+                Close & Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

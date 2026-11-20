@@ -155,6 +155,12 @@ export const HomePage: React.FC<HomePageProps> = ({
       });
     }
 
+    // Exclude ended or completed auctions from live home catalog tiles (Fixes D13)
+    result = result.filter(({ auc }) => {
+      const isEnded = auc.status === 'ENDED' || auc.status === 'COMPLETED' || (auc.endTime && new Date(auc.endTime).getTime() <= now);
+      return !isEnded;
+    });
+
     // Search query filter (combines heroSearch and global searchFilter)
     const effectiveSearch = (heroSearch || searchFilter || '').trim().toLowerCase();
     if (effectiveSearch) {
@@ -254,6 +260,15 @@ export const HomePage: React.FC<HomePageProps> = ({
                 >
                   <span>Explore Lots</span>
                   <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenCreateVehicle}
+                  className="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm uppercase tracking-wider transition border border-white/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                  title="List and sell your vehicle"
+                >
+                  <Car className="w-4 h-4 text-emerald-400" />
+                  <span>Sell Your Car</span>
                 </button>
               </div>
 

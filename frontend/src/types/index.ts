@@ -11,6 +11,11 @@ export interface User {
   kycVerified: boolean;
   panNumber?: string;
   gstNumber?: string;
+  emiratesId?: string;
+  trn?: string;
+  companyName?: string;
+  contractStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  contractDocumentUrl?: string;
   isActive: boolean;
   createdAt?: string;
   roles?: string[];

@@ -19,6 +19,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { initiateKeycloakLogin } from '../utils/oidc';
+import { UAE_MAKE_MODELS } from '../data/vehicleData';
 
 interface OnlineAuctionsPageProps {
   vehicles: Vehicle[];
@@ -182,7 +183,9 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
 
     if (selectedCategory !== 'ALL' && v.vehicleType !== selectedCategory) return false;
     if (selectedMake !== 'ALL' && v.make.toLowerCase() !== selectedMake.toLowerCase()) return false;
+    if (selectedModel !== 'ALL' && !v.model.toLowerCase().includes(selectedModel.toLowerCase())) return false;
     if (selectedYear !== 'ALL' && String(v.manufacturingYear) !== selectedYear) return false;
+    if (selectedBodyType !== 'ALL' && !((v as any).bodyType || '').toLowerCase().includes(selectedBodyType.toLowerCase())) return false;
 
     return true;
   });
@@ -290,18 +293,16 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
               <label className="block text-[11px] font-semibold text-[#8C8C8C] mb-1">Make</label>
               <select 
                 value={selectedMake} 
-                onChange={(e) => setSelectedMake(e.target.value)}
+                onChange={(e) => {
+                  setSelectedMake(e.target.value);
+                  setSelectedModel('ALL');
+                }}
                 className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#059669]"
               >
-                <option value="ALL">Select</option>
-                <option value="Tata">Tata Motors</option>
-                <option value="Ashok Leyland">Ashok Leyland</option>
-                <option value="BharatBenz">BharatBenz</option>
-                <option value="Mahindra">Mahindra</option>
-                <option value="Volvo">Volvo</option>
-                <option value="Toyota">Toyota</option>
-                <option value="Nissan">Nissan</option>
-                <option value="BMW">BMW</option>
+                <option value="ALL">All Makes</option>
+                {Object.keys(UAE_MAKE_MODELS).map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
               </select>
             </div>
 
@@ -312,11 +313,13 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                 onChange={(e) => setSelectedModel(e.target.value)}
                 className="w-full text-xs bg-white border border-[#D1D5DB] rounded-md px-2.5 py-1.5 text-[#231F20] focus:outline-none focus:border-[#059669]"
               >
-                <option value="ALL">Select</option>
-                <option value="Prima">Prima 5530.S</option>
-                <option value="Signa">Signa 2823</option>
-                <option value="BadaDost">Bada Dost</option>
-                <option value="Bolero">Bolero Maxi</option>
+                <option value="ALL">All Models</option>
+                {(selectedMake !== 'ALL' && UAE_MAKE_MODELS[selectedMake]
+                  ? UAE_MAKE_MODELS[selectedMake]
+                  : Array.from(new Set(Object.values(UAE_MAKE_MODELS).flat()))
+                ).map((mod) => (
+                  <option key={mod} value={mod}>{mod}</option>
+                ))}
               </select>
             </div>
 

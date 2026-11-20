@@ -3,6 +3,7 @@ package com.eauction.core.catalog.controller;
 import com.eauction.core.catalog.dto.CreateVehicleRequest;
 import com.eauction.core.catalog.model.Vehicle;
 import com.eauction.core.catalog.service.VehicleCatalogService;
+import com.eauction.core.identity.model.User;
 import com.eauction.core.identity.repository.UserRepository;
 import com.eauction.core.identity.service.AuthService;
 import jakarta.validation.Valid;
@@ -48,6 +49,14 @@ public class VehicleCatalogController {
 
         if (!"SELLER".equalsIgnoreCase(role) && !"ADMIN".equalsIgnoreCase(role)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        // Defect D10 Fix: Verify seller contract is approved before allowing vehicle creation
+        if ("SELLER".equalsIgnoreCase(role)) {
+            User seller = userRepository.findById(sellerId).orElse(null);
+            if (seller != null && !"APPROVED".equalsIgnoreCase(seller.getContractStatus())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
         }
 
         Vehicle created = vehicleCatalogService.createVehicle(sellerId, request);

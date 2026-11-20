@@ -53,11 +53,16 @@ const getRouteFromPath = (): { view: PortalView; auctionId?: string; vehicleId?:
   return { view: 'HOME' };
 };
 
-const getPathForView = (view: PortalView, auctionId?: string): string => {
+const getPathForView = (view: PortalView, auctionId?: string, vehicleId?: string): string => {
   const basePath = '/seller-buyer';
   switch (view) {
-    case 'VEHICLE_DETAILS':
-      return `${basePath}/vehicle-details${auctionId ? `?auction_id=${auctionId}` : ''}`;
+    case 'VEHICLE_DETAILS': {
+      const params = new URLSearchParams();
+      if (vehicleId) params.set('obj', vehicleId);
+      if (auctionId) params.set('auction_id', auctionId);
+      const q = params.toString();
+      return `${basePath}/vehicle-details${q ? `?${q}` : ''}`;
+    }
     case 'SECURITY_DEPOSIT':
       return `${basePath}/security-deposit`;
     case 'FAVORITES':
@@ -309,6 +314,7 @@ export const App: React.FC = () => {
 
   const handleToggleFavorite = (vehicleId: string) => {
     if (!currentUser) {
+      localStorage.setItem('pending_favourite_id', vehicleId);
       alert('Please log in as a buyer to save favorite vehicles to your personal watchlist.');
       initiateKeycloakLogin({ action: 'login', returnView: 'FAVORITES' });
       return;
@@ -407,24 +413,44 @@ export const App: React.FC = () => {
         setCurrentUser(null);
       }
 
+      // Check for pending favorite from before login (Fixes D26)
+      const pendingFav = localStorage.getItem('pending_favourite_id');
+      if (pendingFav && resolvedUser && resolvedUser.role === 'BUYER') {
+        try {
+          const stored = localStorage.getItem('favorites_' + resolvedUser.id);
+          const existing: string[] = stored ? JSON.parse(stored) : [];
+          if (!existing.includes(pendingFav)) {
+            const updated = [...existing, pendingFav];
+            localStorage.setItem('favorites_' + resolvedUser.id, JSON.stringify(updated));
+            setFavoriteIds(updated);
+          }
+        } catch {}
+        localStorage.removeItem('pending_favourite_id');
+      }
+
       // Check initial route against resolved user security credentials
       const requested = getRouteFromPath();
-      const secCheck = evaluateRouteSecurity(requested.view, resolvedUser);
 
-      if (!secCheck.allowed) {
-        if (secCheck.reason === 'UNAUTHENTICATED') {
-          setSecurityNotice(`Authentication required to access ${ROUTE_SECURITY_RULES[requested.view]?.description || 'this page'}. Please sign in.`);
-          const target = secCheck.fallbackView || 'SIGNIN';
-          setCurrentView(target);
-          window.history.replaceState({ view: target }, '', getPathForView(target));
-        } else if (secCheck.reason === 'FORBIDDEN_ROLE') {
-          setSecurityNotice(`Access Denied: Your account role (${resolvedUser?.role}) does not have permission to access the Administrator Portal.`);
-          const target = secCheck.fallbackView || 'HOME';
-          setCurrentView(target);
-          window.history.replaceState({ view: target }, '', getPathForView(target));
-        }
+      // Gracefully redirect BUYER away from admin to home without access denied screen (Fixes D18)
+      if (resolvedUser && resolvedUser.role === 'BUYER' && requested.view === 'ADMIN') {
+        setCurrentView('HOME');
+        window.history.replaceState({ view: 'HOME' }, '', getPathForView('HOME'));
       } else {
-        setCurrentView(requested.view);
+        const secCheck = evaluateRouteSecurity(requested.view, resolvedUser);
+        if (!secCheck.allowed) {
+          if (secCheck.reason === 'UNAUTHENTICATED') {
+            setSecurityNotice(`Authentication required to access ${ROUTE_SECURITY_RULES[requested.view]?.description || 'this page'}. Please sign in.`);
+            const target = secCheck.fallbackView || 'SIGNIN';
+            setCurrentView(target);
+            window.history.replaceState({ view: target }, '', getPathForView(target));
+          } else if (secCheck.reason === 'FORBIDDEN_ROLE') {
+            const target = secCheck.fallbackView || 'HOME';
+            setCurrentView(target);
+            window.history.replaceState({ view: target }, '', getPathForView(target));
+          }
+        } else {
+          setCurrentView(requested.view);
+        }
       }
 
       setIsAuthChecking(false);
@@ -465,6 +491,17 @@ export const App: React.FC = () => {
           prev.map((auc) => {
             const fresh = freshAuctions.find((f) => f.id === auc.id);
             if (!fresh) return auc;
+            // Check if current user was outbid on this auction (Fixes D24)
+            const activeUser = currentUserRef.current;
+            if (activeUser && auc.highestBidderId === activeUser.id && fresh.highestBidderId && fresh.highestBidderId !== activeUser.id) {
+              const prevBid = Number(auc.currentHighestBid || 0);
+              const restoredLimit = Math.max(0, (activeUser.usedBiddingLimit || 0) - prevBid);
+              const updatedUser = { ...activeUser, usedBiddingLimit: restoredLimit };
+              currentUserRef.current = updatedUser;
+              setCurrentUser(updatedUser);
+              localStorage.setItem('user_used_limit_' + activeUser.id, String(restoredLimit));
+            }
+
             if (fresh.currentHighestBid !== auc.currentHighestBid || fresh.status !== auc.status || fresh.highestBidderId !== auc.highestBidderId) {
               return {
                 ...auc,
@@ -773,12 +810,30 @@ export const App: React.FC = () => {
         </div>
       ) : currentView === 'ADMIN' ? (
         !currentUser || (currentUser.role !== 'ADMIN' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
-          <AccessDeniedSecurityScreen
-            currentUser={currentUser}
-            requiredRole="ADMIN"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ADMIN' })}
-            onGoHome={() => navigateToView('HOME')}
-          />
+          currentUser?.role === 'BUYER' ? (
+            <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white text-center">
+              <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4">
+                <Clock className="w-7 h-7" />
+              </div>
+              <h2 className="text-xl font-bold mb-2">Redirecting to Marketplace...</h2>
+              <p className="text-xs text-slate-400 max-w-sm mb-6">
+                Buyer accounts place live bids and explore certified lots directly in the Marketplace showroom.
+              </p>
+              <button
+                onClick={() => navigateToView('HOME')}
+                className="bg-[#059669] hover:bg-[#047857] text-white font-bold px-6 py-2.5 rounded-xl text-xs transition cursor-pointer"
+              >
+                Go to Marketplace
+              </button>
+            </div>
+          ) : (
+            <AccessDeniedSecurityScreen
+              currentUser={currentUser}
+              requiredRole="ADMIN"
+              onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ADMIN' })}
+              onGoHome={() => navigateToView('HOME')}
+            />
+          )
         ) : (
           <main className="flex-1 bg-slate-950 text-slate-100">
             <AdminPortal
@@ -1003,15 +1058,17 @@ export const App: React.FC = () => {
       />
 
       {/* In-place Bidding Modal (Screenshot 2) */}
-      <BidModal
-        isOpen={isBidModalOpen}
-        auction={bidModalAuction}
+      {isBidModalOpen && bidModalAuction && (
+        <BidModal
+          isOpen={isBidModalOpen}
+          auction={bidModalAuction}
         currentUser={currentUser}
         onClose={() => setIsBidModalOpen(false)}
         onSuccessBid={handleBidSuccess}
         onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
         onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ONLINE_AUCTIONS' })}
-      />
+        />
+      )}
 
       {/* Security Deposit & 200x Limit Modal with Bank Account Refund */}
       <SecurityDepositModal

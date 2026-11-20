@@ -121,16 +121,17 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
               </div>
             )}
 
-            {isLeading ? (
-              <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded-full shadow-md font-bold text-[10px] tracking-wider animate-pulse border border-emerald-400 pointer-events-auto">
-                <CheckCircle className="w-3 h-3" />
-                <span>WINNING</span>
-              </div>
-            ) : (
+            <div className="flex items-center gap-1.5 pointer-events-auto">
+              {isLeading && (
+                <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded-full shadow-md font-bold text-[10px] tracking-wider animate-pulse border border-emerald-400">
+                  <CheckCircle className="w-3 h-3" />
+                  <span>WINNING</span>
+                </div>
+              )}
               <div className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-white/95 backdrop-blur-md text-slate-800 shadow-xs border border-slate-200">
                 {lotNumber}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Bottom Badges: Plate Registration & Certified Checkmark */}

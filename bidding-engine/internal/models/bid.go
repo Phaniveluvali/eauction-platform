@@ -49,4 +49,5 @@ type AuctionCacheState struct {
 	CurrentHighestBid float64 `redis:"current_highest_bid"`
 	HighestBidderID   string  `redis:"highest_bidder_id"`
 	LastBidTimestamp  int64   `redis:"last_bid_timestamp"`
+	EndTime           int64   `redis:"end_time"`
 }

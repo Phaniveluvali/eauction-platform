@@ -16,7 +16,8 @@ import {
   Gavel, 
   Share2, 
   Heart,
-  Eye
+  Eye,
+  Maximize2
 } from 'lucide-react';
 import { Auction, Vehicle, User } from '../types';
 
@@ -44,6 +45,7 @@ export const VehicleDetailsPage: React.FC<VehicleDetailsPageProps> = ({
   onToggleFavorite,
 }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   // Time remaining calculation
   const [timeLeft, setTimeLeft] = useState<string>('');
@@ -54,8 +56,8 @@ export const VehicleDetailsPage: React.FC<VehicleDetailsPageProps> = ({
       const now = Date.now();
       const diff = Math.max(0, end - now);
 
-      if (diff === 0) {
-        setTimeLeft('ENDED');
+      if (diff === 0 || auction.status === 'ENDED' || auction.status === 'COMPLETED') {
+        setTimeLeft('AUCTION CLOSED');
         return;
       }
 
@@ -64,13 +66,17 @@ export const VehicleDetailsPage: React.FC<VehicleDetailsPageProps> = ({
       const minutes = Math.floor((diff / (1000 * 60)) % 60);
       const seconds = Math.floor((diff / 1000) % 60);
 
-      setTimeLeft(`${days}D: ${hours}H: ${minutes}M: ${seconds}S`);
+      if (days > 0) {
+        setTimeLeft(`${days}d : ${hours.toString().padStart(2, '0')}h : ${minutes.toString().padStart(2, '0')}m : ${seconds.toString().padStart(2, '0')}s`);
+      } else {
+        setTimeLeft(`${hours.toString().padStart(2, '0')}h : ${minutes.toString().padStart(2, '0')}m : ${seconds.toString().padStart(2, '0')}s`);
+      }
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [auction.endTime]);
+  }, [auction.endTime, auction.status]);
 
   const defaultImages = [
     'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=1200',
@@ -84,7 +90,7 @@ export const VehicleDetailsPage: React.FC<VehicleDetailsPageProps> = ({
     : defaultImages;
 
   const currentBid = Number(auction.currentHighestBid || auction.startPrice || 0);
-  const lotNumber = vehicle.lotNo || 101003;
+  const lotNumber = vehicle.lotNo ? `AJ-${vehicle.lotNo}` : (vehicle.id ? `AJ-${vehicle.id.substring(0, 6).toUpperCase()}` : 'AJ-101003');
 
   const isLeadingBidder = Boolean(
     currentUser && (
@@ -102,20 +108,34 @@ export const VehicleDetailsPage: React.FC<VehicleDetailsPageProps> = ({
     setSelectedImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
   };
 
+  // Lightbox keyboard navigation (Escape, Left, Right)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isLightboxOpen) return;
+      if (e.key === 'Escape') setIsLightboxOpen(false);
+      else if (e.key === 'ArrowRight') nextImage();
+      else if (e.key === 'ArrowLeft') prevImage();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, galleryImages.length]);
+
   const downloadReport = () => {
     const reportContent = `
 AJ AUCTIONS VEHICLE INSPECTION REPORT
 --------------------------------------
 Vehicle: ${vehicle.make} ${vehicle.model} (${vehicle.manufacturingYear})
 Lot Number: ${lotNumber}
-VIN: ${vehicle.vin}
+VIN / Chassis: ${vehicle.vin}
 Registration: ${vehicle.registrationNumber}
 Odometer: ${Number(vehicle.odometerReadingKm).toLocaleString()} KM
 Fuel Type: ${vehicle.fuelType}
-Engine Number: ${vehicle.engineNumber}
-Location: ${vehicle.location || 'Abu Dhabi'}
+Engine Number: ${vehicle.engineNumber || 'N/A'}
+Branch / Location: ${vehicle.location || vehicle.branch || 'Abu Dhabi, UAE'}
 Inspection Status: 150-Point Certified Pass
 Condition: Excellent Mechanical & Body Condition
+Verified Seller: ${vehicle.clientName || 'Institutional Consignment'}
 --------------------------------------
 AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
     `.trim();
@@ -124,24 +144,27 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `AJ_Inspection_Report_Lot_${lotNumber}.txt`;
+    a.download = `AJ_Inspection_Report_${lotNumber}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : 'https://ajauctions.online';
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
-      {/* Top Bar with Back Button */}
+      {/* Top Bar with Back Button (Fixes D21) */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-slate-700 hover:text-[#059669] font-bold text-sm transition"
+            className="flex items-center gap-2 text-slate-700 hover:text-[#059669] font-bold text-sm transition cursor-pointer"
+            title="Return to Catalog"
           >
-            <X className="w-5 h-5 text-slate-500" />
-            <span>Vehicle Details</span>
+            <ChevronLeft className="w-5 h-5 text-slate-600" />
+            <span>Back to Auctions</span>
           </button>
           <div className="flex items-center gap-3">
             <button
@@ -162,8 +185,8 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
               }
               className={`p-2 rounded-full border transition cursor-pointer ${
                 isFavorite 
-                  ? 'border-[#059669] bg-red-50 text-[#059669] shadow-xs' 
-                  : 'border-slate-200 text-slate-400 hover:text-[#059669] hover:border-[#059669]/40 hover:bg-red-50/20 bg-white'
+                  ? 'border-[#059669] bg-emerald-50 text-[#059669] shadow-xs' 
+                  : 'border-slate-200 text-slate-400 hover:text-[#059669] hover:border-[#059669]/40 hover:bg-emerald-50/20 bg-white'
               }`}
             >
               <Heart className={`w-4 h-4 transition-transform ${isFavorite ? 'fill-[#059669] text-[#059669]' : ''}`} />
@@ -173,14 +196,15 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
                 if (navigator.share) {
                   navigator.share({
                     title: `${vehicle.make} ${vehicle.model} - AJ Auctions`,
-                    url: window.location.href,
+                    url: currentUrl,
                   });
                 } else {
-                  navigator.clipboard.writeText(window.location.href);
+                  navigator.clipboard.writeText(currentUrl);
                   alert('Vehicle link copied to clipboard!');
                 }
               }}
-              className="p-2 rounded-full border border-slate-200 text-slate-400 hover:text-slate-600 bg-white transition"
+              className="p-2 rounded-full border border-slate-200 text-slate-400 hover:text-slate-600 bg-white transition cursor-pointer"
+              title="Share Vehicle"
             >
               <Share2 className="w-4 h-4" />
             </button>
@@ -195,26 +219,38 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
           {/* Left Column: Image Gallery & Specs (8 cols) */}
           <div className="lg:col-span-8 flex flex-col gap-6">
             
-            {/* Main Stage Image */}
-            <div className="relative w-full h-[420px] sm:h-[480px] bg-slate-900 rounded-2xl overflow-hidden shadow-lg border border-slate-200">
+            {/* Main Stage Image with Lightbox Trigger (Fixes D16) */}
+            <div className="relative w-full h-[420px] sm:h-[480px] bg-slate-900 rounded-2xl overflow-hidden shadow-lg border border-slate-200 group">
               <img
                 src={galleryImages[selectedImageIndex]}
                 alt={`${vehicle.make} ${vehicle.model}`}
-                className="w-full h-full object-cover select-none"
+                onClick={() => setIsLightboxOpen(true)}
+                className="w-full h-full object-cover select-none cursor-zoom-in"
               />
               
               {/* Prev / Next Image Overlays */}
               <button
-                onClick={prevImage}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition"
+                onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition cursor-pointer"
+                title="Previous Image"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
               <button
-                onClick={nextImage}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition"
+                onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition cursor-pointer"
+                title="Next Image"
               >
                 <ChevronRight className="w-6 h-6" />
+              </button>
+
+              {/* Fullscreen Zoom Pill Button */}
+              <button
+                onClick={() => setIsLightboxOpen(true)}
+                className="absolute top-3 right-3 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Fullscreen</span>
               </button>
 
               {/* Counter Badge */}
@@ -229,7 +265,7 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
                 <button
                   key={idx}
                   onClick={() => setSelectedImageIndex(idx)}
-                  className={`relative w-28 h-20 rounded-xl overflow-hidden shrink-0 border-2 transition ${
+                  className={`relative w-28 h-20 rounded-xl overflow-hidden shrink-0 border-2 transition cursor-pointer ${
                     selectedImageIndex === idx
                       ? 'border-[#059669] ring-2 ring-[#059669]/20 scale-105'
                       : 'border-slate-200 opacity-70 hover:opacity-100'
@@ -270,7 +306,7 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
                 </div>
                 <div>
                   <span className="text-xs text-slate-500 block">Location</span>
-                  <span className="font-semibold text-slate-900">{vehicle.location || 'Abu Dhabi, UAE'}</span>
+                  <span className="font-semibold text-slate-900">{vehicle.location || vehicle.branch || 'Abu Dhabi, UAE'}</span>
                 </div>
                 <div>
                   <span className="text-xs text-slate-500 block">Chassis / VIN</span>
@@ -301,11 +337,11 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
             </div>
           </div>
 
-          {/* Right Column: Bidding Action Card (Matching Screenshot 3) */}
+          {/* Right Column: Bidding Action Card */}
           <div className="lg:col-span-4 sticky top-20">
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-md flex flex-col gap-5">
               
-              {/* Header Title with Red Accent */}
+              {/* Header Title with Emerald Accent */}
               <div>
                 <h1 className="text-2xl font-extrabold text-slate-900">
                   {vehicle.make} {vehicle.model}
@@ -313,7 +349,7 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
                 <div className="w-10 h-1 bg-[#059669] rounded-full mt-2 mb-3" />
                 
                 {/* Lot Number Pill Badge */}
-                <div className="inline-block bg-slate-100 text-slate-700 text-xs font-semibold px-3 py-1 rounded-md">
+                <div className="inline-block bg-slate-100 text-slate-700 text-xs font-semibold px-3 py-1 rounded-md font-mono">
                   Lot Number {lotNumber}
                 </div>
               </div>
@@ -333,7 +369,7 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
               }`}>
                 <div className="flex items-center gap-2.5">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    isLeadingBidder ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-[#059669]'
+                    isLeadingBidder ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-100 text-[#059669]'
                   }`}>
                     <Gavel className="w-4 h-4" />
                   </div>
@@ -372,7 +408,7 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
                 className={`w-full font-extrabold py-3.5 px-6 rounded-xl uppercase tracking-wider text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
                   isLeadingBidder
                     ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
-                    : 'bg-[#4caf50] hover:bg-[#43a047] text-white shadow-green-600/20'
+                    : 'bg-[#059669] hover:bg-[#047857] text-white shadow-emerald-600/20'
                 }`}
               >
                 <span>{isLeadingBidder ? 'RAISE YOUR BID' : 'BID NOW'}</span>
@@ -381,18 +417,33 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
               {/* Technical Report Download Button */}
               <button
                 onClick={downloadReport}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2"
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>Technical Report</span>
+                <span>Download Inspection Report</span>
                 <Download className="w-3.5 h-3.5" />
               </button>
+
+              {/* Deep-link QR Code Widget (Fixes D17) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(currentUrl)}`}
+                  alt="Scan QR for Mobile View"
+                  className="w-16 h-16 rounded-lg border border-slate-200 bg-white p-1 shrink-0"
+                />
+                <div className="text-left min-w-0">
+                  <span className="text-xs font-bold text-slate-800 block">Scan to View on Mobile</span>
+                  <span className="text-[11px] text-slate-500 block leading-tight mt-0.5">
+                    Instant mobile inspection: Scan with your camera to view report & specs on your smartphone.
+                  </span>
+                </div>
+              </div>
 
               {/* Security Deposit Banner */}
               <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
                 <span>200x Bidding Power:</span>
                 <button
                   onClick={onOpenDeposit}
-                  className="text-blue-600 hover:underline font-semibold"
+                  className="text-emerald-700 hover:underline font-semibold cursor-pointer"
                 >
                   Manage Security Deposit
                 </button>
@@ -402,6 +453,76 @@ AJ Auctions LLC - Official Digital Certificate • Powered by AshwikTechnologies
 
         </div>
       </div>
+
+      {/* Fullscreen Lightbox Modal (Fixes D16) */}
+      {isLightboxOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          {/* Lightbox Header */}
+          <div className="w-full max-w-6xl flex items-center justify-between text-white pb-3 border-b border-white/10" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-sm sm:text-base">{vehicle.make} {vehicle.model}</span>
+              <span className="text-xs text-slate-400 font-mono">Lot {lotNumber}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-slate-400 font-mono">
+                {selectedImageIndex + 1} of {galleryImages.length}
+              </span>
+              <button
+                onClick={() => setIsLightboxOpen(false)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                title="Close Lightbox (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Lightbox Center Image View */}
+          <div className="relative w-full max-w-5xl flex-1 flex items-center justify-center my-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={galleryImages[selectedImageIndex]}
+              alt={`${vehicle.make} ${vehicle.model} Fullscreen`}
+              className="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl select-none"
+            />
+
+            {/* Left / Right Arrow Controls */}
+            <button
+              onClick={prevImage}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition cursor-pointer"
+              title="Previous Photo (Left Arrow)"
+            >
+              <ChevronLeft className="w-7 h-7" />
+            </button>
+            <button
+              onClick={nextImage}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition cursor-pointer"
+              title="Next Photo (Right Arrow)"
+            >
+              <ChevronRight className="w-7 h-7" />
+            </button>
+          </div>
+
+          {/* Lightbox Bottom Thumbnail Bar */}
+          <div className="w-full max-w-3xl flex items-center justify-center gap-2 overflow-x-auto py-2 no-scrollbar" onClick={(e) => e.stopPropagation()}>
+            {galleryImages.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => setSelectedImageIndex(idx)}
+                className={`w-16 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition cursor-pointer ${
+                  selectedImageIndex === idx
+                    ? 'border-[#059669] scale-110'
+                    : 'border-white/20 opacity-60 hover:opacity-100'
+                }`}
+              >
+                <img src={img} alt="Thumb" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

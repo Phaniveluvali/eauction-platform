@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Shield, ArrowUpRight, Award } from 'lucide-react';
-import { Auction, Vehicle, User } from '../types';
+import { X, ChevronLeft, ChevronRight, Shield, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Auction, User } from '../types';
 import { api, isServiceDegraded } from '../services/api';
 import { ServiceDegradedModal } from './ServiceDegradedModal';
 
 interface BidModalProps {
   isOpen: boolean;
-  auction: Auction | null;
-  currentUser: User | null;
   onClose: () => void;
+  auction: Auction;
+  currentUser: User | null;
   onSuccessBid: (auctionId: string, newBidAmount: number) => void;
   onOpenDeposit: () => void;
   onRequireAuth: () => void;
@@ -16,20 +16,28 @@ interface BidModalProps {
 
 export const BidModal: React.FC<BidModalProps> = ({
   isOpen,
+  onClose,
   auction,
   currentUser,
-  onClose,
   onSuccessBid,
   onOpenDeposit,
   onRequireAuth,
 }) => {
-  if (!isOpen || !auction) return null;
+  if (!isOpen) return null;
 
   const currentPrice = Number(auction.currentHighestBid || auction.startPrice || 0);
-  const minInc = Number(auction.minBidIncrement || 5000);
+  const minInc = Number(auction.minBidIncrement || 500);
 
-  // Quick increment amounts
-  const incrementOptions = [5000, 10000, 15000, 20000, 25000, 50000];
+  // Dynamic quick increment options
+  const incrementOptions = [
+    minInc,
+    minInc * 2,
+    minInc * 5,
+    minInc * 10,
+    minInc * 20,
+    minInc * 50,
+    minInc * 100,
+  ];
 
   const [selectedIncrement, setSelectedIncrement] = useState<number>(minInc);
   const [customBidAmount, setCustomBidAmount] = useState<number>(currentPrice + minInc);
@@ -51,7 +59,7 @@ export const BidModal: React.FC<BidModalProps> = ({
     )
   );
 
-  // Sync default bid amount when auction changes
+  // Sync default bid amount when auction changes (D25)
   useEffect(() => {
     const nextBid = currentPrice + (selectedIncrement || minInc);
     setCustomBidAmount(nextBid);
@@ -77,8 +85,8 @@ export const BidModal: React.FC<BidModalProps> = ({
     }
   };
 
-  // 200x Security Deposit Limit Logic
-  const userDeposit = currentUser?.securityDeposit ?? 4000;
+  // 200x Security Deposit Limit Logic (D19 Fix)
+  const userDeposit = currentUser?.securityDeposit ?? 0;
   const userBiddingLimit = currentUser?.biddingLimit ?? (userDeposit * 200);
   const usedLimit = currentUser?.usedBiddingLimit ?? 0;
   const availableBiddingLimit = Math.max(0, userBiddingLimit - usedLimit);
@@ -103,7 +111,7 @@ export const BidModal: React.FC<BidModalProps> = ({
       return;
     }
 
-    // Check 200x security deposit limit constraint
+    // Check 200x security deposit limit constraint (D19)
     if (customBidAmount > availableBiddingLimit || availableBiddingLimit <= 0) {
       setShowLimitExceededModal(true);
       return;
@@ -152,14 +160,14 @@ export const BidModal: React.FC<BidModalProps> = ({
         className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden relative mx-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header with clear separation of Current vs Next (D25) */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100">
           <div>
             <h3 className="text-base font-bold text-slate-900">
               Select the Increment Amount
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Current Bid: <span className="font-semibold text-slate-800">AED {currentPrice.toLocaleString()}</span>
+              Current Highest Bid: <span className="font-bold text-slate-900">AED {currentPrice.toLocaleString()}</span>
             </p>
           </div>
           <button
@@ -214,22 +222,22 @@ export const BidModal: React.FC<BidModalProps> = ({
           </div>
         )}
 
-        {/* Limit Exceeded Alert Modal Popup */}
+        {/* Limit Exceeded Alert Modal Popup (D19) */}
         {showLimitExceededModal ? (
           <div className="p-6 text-center">
             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
               <AlertCircle className="w-8 h-8" />
             </div>
             <h4 className="text-lg font-bold text-slate-900 mb-2">
-              You Have Used the Maximum Limit
+              Bidding Power Limit Reached
             </h4>
             <p className="text-sm text-slate-600 mb-4 leading-relaxed">
-              You have reached your maximum <strong className="text-slate-900">200x bidding limit</strong> (AED {userBiddingLimit.toLocaleString()}) based on your current security deposit of <strong className="text-slate-900">AED {userDeposit.toLocaleString()}</strong>.
+              Your available <strong className="text-slate-900">200x bidding power</strong> is <strong className="text-emerald-700">AED {availableBiddingLimit.toLocaleString()}</strong> based on your current refundable security deposit of <strong className="text-slate-900">AED {userDeposit.toLocaleString()}</strong>.
             </p>
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 mb-5 text-left flex items-start gap-2">
               <Shield className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <span>
-                To participate in further bidding, please increase your security deposit. Your security deposit is 100% refundable to your registered bank account at any time.
+                To bid AED {customBidAmount.toLocaleString()}, please add to your refundable security deposit. Security deposits are 100% refundable upon auction settlement.
               </span>
             </div>
             <div className="flex flex-col gap-2.5">
@@ -239,9 +247,9 @@ export const BidModal: React.FC<BidModalProps> = ({
                   onClose();
                   onOpenDeposit();
                 }}
-                className="w-full py-3 bg-[#059669] hover:bg-[#b51f30] text-white font-bold rounded-xl text-sm transition shadow-sm cursor-pointer"
+                className="w-full py-3 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-xl text-sm transition shadow-sm cursor-pointer"
               >
-                Increase Security Deposit
+                Manage Security Deposit
               </button>
               <button
                 type="button"
@@ -278,7 +286,7 @@ export const BidModal: React.FC<BidModalProps> = ({
                       onClick={() => handleSelectIncrement(inc)}
                       className={`whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                         isSelected
-                          ? 'border-[#059669] bg-red-50 text-[#059669] shadow-sm'
+                          ? 'border-[#059669] bg-emerald-50 text-[#059669] shadow-sm'
                           : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
                       }`}
                     >
@@ -297,7 +305,15 @@ export const BidModal: React.FC<BidModalProps> = ({
               </button>
             </div>
 
-            {/* Input Row with Integrated Red "BID NOW" Button (Matching Screenshot 2) */}
+            {/* Next Minimum Bid Label (D25) */}
+            <div className="flex items-center justify-between text-xs text-slate-600 mb-1.5 px-1">
+              <span className="font-semibold text-slate-700">Your Proposed Bid:</span>
+              <span className="text-slate-500">
+                Next Min Bid: <strong className="text-emerald-700 font-mono">AED {(currentPrice + minInc).toLocaleString()}</strong>
+              </span>
+            </div>
+
+            {/* Input Row with Integrated "BID NOW" Button */}
             <div className="relative flex items-center rounded-xl border-2 border-slate-200 focus-within:border-[#059669] bg-slate-50 transition overflow-hidden mb-4">
               <input
                 type="number"
@@ -309,31 +325,39 @@ export const BidModal: React.FC<BidModalProps> = ({
                 }}
                 step="any"
                 placeholder="Enter bid amount"
-                className="w-full py-3 px-4 text-xl font-bold text-slate-900 bg-transparent outline-none focus:ring-0"
+                className="w-full py-3 px-4 text-xl font-bold text-slate-900 bg-transparent outline-none focus:ring-0 font-mono"
               />
               <button
                 type="submit"
                 disabled={isSubmitting}
                 className={`text-white font-extrabold px-5 sm:px-6 py-3.5 text-xs sm:text-sm uppercase tracking-wider transition shrink-0 cursor-pointer disabled:opacity-50 ${
-                  isLeadingBidder ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#059669] hover:bg-[#b51f30]'
+                  isLeadingBidder ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#059669] hover:bg-[#047857]'
                 }`}
               >
                 {isSubmitting ? 'Submitting...' : isLeadingBidder ? 'RAISE BID' : 'BID NOW'}
               </button>
             </div>
 
-            {/* Bidding Limit Indicator Bar */}
-            <div className="mb-4 bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 text-slate-600">
-                <Shield className="w-4 h-4 text-emerald-600" />
-                <span>200x Bidding Limit:</span>
+            {/* Bidding Limit Indicator Bar (D19 Fix) */}
+            <div className="mb-4 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col gap-1 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-slate-600">
+                  <Shield className="w-4 h-4 text-emerald-600" />
+                  <span className="font-semibold">Security Deposit:</span>
+                </div>
+                <div className="font-bold text-slate-900">
+                  AED {userDeposit.toLocaleString()}
+                </div>
               </div>
-              <div className="font-bold text-slate-900">
-                AED {availableBiddingLimit.toLocaleString()} <span className="text-[10px] text-slate-500 font-normal">avail.</span>
+              <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                <span className="text-slate-500">200x Bidding Power:</span>
+                <div className="font-extrabold text-emerald-700">
+                  AED {availableBiddingLimit.toLocaleString()} <span className="text-[10px] text-slate-500 font-normal">avail.</span>
+                </div>
               </div>
             </div>
 
-            {/* Acknowledgment Checkbox (Matching Screenshot 2) */}
+            {/* Acknowledgment Checkbox */}
             <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-600 mb-4 select-none">
               <input
                 type="checkbox"
@@ -342,11 +366,10 @@ export const BidModal: React.FC<BidModalProps> = ({
                 className="mt-0.5 rounded border-slate-300 text-[#059669] focus:ring-[#059669] w-4 h-4 cursor-pointer"
               />
               <span className="leading-relaxed">
-                I acknowledge that I have inspected the vehicle, accept its current condition, and agree to the{' '}
-                <a href="/seller-buyer/help" target="_blank" className="text-blue-600 hover:underline">
+                I acknowledge that I have inspected the vehicle, accept its condition report, and agree to the{' '}
+                <a href="/seller-buyer/help" target="_blank" className="text-emerald-700 hover:underline font-semibold">
                   Terms and Conditions
-                </a>{' '}
-                associated with it.
+                </a>.
               </span>
             </label>
 

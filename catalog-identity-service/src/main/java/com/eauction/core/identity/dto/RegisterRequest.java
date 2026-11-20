@@ -2,7 +2,6 @@ package com.eauction.core.identity.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class RegisterRequest {
@@ -24,11 +23,15 @@ public class RegisterRequest {
     @NotBlank(message = "Role is required")
     private String role; // BUYER or SELLER
 
-    @Pattern(regexp = "^[A-Z]{5}[0-9]{4}[A-Z]{1}$", message = "Invalid Indian PAN format")
     private String panNumber;
 
-    @Pattern(regexp = "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$", message = "Invalid Indian GST format")
     private String gstNumber;
+
+    private String emiratesId;
+
+    private String trn;
+
+    private String companyName;
 
     public RegisterRequest() {
     }
@@ -98,5 +101,29 @@ public class RegisterRequest {
 
     public void setGstNumber(String gstNumber) {
         this.gstNumber = gstNumber;
+    }
+
+    public String getEmiratesId() {
+        return emiratesId;
+    }
+
+    public void setEmiratesId(String emiratesId) {
+        this.emiratesId = emiratesId;
+    }
+
+    public String getTrn() {
+        return trn;
+    }
+
+    public void setTrn(String trn) {
+        this.trn = trn;
+    }
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
     }
 }

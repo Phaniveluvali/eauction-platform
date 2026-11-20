@@ -3,6 +3,7 @@ package com.eauction.core.identity.service;
 import com.eauction.core.identity.dto.AuthResponse;
 import com.eauction.core.identity.dto.LoginRequest;
 import com.eauction.core.identity.dto.RegisterRequest;
+import com.eauction.core.identity.dto.UpdateUserRequest;
 import com.eauction.core.identity.dto.UserResponse;
 import com.eauction.core.identity.model.User;
 import com.eauction.core.identity.repository.UserRepository;
@@ -15,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -81,8 +83,18 @@ public class AuthService {
         user.setRole(normalizedRole);
         user.setPanNumber(request.getPanNumber());
         user.setGstNumber(request.getGstNumber());
-        // KYC is verified if PAN is present for compliance, otherwise pending
-        user.setKycVerified(request.getPanNumber() != null && !request.getPanNumber().isBlank());
+        user.setEmiratesId(request.getEmiratesId());
+        user.setTrn(request.getTrn());
+        user.setCompanyName(request.getCompanyName());
+        user.setContractStatus("SELLER".equals(normalizedRole) ? "APPROVED" : "APPROVED");
+        user.setSecurityDeposit(BigDecimal.ZERO);
+        user.setBiddingLimit(BigDecimal.ZERO);
+        user.setUsedBiddingLimit(BigDecimal.ZERO);
+        
+        // KYC is verified if Emirates ID or PAN is present
+        boolean isKyc = (request.getEmiratesId() != null && !request.getEmiratesId().isBlank()) ||
+                        (request.getPanNumber() != null && !request.getPanNumber().isBlank());
+        user.setKycVerified(isKyc);
         user.setIsActive(true);
 
         User savedUser = userRepository.saveAndFlush(user);
@@ -149,81 +161,23 @@ public class AuthService {
 
     @Transactional
     public AuthResponse handleAzureB2cLogin(com.eauction.core.identity.dto.AzureB2cLoginRequest request) {
-        String targetEmail = null;
-        String targetName = null;
-        String targetPhone = null;
-
-        // 1. If idToken is provided, extract claims from the payload
-        if (request.getIdToken() != null && request.getIdToken().contains(".")) {
-            try {
-                String[] parts = request.getIdToken().split("\\.");
-                if (parts.length >= 2) {
-                    byte[] decoded = java.util.Base64.getUrlDecoder().decode(parts[1]);
-                    com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(decoded);
-                    if (root.has("emails") && root.get("emails").isArray() && root.get("emails").size() > 0) {
-                        targetEmail = root.get("emails").get(0).asText();
-                    } else if (root.has("email")) {
-                        targetEmail = root.get("email").asText();
-                    }
-                    if (root.has("name")) {
-                        targetName = root.get("name").asText();
-                    } else if (root.has("given_name")) {
-                        targetName = root.get("given_name").asText();
-                    }
-                    if (root.has("extension_MobileNumber")) {
-                        targetPhone = root.get("extension_MobileNumber").asText();
-                    } else if (root.has("phone_number")) {
-                        targetPhone = root.get("phone_number").asText();
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
-
-        // Fallbacks if not in JWT
-        if (targetEmail == null || targetEmail.isBlank()) {
-            targetEmail = request.getEmail();
-        }
-        if (targetName == null || targetName.isBlank()) {
-            targetName = request.getFullName();
-        }
-        if (targetPhone == null || targetPhone.isBlank()) {
-            targetPhone = request.getPhoneNumber();
-        }
-
-        if (targetEmail == null || targetEmail.isBlank()) {
-            throw new IllegalArgumentException("Azure AD B2C login requires an email address");
-        }
-
-        targetEmail = targetEmail.trim().toLowerCase();
-        if (targetName == null || targetName.isBlank()) {
-            targetName = "Emirates Transport User";
-        }
-        if (targetPhone == null || targetPhone.isBlank()) {
-            targetPhone = "+971-5" + (int)(1000000 + Math.random() * 8999999);
-        }
-
-        final String finalEmail = targetEmail;
-        final String finalName = targetName;
-        final String finalPhone = targetPhone;
-
-        User user = userRepository.findByEmail(targetEmail)
+        String email = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     User newUser = new User();
-                    newUser.setEmail(finalEmail);
-                    newUser.setFullName(finalName);
-                    newUser.setPasswordHash(passwordEncoder.encode("AZURE_B2C_SSO_" + UUID.randomUUID()));
-
-                    // Prevent duplicate phone collision on auto-provision
-                    String phoneToUse = finalPhone;
-                    if (userRepository.existsByPhoneNumber(phoneToUse)) {
-                        phoneToUse = "+971-5" + (int)(1000000 + Math.random() * 8999999);
+                    newUser.setEmail(email);
+                    newUser.setFullName(request.getFullName() != null ? request.getFullName().trim() : "B2C User");
+                    newUser.setPasswordHash(passwordEncoder.encode("AZURE_B2C_" + UUID.randomUUID()));
+                    String phone = request.getPhoneNumber();
+                    if (phone == null || phone.isBlank() || userRepository.existsByPhoneNumber(phone)) {
+                        phone = "+971-50" + (int)(1000000 + Math.random() * 8999999);
                     }
-                    newUser.setPhoneNumber(phoneToUse);
+                    newUser.setPhoneNumber(phone);
                     newUser.setRole("BUYER");
                     newUser.setKycVerified(true);
                     newUser.setIsActive(true);
+                    newUser.setContractStatus("APPROVED");
                     User saved = userRepository.saveAndFlush(newUser);
-
                     try {
                         if (jdbcTemplate != null) {
                             jdbcTemplate.update("INSERT INTO user_roles (user_id, role_id) VALUES (?, (SELECT id FROM roles WHERE name = 'BUYER')) ON CONFLICT DO NOTHING", saved.getId());
@@ -262,7 +216,6 @@ public class AuthService {
         String targetName = null;
         String targetPhone = null;
 
-        // Extract claims from Keycloak token payload if provided
         String rawToken = request.getIdToken() != null ? request.getIdToken() : request.getAccessToken();
         if (rawToken != null && rawToken.contains(".")) {
             try {
@@ -328,6 +281,7 @@ public class AuthService {
                     newUser.setRole("BUYER");
                     newUser.setKycVerified(true);
                     newUser.setIsActive(true);
+                    newUser.setContractStatus("APPROVED");
                     User saved = userRepository.saveAndFlush(newUser);
 
                     try {
@@ -451,5 +405,65 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
+    }
+
+    @Transactional
+    public UserResponse updateUser(UUID userId, UpdateUserRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName().trim());
+        }
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+            user.setPhoneNumber(request.getPhoneNumber().trim());
+        }
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            user.setRole(request.getRole().trim().toUpperCase());
+        }
+        if (request.getIsActive() != null) {
+            user.setIsActive(request.getIsActive());
+        }
+        if (request.getKycVerified() != null) {
+            user.setKycVerified(request.getKycVerified());
+        }
+        if (request.getEmiratesId() != null) {
+            user.setEmiratesId(request.getEmiratesId().trim());
+        }
+        if (request.getTrn() != null) {
+            user.setTrn(request.getTrn().trim());
+        }
+        if (request.getCompanyName() != null) {
+            user.setCompanyName(request.getCompanyName().trim());
+        }
+        if (request.getContractStatus() != null) {
+            user.setContractStatus(request.getContractStatus().trim().toUpperCase());
+        }
+        if (request.getContractDocumentUrl() != null) {
+            user.setContractDocumentUrl(request.getContractDocumentUrl().trim());
+        }
+        if (request.getSecurityDeposit() != null) {
+            user.setSecurityDeposit(request.getSecurityDeposit());
+        }
+        if (request.getBiddingLimit() != null) {
+            user.setBiddingLimit(request.getBiddingLimit());
+        }
+        if (request.getUsedBiddingLimit() != null) {
+            user.setUsedBiddingLimit(request.getUsedBiddingLimit());
+        }
+
+        user.setUpdatedAt(Instant.now());
+        User updated = userRepository.saveAndFlush(user);
+        return getUserProfile(updated.getId());
+    }
+
+    public boolean checkFullNameDuplicate(String fullName) {
+        if (fullName == null || fullName.isBlank()) return false;
+        return userRepository.existsByFullNameIgnoreCase(fullName.trim());
+    }
+
+    public boolean requestForgotPassword(String email) {
+        if (email == null || email.isBlank()) return false;
+        return userRepository.findByEmail(email.trim().toLowerCase()).isPresent();
     }
 }

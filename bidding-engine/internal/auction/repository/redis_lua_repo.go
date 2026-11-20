@@ -43,7 +43,7 @@ if exists == 0 then
     return redis.error_reply('ERR_AUCTION_NOT_FOUND: Auction does not exist in cache')
 end
 
--- 2. Check that status is ACTIVE and auction hasn't ended
+-- 2. Check that status is ACTIVE and auction hasn't ended (Defect D14 Fix)
 local status = redis.call('HGET', key, 'status')
 if not status or status ~= 'ACTIVE' then
     return redis.error_reply('ERR_AUCTION_NOT_ACTIVE: Current auction status is ' .. tostring(status))
@@ -141,7 +141,7 @@ func (r *RedisLuaRepository) ExecuteAtomicBidValidation(
 	}, nil
 }
 
-// InitializeAuctionState primes Redis cache with auction rules
+// InitializeAuctionState primes Redis cache with auction rules including end_time
 func (r *RedisLuaRepository) InitializeAuctionState(
 	ctx context.Context,
 	auctionID string,
@@ -157,6 +157,7 @@ func (r *RedisLuaRepository) InitializeAuctionState(
 		"current_highest_bid": strconv.FormatFloat(state.CurrentHighestBid, 'f', 2, 64),
 		"highest_bidder_id":   state.HighestBidderID,
 		"last_bid_timestamp":  strconv.FormatInt(state.LastBidTimestamp, 10),
+		"end_time":            strconv.FormatInt(state.EndTime, 10),
 	}
 
 	return r.client.HSet(ctx, redisKey, data).Err()
@@ -178,6 +179,7 @@ func (r *RedisLuaRepository) GetAuctionState(ctx context.Context, auctionID stri
 	minInc, _ := strconv.ParseFloat(valMap["min_increment"], 64)
 	currHighest, _ := strconv.ParseFloat(valMap["current_highest_bid"], 64)
 	lastTs, _ := strconv.ParseInt(valMap["last_bid_timestamp"], 10, 64)
+	endTime, _ := strconv.ParseInt(valMap["end_time"], 10, 64)
 
 	return &models.AuctionCacheState{
 		Status:            valMap["status"],
@@ -187,47 +189,23 @@ func (r *RedisLuaRepository) GetAuctionState(ctx context.Context, auctionID stri
 		CurrentHighestBid: currHighest,
 		HighestBidderID:   valMap["highest_bidder_id"],
 		LastBidTimestamp:  lastTs,
+		EndTime:           endTime,
 	}, nil
 }
 
 // ============================================================================
 // CRITICAL LOGIC: KUBERNETES MULTI-REPLICA HORIZONTAL SCALING (REDIS PUB/SUB)
 // ============================================================================
-// When running multiple pods of the bidding-engine service behind a Kubernetes
-// Ingress or LoadBalancer, WebSockets connect to random pod replicas.
-// If Bidder A is connected to Pod 1 and Bidder B is connected to Pod 2:
-// - A local Go channel broadcast inside Pod 1 would only reach Bidder A.
-// - Bidder B on Pod 2 would never see the updated bid in real time.
-//
-// To solve this cleanly, we use a Redis Pub/Sub distributed backplane:
-// 1. Pod 1 receives and validates Bidder A's bid.
-// 2. Pod 1 calls PublishBroadcast(ctx, auctionID, message).
-// 3. Redis broadcasts the message to the "auction:{id}:broadcast" channel.
-// 4. All active replicas (Pod 1, Pod 2, ..., Pod N) subscribed via SubscribeBroadcast
-//    receive the message and forward it to all locally connected WebSocket clients.
-// This guarantees zero state fragmentation across any number of Kubernetes replicas.
-
-// PublishBroadcast publishes a serialized bid/event message to the Redis Pub/Sub channel.
 func (r *RedisLuaRepository) PublishBroadcast(ctx context.Context, auctionID string, message []byte) error {
 	channel := fmt.Sprintf("auction:%s:broadcast", auctionID)
 	return r.client.Publish(ctx, channel, message).Err()
 }
 
-// SubscribeBroadcast creates a subscription to the auction's broadcast channel.
-// Used by each AuctionRoom instance to listen for bids accepted on other pod replicas.
 func (r *RedisLuaRepository) SubscribeBroadcast(ctx context.Context, auctionID string) *redis.PubSub {
 	channel := fmt.Sprintf("auction:%s:broadcast", auctionID)
 	return r.client.Subscribe(ctx, channel)
 }
 
-// ============================================================================
-// CRITICAL LOGIC: BID IDEMPOTENCY KEY (DEDUPLICATION GUARD)
-// ============================================================================
-// Unstable mobile networks or rapid double-clicking by users can retransmit
-// the exact same bid payload multiple times.
-// CheckAndSetIdempotency uses Redis atomic SET NX with a 60-second TTL:
-// - If the key is new: Returns true (bid proceeds to Lua validation).
-// - If the key was already seen: Returns false (duplicate bid rejected immediately).
 func (r *RedisLuaRepository) CheckAndSetIdempotency(ctx context.Context, idempotencyKey string, ttl time.Duration) (bool, error) {
 	if idempotencyKey == "" {
 		return true, nil
@@ -235,4 +213,3 @@ func (r *RedisLuaRepository) CheckAndSetIdempotency(ctx context.Context, idempot
 	key := fmt.Sprintf("auction:idemp:%s", idempotencyKey)
 	return r.client.SetNX(ctx, key, "1", ttl).Result()
 }
-

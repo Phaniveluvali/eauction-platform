@@ -105,6 +105,19 @@ export const catalogApi = {
     return res.json();
   },
 
+  async updateVehicle(vehicleId: string, payload: Partial<Vehicle>): Promise<Vehicle> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('Failed to update vehicle');
+    return res.json();
+  },
+
   async submitPhotoVehicle(vehicleId: string, mediaPaths: string[]): Promise<Vehicle> {
     const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/${vehicleId}/submit-photo`, {
       method: 'PUT',
