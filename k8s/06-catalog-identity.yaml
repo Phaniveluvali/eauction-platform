@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: catalog-identity
-          image: eauction-catalog-identity:latest
+          image: krishnaveluvali/eauction-catalog-identity:v1.2.0-db-optimized
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -28,6 +28,11 @@ spec:
                 configMapKeyRef:
                   name: eauction-config
                   key: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_READ_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: eauction-config
+                  key: SPRING_DATASOURCE_READ_URL
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:

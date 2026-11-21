@@ -2,6 +2,12 @@ import { Auction, Bid, BidResponse, PaymentOrderResponse } from '../../types';
 import { CATALOG_BASE, PAYMENT_BASE, getAuthHeader } from './common';
 
 export const auctionApi = {
+  async getAuctionCounts(): Promise<{ online: number; silent: number; totalActive: number }> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/auctions/counts`);
+    if (!res.ok) throw new Error('Failed to fetch auction counts');
+    return res.json();
+  },
+
   async getAuctions(status?: string): Promise<Auction[]> {
     const url = status
       ? `${CATALOG_BASE}/api/v1/auctions?status=${encodeURIComponent(status)}`

@@ -49,8 +49,13 @@ data:
         exec docker-entrypoint.sh postgres \
             -c listen_addresses='*' \
             -c max_connections=300 \
-            -c shared_buffers=256MB \
-            -c work_mem=16MB \
+            -c shared_buffers=1024MB \
+            -c effective_cache_size=8192MB \
+            -c work_mem=32MB \
+            -c maintenance_work_mem=256MB \
+            -c wal_buffers=32MB \
+            -c random_page_cost=1.1 \
+            -c effective_io_concurrency=200 \
             -c wal_level=replica \
             -c max_wal_senders=10 \
             -c max_replication_slots=10 \
@@ -82,8 +87,13 @@ data:
         exec postgres -D "$PGDATA" \
             -c listen_addresses='*' \
             -c max_connections=300 \
-            -c shared_buffers=256MB \
-            -c work_mem=16MB \
+            -c shared_buffers=1024MB \
+            -c effective_cache_size=8192MB \
+            -c work_mem=32MB \
+            -c maintenance_work_mem=256MB \
+            -c wal_buffers=32MB \
+            -c random_page_cost=1.1 \
+            -c effective_io_concurrency=200 \
             -c hot_standby=on
     fi
 ---
@@ -133,10 +143,10 @@ spec:
           resources:
             requests:
               cpu: 250m
-              memory: 512Mi
+              memory: 1Gi
             limits:
               cpu: 1500m
-              memory: 2048Mi
+              memory: 4Gi
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
@@ -199,7 +209,7 @@ spec:
       targetPort: 5432
       name: postgres
   selector:
-    app: eauction-postgres
+    statefulset.kubernetes.io/pod-name: eauction-postgres-1
 ---
 # Headless Service for Stable Inter-Node DNS & Streaming Replication
 apiVersion: v1

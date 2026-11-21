@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: eauction-frontend:latest
+          image: krishnaveluvali/eauction-frontend:v1.2.0-db-optimized
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
