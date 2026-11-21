@@ -5,7 +5,15 @@ import { AuctionRoom } from './components/AuctionRoom';
 import { PaymentModal } from './components/PaymentModal';
 import { CreateVehicleModal } from './components/CreateVehicleModal';
 import { AdminPortal } from './components/AdminPortal';
-import { PortalView } from './components/PortalSidebar';
+import { PortalSidebar, PortalView } from './components/PortalSidebar';
+import { BuyerDashboard } from './components/BuyerDashboard';
+import { MyBidsView } from './components/MyBidsView';
+import { WonAuctionsView } from './components/WonAuctionsView';
+import { DeliveryCollectionView } from './components/DeliveryCollectionView';
+import { PaymentsView } from './components/PaymentsView';
+import { SellerDashboard } from './components/SellerDashboard';
+import { SellerCreateListingWizard } from './components/SellerCreateListingWizard';
+import { Language } from './components/i18n';
 import { OnlineAuctionsPage } from './components/OnlineAuctionsPage';
 import { SilentAuctionsPage } from './components/SilentAuctionsPage';
 import { HelpPage } from './components/HelpPage';
@@ -37,6 +45,13 @@ const getRouteFromPath = (): { view: PortalView; auctionId?: string; vehicleId?:
       vehicleId: urlParams.get('obj') || undefined,
     };
   }
+  if (path.includes('/buyer-dashboard')) return { view: 'BUYER_DASHBOARD' };
+  if (path.includes('/my-bids')) return { view: 'MY_BIDS' };
+  if (path.includes('/won-auctions')) return { view: 'WON_AUCTIONS' };
+  if (path.includes('/delivery-collection')) return { view: 'DELIVERY_COLLECTION' };
+  if (path.includes('/payments')) return { view: 'PAYMENTS' };
+  if (path.includes('/seller-dashboard')) return { view: 'SELLER_DASHBOARD' };
+  if (path.includes('/seller/create-listing') || path.includes('/seller-create-listing')) return { view: 'SELLER_CREATE_LISTING' };
   if (path.includes('/online-auctions')) return { view: 'ONLINE_AUCTIONS' };
   if (path.includes('/silent-auctions')) return { view: 'SILENT_AUCTIONS' };
   if (path.includes('/favorites')) return { view: 'FAVORITES' };
@@ -56,6 +71,20 @@ const getRouteFromPath = (): { view: PortalView; auctionId?: string; vehicleId?:
 const getPathForView = (view: PortalView, auctionId?: string, vehicleId?: string): string => {
   const basePath = '/seller-buyer';
   switch (view) {
+    case 'BUYER_DASHBOARD':
+      return `${basePath}/buyer-dashboard`;
+    case 'MY_BIDS':
+      return `${basePath}/my-bids`;
+    case 'WON_AUCTIONS':
+      return `${basePath}/won-auctions`;
+    case 'DELIVERY_COLLECTION':
+      return `${basePath}/delivery-collection`;
+    case 'PAYMENTS':
+      return `${basePath}/payments`;
+    case 'SELLER_DASHBOARD':
+      return `${basePath}/seller-dashboard`;
+    case 'SELLER_CREATE_LISTING':
+      return `${basePath}/seller/create-listing`;
     case 'VEHICLE_DETAILS': {
       const params = new URLSearchParams();
       if (vehicleId) params.set('obj', vehicleId);
@@ -102,6 +131,48 @@ const ROUTE_SECURITY_RULES: Record<PortalView, RouteSecurityRule> = {
     allowedRoles: ['ADMIN'],
     redirectUnauthTo: 'SIGNIN',
     description: 'Administrator Console',
+  },
+  BUYER_DASHBOARD: {
+    requiresAuth: true,
+    allowedRoles: ['BUYER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'Buyer Control Center',
+  },
+  MY_BIDS: {
+    requiresAuth: true,
+    allowedRoles: ['BUYER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'Active Bids Ledger',
+  },
+  WON_AUCTIONS: {
+    requiresAuth: true,
+    allowedRoles: ['BUYER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'Won Lots & Settlements',
+  },
+  DELIVERY_COLLECTION: {
+    requiresAuth: true,
+    allowedRoles: ['BUYER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'Yard Delivery & Gate Pass',
+  },
+  PAYMENTS: {
+    requiresAuth: true,
+    allowedRoles: ['BUYER', 'SELLER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'UAE Tax Invoices & Payments',
+  },
+  SELLER_DASHBOARD: {
+    requiresAuth: true,
+    allowedRoles: ['SELLER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'Seller Inventory & Sales Hub',
+  },
+  SELLER_CREATE_LISTING: {
+    requiresAuth: true,
+    allowedRoles: ['SELLER'],
+    redirectUnauthTo: 'SIGNIN',
+    description: 'List New Vehicle',
   },
   FAVORITES: {
     requiresAuth: true,
@@ -212,6 +283,32 @@ export const App: React.FC = () => {
       }
     }).catch(() => {});
   }, []);
+
+  // Global Bilingual Language State (English & Arabic RTL)
+  const [language, setLanguage] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem('app_language');
+      if (saved === 'AR' || saved === 'EN') return saved;
+    } catch {}
+    return 'EN';
+  });
+
+  const handleToggleLanguage = () => {
+    setLanguage((prev) => {
+      const next = prev === 'EN' ? 'AR' : 'EN';
+      try {
+        localStorage.setItem('app_language', next);
+      } catch {}
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dir = language === 'AR' ? 'rtl' : 'ltr';
+      document.documentElement.lang = language.toLowerCase();
+    }
+  }, [language]);
 
   // Dedicated View Router: initialized from URL pathname
   const initialRoute = getRouteFromPath();
@@ -1023,6 +1120,270 @@ export const App: React.FC = () => {
           onBackHome={() => navigateToView('HOME')}
           onNavigate={(view) => navigateToView(view)}
         />
+      ) : currentView === 'BUYER_DASHBOARD' ? (
+        <div className="flex-1 flex flex-col">
+          <Navbar
+            currentUser={currentUser}
+            favoriteCount={favoriteIds.length}
+            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+            onOpenAdmin={() => navigateToView('ADMIN')}
+            onLogout={handleLogout}
+            onLiveNowClick={handleLiveNowClick}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onHomeClick={() => navigateToView('HOME')}
+            onNavigate={(view) => navigateToView(view)}
+            onlineAuctionsCount={onlineAuctionsCount}
+            silentAuctionsCount={silentAuctionsCount}
+            uaePlatesCount={uaePlatesCount}
+            machineryCount={machineryCount}
+            emiratesMotoCount={emiratesMotoCount}
+            lang={language}
+            onToggleLanguage={handleToggleLanguage}
+          />
+          <div className="flex-1 flex flex-col md:flex-row bg-slate-50">
+            <PortalSidebar
+              currentView={currentView}
+              onNavigate={(v) => navigateToView(v)}
+              currentUser={currentUser}
+              lang={language}
+            />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <BuyerDashboard
+                currentUser={currentUser}
+                lang={language}
+                onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
+                onNavigateToBids={() => navigateToView('MY_BIDS')}
+                onNavigateToWon={() => navigateToView('WON_AUCTIONS')}
+                onNavigateToDelivery={() => navigateToView('DELIVERY_COLLECTION')}
+                onNavigateToPayments={() => navigateToView('PAYMENTS')}
+              />
+            </main>
+          </div>
+        </div>
+      ) : currentView === 'MY_BIDS' ? (
+        <div className="flex-1 flex flex-col">
+          <Navbar
+            currentUser={currentUser}
+            favoriteCount={favoriteIds.length}
+            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+            onOpenAdmin={() => navigateToView('ADMIN')}
+            onLogout={handleLogout}
+            onLiveNowClick={handleLiveNowClick}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onHomeClick={() => navigateToView('HOME')}
+            onNavigate={(view) => navigateToView(view)}
+            onlineAuctionsCount={onlineAuctionsCount}
+            silentAuctionsCount={silentAuctionsCount}
+            uaePlatesCount={uaePlatesCount}
+            machineryCount={machineryCount}
+            emiratesMotoCount={emiratesMotoCount}
+            lang={language}
+            onToggleLanguage={handleToggleLanguage}
+          />
+          <div className="flex-1 flex flex-col md:flex-row bg-slate-50">
+            <PortalSidebar
+              currentView={currentView}
+              onNavigate={(v) => navigateToView(v)}
+              currentUser={currentUser}
+              lang={language}
+            />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <MyBidsView
+                lang={language}
+                onSelectAuction={(auc) => {
+                  setSelectedAuction(auc);
+                  navigateToView('AUCTION_ROOM', auc.id);
+                }}
+                onExploreAuctions={() => navigateToView('ONLINE_AUCTIONS')}
+              />
+            </main>
+          </div>
+        </div>
+      ) : currentView === 'WON_AUCTIONS' ? (
+        <div className="flex-1 flex flex-col">
+          <Navbar
+            currentUser={currentUser}
+            favoriteCount={favoriteIds.length}
+            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+            onOpenAdmin={() => navigateToView('ADMIN')}
+            onLogout={handleLogout}
+            onLiveNowClick={handleLiveNowClick}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onHomeClick={() => navigateToView('HOME')}
+            onNavigate={(view) => navigateToView(view)}
+            onlineAuctionsCount={onlineAuctionsCount}
+            silentAuctionsCount={silentAuctionsCount}
+            uaePlatesCount={uaePlatesCount}
+            machineryCount={machineryCount}
+            emiratesMotoCount={emiratesMotoCount}
+            lang={language}
+            onToggleLanguage={handleToggleLanguage}
+          />
+          <div className="flex-1 flex flex-col md:flex-row bg-slate-50">
+            <PortalSidebar
+              currentView={currentView}
+              onNavigate={(v) => navigateToView(v)}
+              currentUser={currentUser}
+              lang={language}
+            />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <WonAuctionsView
+                lang={language}
+                onNavigateToDelivery={(lotId) => navigateToView('DELIVERY_COLLECTION')}
+                onNavigateToPayments={() => navigateToView('PAYMENTS')}
+              />
+            </main>
+          </div>
+        </div>
+      ) : currentView === 'DELIVERY_COLLECTION' ? (
+        <div className="flex-1 flex flex-col">
+          <Navbar
+            currentUser={currentUser}
+            favoriteCount={favoriteIds.length}
+            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+            onOpenAdmin={() => navigateToView('ADMIN')}
+            onLogout={handleLogout}
+            onLiveNowClick={handleLiveNowClick}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onHomeClick={() => navigateToView('HOME')}
+            onNavigate={(view) => navigateToView(view)}
+            onlineAuctionsCount={onlineAuctionsCount}
+            silentAuctionsCount={silentAuctionsCount}
+            uaePlatesCount={uaePlatesCount}
+            machineryCount={machineryCount}
+            emiratesMotoCount={emiratesMotoCount}
+            lang={language}
+            onToggleLanguage={handleToggleLanguage}
+          />
+          <div className="flex-1 flex flex-col md:flex-row bg-slate-50">
+            <PortalSidebar
+              currentView={currentView}
+              onNavigate={(v) => navigateToView(v)}
+              currentUser={currentUser}
+              lang={language}
+            />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <DeliveryCollectionView
+                lang={language}
+                onBackToWon={() => navigateToView('WON_AUCTIONS')}
+              />
+            </main>
+          </div>
+        </div>
+      ) : currentView === 'PAYMENTS' ? (
+        <div className="flex-1 flex flex-col">
+          <Navbar
+            currentUser={currentUser}
+            favoriteCount={favoriteIds.length}
+            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+            onOpenAdmin={() => navigateToView('ADMIN')}
+            onLogout={handleLogout}
+            onLiveNowClick={handleLiveNowClick}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onHomeClick={() => navigateToView('HOME')}
+            onNavigate={(view) => navigateToView(view)}
+            onlineAuctionsCount={onlineAuctionsCount}
+            silentAuctionsCount={silentAuctionsCount}
+            uaePlatesCount={uaePlatesCount}
+            machineryCount={machineryCount}
+            emiratesMotoCount={emiratesMotoCount}
+            lang={language}
+            onToggleLanguage={handleToggleLanguage}
+          />
+          <div className="flex-1 flex flex-col md:flex-row bg-slate-50">
+            <PortalSidebar
+              currentView={currentView}
+              onNavigate={(v) => navigateToView(v)}
+              currentUser={currentUser}
+              lang={language}
+            />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <PaymentsView
+                lang={language}
+                onOpenDepositModal={() => setIsSecurityDepositModalOpen(true)}
+              />
+            </main>
+          </div>
+        </div>
+      ) : currentView === 'SELLER_DASHBOARD' ? (
+        <div className="flex-1 flex flex-col">
+          <Navbar
+            currentUser={currentUser}
+            favoriteCount={favoriteIds.length}
+            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+            onOpenAdmin={() => navigateToView('ADMIN')}
+            onLogout={handleLogout}
+            onLiveNowClick={handleLiveNowClick}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onHomeClick={() => navigateToView('HOME')}
+            onNavigate={(view) => navigateToView(view)}
+            onlineAuctionsCount={onlineAuctionsCount}
+            silentAuctionsCount={silentAuctionsCount}
+            uaePlatesCount={uaePlatesCount}
+            machineryCount={machineryCount}
+            emiratesMotoCount={emiratesMotoCount}
+            lang={language}
+            onToggleLanguage={handleToggleLanguage}
+          />
+          <div className="flex-1 flex flex-col md:flex-row bg-slate-50">
+            <PortalSidebar
+              currentView={currentView}
+              onNavigate={(v) => navigateToView(v)}
+              currentUser={currentUser}
+              lang={language}
+            />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <SellerDashboard
+                lang={language}
+                onCreateListing={() => navigateToView('SELLER_CREATE_LISTING')}
+                onViewAllListings={() => navigateToView('ONLINE_AUCTIONS')}
+              />
+            </main>
+          </div>
+        </div>
+      ) : currentView === 'SELLER_CREATE_LISTING' ? (
+        <div className="flex-1 flex flex-col">
+          <Navbar
+            currentUser={currentUser}
+            favoriteCount={favoriteIds.length}
+            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+            onOpenAdmin={() => navigateToView('ADMIN')}
+            onLogout={handleLogout}
+            onLiveNowClick={handleLiveNowClick}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onHomeClick={() => navigateToView('HOME')}
+            onNavigate={(view) => navigateToView(view)}
+            onlineAuctionsCount={onlineAuctionsCount}
+            silentAuctionsCount={silentAuctionsCount}
+            uaePlatesCount={uaePlatesCount}
+            machineryCount={machineryCount}
+            emiratesMotoCount={emiratesMotoCount}
+            lang={language}
+            onToggleLanguage={handleToggleLanguage}
+          />
+          <div className="flex-1 flex flex-col md:flex-row bg-slate-50">
+            <PortalSidebar
+              currentView={currentView}
+              onNavigate={(v) => navigateToView(v)}
+              currentUser={currentUser}
+              lang={language}
+            />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+              <SellerCreateListingWizard
+                lang={language}
+                onCancel={() => navigateToView('SELLER_DASHBOARD')}
+                onSubmitSuccess={() => navigateToView('SELLER_DASHBOARD')}
+              />
+            </main>
+          </div>
+        </div>
       ) : (
         /* HOME View: Sticky 96px AJ Auctions Navbar + Full HomePage */
         <div className="flex-1 flex flex-col">
@@ -1033,7 +1394,7 @@ export const App: React.FC = () => {
             onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
             onOpenAdmin={() => navigateToView('ADMIN')}
             onLogout={handleLogout}
-                        onLiveNowClick={handleLiveNowClick}
+            onLiveNowClick={handleLiveNowClick}
             onSearchChange={(q) => setSearchQuery(q)}
             onHomeClick={() => {
               setSelectedAuction(null);
@@ -1045,6 +1406,8 @@ export const App: React.FC = () => {
             uaePlatesCount={uaePlatesCount}
             machineryCount={machineryCount}
             emiratesMotoCount={emiratesMotoCount}
+            lang={language}
+            onToggleLanguage={handleToggleLanguage}
           />
 
           <main className="flex-1 w-full">
@@ -1062,12 +1425,13 @@ export const App: React.FC = () => {
               }}
               onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
               onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
-                            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
+              onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
               searchFilter={searchQuery}
               onNavigate={(view) => navigateToView(view)}
               onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
               onOpenBidModal={handleOpenBidModal}
               onViewDetails={handleViewDetails}
+              lang={language}
             />
           </main>
         </div>

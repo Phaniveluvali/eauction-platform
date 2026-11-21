@@ -81,8 +81,8 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
   const currentBid = auction ? Number(auction.currentHighestBid || auction.startPrice || 0) : 0;
   const lotNumber = vehicle.lotNo ? `AJ-${vehicle.lotNo}` : `AJ-${auction?.id ? auction.id.substring(0, 6).toUpperCase() : '101003'}`;
 
-  // Currency estimate in INR (1 AED ~ 22.5 INR)
-  const inrEstimate = Math.round(currentBid * 22.5);
+  // UAE AED Localization (Official currency)
+  const aedFormatted = `AED ${currentBid.toLocaleString()}`;
 
   return (
     <div className={`aj-card h-full flex flex-col justify-between group relative border rounded-2xl overflow-hidden bg-white transition-all duration-300 ${
@@ -244,8 +244,8 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
                   AED {currentBid.toLocaleString()}
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono block">
-                ≈ ₹{inrEstimate.toLocaleString('en-IN')}
+              <span className="text-[10px] text-emerald-700 font-semibold font-sans block">
+                {currentBid.toLocaleString()} د.إ
               </span>
             </div>
 

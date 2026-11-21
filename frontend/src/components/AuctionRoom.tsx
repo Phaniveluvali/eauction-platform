@@ -396,11 +396,11 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
             {/* Custom Bid Submission Form */}
             <div className="mt-6 pt-6 border-t border-slate-800">
               <label className="block text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">
-                Or Propose Custom Bid (INR)
+                Or Propose Custom Bid (AED)
               </label>
               <div className="flex gap-3">
                 <div className="relative flex-1">
-                  <span className="absolute left-3.5 top-3 text-slate-500 font-bold">₹</span>
+                  <span className="absolute left-3.5 top-3 text-slate-500 font-bold text-xs">AED</span>
                   <input
                     type="number"
                     disabled={isAuctionEnded}
@@ -409,7 +409,7 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
                     value={customBidAmount}
                     onChange={(e) => setCustomBidAmount(e.target.value)}
                     placeholder={isAuctionEnded ? 'Auction Concluded' : `Min: ${minRequiredNextBid}`}
-                    className={`w-full border rounded-xl pl-8 pr-4 py-3 font-mono text-base focus:outline-none ${
+                    className={`w-full border rounded-xl pl-12 pr-4 py-3 font-mono text-base focus:outline-none ${
                       isAuctionEnded
                         ? 'bg-slate-950/40 border-slate-800 text-slate-600 cursor-not-allowed'
                         : 'bg-slate-950 border-slate-700 text-white placeholder-slate-600 focus:border-brand-500'

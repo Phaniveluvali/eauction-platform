@@ -19,6 +19,10 @@ import {
   ICON_SVC_REPAIRS,
   ICON_SVC_MORE,
 } from '../constants/homeAssets';
+import { FeaturedAuctionsCarousel } from './FeaturedAuctionsCarousel';
+import { TrustBadgesStrip } from './TrustBadgesStrip';
+import { StatsCounterStrip } from './StatsCounterStrip';
+import { Language, useTranslation } from './i18n';
 
 interface HomePageProps {
   vehicles: Vehicle[];
@@ -38,6 +42,7 @@ interface HomePageProps {
   onToggleFavorite?: (vehicleId: string) => void;
   onlineAuctionsCount?: number;
   silentAuctionsCount?: number;
+  lang?: Language;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -46,7 +51,13 @@ export const HomePage: React.FC<HomePageProps> = ({
   onlineAuctionsCount,
   silentAuctionsCount,
   onNavigate,
+  onViewDetails,
+  onOpenBidModal,
+  favoriteIds = [],
+  onToggleFavorite,
+  lang = 'EN',
 }) => {
+  const { t } = useTranslation(lang);
   const cachedCounts = useMemo(() => {
     try {
       const c = localStorage.getItem('cached_auction_counts') || sessionStorage.getItem('cached_auction_counts');
@@ -97,6 +108,19 @@ export const HomePage: React.FC<HomePageProps> = ({
           src={getAssetUrl('/assets/banner-aj.webp')}
           alt="AJ Auctions Web Banner"
           className="w-full h-auto object-cover max-h-[380px] sm:max-h-[460px] block"
+        />
+      </div>
+
+      {/* Featured Live Auctions Carousel */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <FeaturedAuctionsCarousel
+          auctions={auctions}
+          vehicles={vehicles}
+          onViewDetails={onViewDetails}
+          onOpenBidModal={onOpenBidModal}
+          favoriteIds={favoriteIds}
+          onToggleFavorite={onToggleFavorite}
+          lang={lang}
         />
       </div>
 
@@ -220,6 +244,11 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 5 Official UAE Trust Badges */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <TrustBadgesStrip lang={lang} />
       </div>
 
       {/* ============================================================ */}
@@ -358,6 +387,11 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* 7. 10px HOME DIVIDER                                         */}
       {/* ============================================================ */}
       <div className="home_divider" />
+
+      {/* UAE Market Scale Counters */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <StatsCounterStrip lang={lang} />
+      </div>
 
       {/* ============================================================ */}
       {/* 8. TESTIMONIALS                                              */}

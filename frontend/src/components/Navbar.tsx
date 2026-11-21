@@ -41,6 +41,8 @@ interface NavbarProps {
   machineryCount?: number;
   emiratesMotoCount?: number;
   favoriteCount?: number;
+  lang?: 'EN' | 'AR';
+  onToggleLanguage?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -60,6 +62,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   machineryCount = 0,
   emiratesMotoCount = 0,
   favoriteCount = 0,
+  lang,
+  onToggleLanguage,
 }) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -68,7 +72,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [language, setLanguage] = useState<'EN' | 'AR'>('EN');
+  const [internalLanguage, setInternalLanguage] = useState<'EN' | 'AR'>('EN');
+
+  const language = lang || internalLanguage;
+  const toggleLanguage = () => {
+    if (onToggleLanguage) {
+      onToggleLanguage();
+    } else {
+      setInternalLanguage(prev => prev === 'EN' ? 'AR' : 'EN');
+    }
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -356,6 +369,27 @@ export const Navbar: React.FC<NavbarProps> = ({
             */}
             {currentUser ? (
               <>
+                {/* Currency Badge */}
+                <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-[11px]">
+                  <span>AED</span>
+                  <span className="text-[9px] text-emerald-600 font-sans">د.إ</span>
+                </div>
+
+                {/* Vertical Divider */}
+                <div className="h-4 w-[1px] bg-[#D1D5DB] mx-2" />
+
+                {/* Language Toggle */}
+                <button
+                  onClick={toggleLanguage}
+                  className="px-2 py-1 text-xs font-semibold text-slate-700 hover:text-emerald-700 transition cursor-pointer"
+                  title="Switch Language"
+                >
+                  {language === 'EN' ? 'العربية' : 'English'}
+                </button>
+
+                {/* Vertical Divider */}
+                <div className="h-4 w-[1px] bg-[#D1D5DB] mx-2" />
+
                 {/* 6. Profile Avatar in Circle */}
                 <div className="relative flex items-center">
                   <button
@@ -418,15 +452,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                         )}
 
                         {currentUser.role === 'BUYER' && (
+                          <>
+                            <button 
+                              onClick={() => {
+                                setIsProfileMenuOpen(false);
+                                if (onNavigate) onNavigate('BUYER_DASHBOARD');
+                              }}
+                              className="py-2 px-3 bg-emerald-600 text-white rounded-md font-bold hover:bg-emerald-700 transition cursor-pointer col-span-2 text-xs flex items-center justify-center gap-1.5"
+                            >
+                              <span>Buyer Hub (Bids & Won Lots)</span>
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setIsProfileMenuOpen(false);
+                                if (onNavigate) onNavigate('FAVORITES');
+                              }}
+                              className="py-2 px-3 bg-emerald-50/80 border border-emerald-200 rounded-md text-emerald-700 font-bold hover:bg-emerald-100 transition cursor-pointer col-span-2 flex items-center justify-center gap-1.5"
+                            >
+                              <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                              <span>My Saved Favorites ({favoriteCount})</span>
+                            </button>
+                          </>
+                        )}
+
+                        {currentUser.role === 'SELLER' && (
                           <button 
                             onClick={() => {
                               setIsProfileMenuOpen(false);
-                              if (onNavigate) onNavigate('FAVORITES');
+                              if (onNavigate) onNavigate('SELLER_DASHBOARD');
                             }}
-                            className="py-2 px-3 bg-emerald-50/80 border border-emerald-200 rounded-md text-emerald-700 font-bold hover:bg-emerald-100 transition cursor-pointer col-span-2 flex items-center justify-center gap-1.5"
+                            className="py-2 px-3 bg-emerald-600 text-white rounded-md font-bold hover:bg-emerald-700 transition cursor-pointer col-span-2 text-xs flex items-center justify-center gap-1.5"
                           >
-                            <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-                            <span>My Saved Favorites ({favoriteCount})</span>
+                            <span>Seller Dashboard (Inventory & Payouts)</span>
                           </button>
                         )}
 
@@ -441,7 +498,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </button>
 
                         <button 
-                          onClick={() => setLanguage(language === 'EN' ? 'AR' : 'EN')}
+                          onClick={toggleLanguage}
                           className="py-2 px-3 border border-slate-300 rounded-md text-[#231F20] font-semibold hover:bg-slate-50 transition cursor-pointer"
                         >
                           {language === 'EN' ? 'العربية' : 'English'}
@@ -497,7 +554,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="space-y-2 text-xs text-slate-600">
                         <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 hover:bg-emerald-50/50 transition cursor-pointer">
                           <p className="font-semibold text-slate-800">Tata Signa 4825.TK Heavy Tipper</p>
-                          <p className="text-[11px] text-slate-500">Live auction active at ₹28,00,000</p>
+                          <p className="text-[11px] text-slate-500">Live auction active at AED 185,000</p>
                           <span className="text-[10px] text-slate-400">2 mins ago</span>
                         </div>
                         <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 hover:bg-emerald-50/50 transition cursor-pointer">
@@ -516,9 +573,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               </>
             ) : (
               <>
+                {/* Currency Badge */}
+                <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-[11px]">
+                  <span>AED</span>
+                  <span className="text-[9px] text-emerald-600 font-sans">د.إ</span>
+                </div>
+
+                {/* Vertical Divider */}
+                <div className="h-4 w-[1px] bg-[#D1D5DB] mx-2" />
+
                 {/* 6. Language Switch: العربية */}
                 <button
-                  onClick={() => setLanguage(language === 'EN' ? 'AR' : 'EN')}
+                  onClick={toggleLanguage}
                   className="px-2.5 py-1 text-[#231F20] font-medium hover:text-emerald-700 transition cursor-pointer font-sans"
                   title="Switch language"
                 >
