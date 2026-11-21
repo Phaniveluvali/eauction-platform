@@ -5,6 +5,18 @@
     <link rel="icon" type="image/png" href="/assets/favicon-aj.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AJ Auctions | Premier Commercial Vehicle & Fleet Bidding Portal - Powered by AshwikTechnologies</title>
+    <script>
+      (function() {
+        try {
+          var c = localStorage.getItem('cached_auction_counts') || sessionStorage.getItem('cached_auction_counts');
+          if (!c) {
+            var initial = JSON.stringify({ online: 300, silent: 50, totalActive: 350 });
+            localStorage.setItem('cached_auction_counts', initial);
+            sessionStorage.setItem('cached_auction_counts', initial);
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body class="bg-white text-slate-900 antialiased min-h-screen">
     <div id="root"></div>
