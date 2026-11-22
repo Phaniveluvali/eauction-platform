@@ -52,6 +52,13 @@ export async function initiateKeycloakLogin(options?: {
   let targetReturnView = options?.returnView;
   if (!targetReturnView) {
     if (currentPath.includes('/admin')) targetReturnView = 'ADMIN';
+    else if (currentPath.includes('/buyer-dashboard')) targetReturnView = 'BUYER_DASHBOARD';
+    else if (currentPath.includes('/my-bids')) targetReturnView = 'MY_BIDS';
+    else if (currentPath.includes('/won-auctions')) targetReturnView = 'WON_AUCTIONS';
+    else if (currentPath.includes('/delivery-collection')) targetReturnView = 'DELIVERY_COLLECTION';
+    else if (currentPath.includes('/payments')) targetReturnView = 'PAYMENTS';
+    else if (currentPath.includes('/seller-dashboard')) targetReturnView = 'SELLER_DASHBOARD';
+    else if (currentPath.includes('/seller/create-listing') || currentPath.includes('/seller-create-listing')) targetReturnView = 'SELLER_CREATE_LISTING';
     else if (currentPath.includes('/favorites')) targetReturnView = 'FAVORITES';
     else if (currentPath.includes('/security-deposit')) targetReturnView = 'SECURITY_DEPOSIT';
     else if (currentPath.includes('/online-auctions')) targetReturnView = 'ONLINE_AUCTIONS';

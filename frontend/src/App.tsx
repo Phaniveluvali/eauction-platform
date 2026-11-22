@@ -346,20 +346,18 @@ export const App: React.FC = () => {
     if (!secCheck.allowed) {
       if (secCheck.reason === 'UNAUTHENTICATED') {
         setSecurityNotice(`Authentication required to access ${ROUTE_SECURITY_RULES[view]?.description || 'this page'}. Please sign in.`);
-        const fallback = secCheck.fallbackView || 'SIGNIN';
-        setCurrentView(fallback);
-        const targetPath = getPathForView(fallback);
+        setCurrentView(view);
+        const targetPath = getPathForView(view, auctionId);
         if (window.location.pathname !== targetPath) {
-          window.history.pushState({ view: fallback }, '', targetPath);
+          window.history.pushState({ view, auctionId }, '', targetPath);
         }
         return;
       } else if (secCheck.reason === 'FORBIDDEN_ROLE') {
-        setSecurityNotice(`Access Denied: Your account role (${userToCheck?.role}) does not have permission to access the Administrator Portal.`);
-        const fallback = secCheck.fallbackView || 'HOME';
-        setCurrentView(fallback);
-        const targetPath = getPathForView(fallback);
+        setSecurityNotice(`Access Denied: Your account role (${userToCheck?.role}) does not have permission to access ${ROUTE_SECURITY_RULES[view]?.description || 'this page'}.`);
+        setCurrentView(view);
+        const targetPath = getPathForView(view, auctionId);
         if (window.location.pathname !== targetPath) {
-          window.history.pushState({ view: fallback }, '', targetPath);
+          window.history.pushState({ view, auctionId }, '', targetPath);
         }
         return;
       }
@@ -384,13 +382,8 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handlePopState = () => {
       const { view, auctionId } = getRouteFromPath();
-      const secCheck = evaluateRouteSecurity(view, currentUser);
-      if (!secCheck.allowed) {
-        const fallback = secCheck.fallbackView || 'SIGNIN';
-        setCurrentView(fallback);
-        window.history.replaceState({ view: fallback }, '', getPathForView(fallback));
-        return;
-      }
+      // Popstate navigation: maintain view and let JSX render tree security guard enforce 403 wall
+      setCurrentView(view);
 
       setCurrentView(view);
       if (auctionId && auctions.length > 0) {
@@ -563,13 +556,10 @@ export const App: React.FC = () => {
         if (!secCheck.allowed) {
           if (secCheck.reason === 'UNAUTHENTICATED') {
             setSecurityNotice(`Authentication required to access ${ROUTE_SECURITY_RULES[requested.view]?.description || 'this page'}. Please sign in.`);
-            const target = secCheck.fallbackView || 'SIGNIN';
-            setCurrentView(target);
-            window.history.replaceState({ view: target }, '', getPathForView(target));
+            setCurrentView(requested.view);
           } else if (secCheck.reason === 'FORBIDDEN_ROLE') {
-            const target = secCheck.fallbackView || 'HOME';
-            setCurrentView(target);
-            window.history.replaceState({ view: target }, '', getPathForView(target));
+            setSecurityNotice(`Access Denied: Your account role (${resolvedUser?.role}) does not have permission to access ${ROUTE_SECURITY_RULES[requested.view]?.description || 'this page'}.`);
+            setCurrentView(requested.view);
           }
         } else {
           setCurrentView(requested.view);
@@ -978,6 +968,8 @@ export const App: React.FC = () => {
             <AccessDeniedSecurityScreen
               currentUser={currentUser}
               requiredRole="ADMIN"
+              routePath="/seller-buyer/admin"
+              routeDescription="Administrator Console"
               onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ADMIN' })}
               onGoHome={() => navigateToView('HOME')}
             />
@@ -1033,10 +1025,12 @@ export const App: React.FC = () => {
           onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ONLINE_AUCTIONS' })}
         />
       ) : currentView === 'FAVORITES' ? (
-        !currentUser ? (
+        !currentUser || (currentUser.role !== 'BUYER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
           <AccessDeniedSecurityScreen
             currentUser={currentUser}
             requiredRole="BUYER"
+            routePath="/seller-buyer/favorites"
+            routeDescription="Buyer Watchlist"
             onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'FAVORITES' })}
             onGoHome={() => navigateToView('HOME')}
           />
@@ -1054,11 +1048,13 @@ export const App: React.FC = () => {
           />
         )
       ) : currentView === 'SECURITY_DEPOSIT' ? (
-        !currentUser ? (
+        !currentUser || (currentUser.role !== 'BUYER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
           <AccessDeniedSecurityScreen
             currentUser={currentUser}
             requiredRole="BUYER"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'FAVORITES' })}
+            routePath="/seller-buyer/security-deposit"
+            routeDescription="Security Deposit Management"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'SECURITY_DEPOSIT' })}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1141,7 +1137,17 @@ export const App: React.FC = () => {
           onNavigate={(view) => navigateToView(view)}
         />
       ) : currentView === 'BUYER_DASHBOARD' ? (
-        <div className="flex-1 flex flex-col">
+        !currentUser || (currentUser.role !== 'BUYER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="BUYER"
+            routePath="/seller-buyer/buyer-dashboard"
+            routeDescription="Buyer Control Center"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'BUYER_DASHBOARD' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col">
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
@@ -1198,8 +1204,19 @@ export const App: React.FC = () => {
             watchlistCount={watchlistCount}
           />
         </div>
+        )
       ) : currentView === 'MY_BIDS' ? (
-        <div className="flex-1 flex flex-col">
+        !currentUser || (currentUser.role !== 'BUYER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="BUYER"
+            routePath="/seller-buyer/my-bids"
+            routeDescription="Active Bids Ledger"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'MY_BIDS' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col">
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
@@ -1250,8 +1267,19 @@ export const App: React.FC = () => {
             watchlistCount={watchlistCount}
           />
         </div>
+        )
       ) : currentView === 'WON_AUCTIONS' ? (
-        <div className="flex-1 flex flex-col">
+        !currentUser || (currentUser.role !== 'BUYER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="BUYER"
+            routePath="/seller-buyer/won-auctions"
+            routeDescription="Won Lots & Settlements"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'WON_AUCTIONS' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col">
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
@@ -1299,8 +1327,19 @@ export const App: React.FC = () => {
             watchlistCount={watchlistCount}
           />
         </div>
+        )
       ) : currentView === 'DELIVERY_COLLECTION' ? (
-        <div className="flex-1 flex flex-col">
+        !currentUser || (currentUser.role !== 'BUYER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="BUYER"
+            routePath="/seller-buyer/delivery-collection"
+            routeDescription="Yard Delivery & Gate Pass"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'DELIVERY_COLLECTION' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col">
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
@@ -1344,8 +1383,19 @@ export const App: React.FC = () => {
             watchlistCount={watchlistCount}
           />
         </div>
+        )
       ) : currentView === 'PAYMENTS' ? (
-        <div className="flex-1 flex flex-col">
+        !currentUser || (currentUser.role !== 'BUYER' && currentUser.role !== 'SELLER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="BUYER"
+            routePath="/seller-buyer/payments"
+            routeDescription="UAE Tax Invoices & Payments"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'PAYMENTS' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col">
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
@@ -1394,8 +1444,19 @@ export const App: React.FC = () => {
             watchlistCount={watchlistCount}
           />
         </div>
+        )
       ) : currentView === 'SELLER_DASHBOARD' ? (
-        <div className="flex-1 flex flex-col">
+        !currentUser || (currentUser.role !== 'SELLER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="SELLER"
+            routePath="/seller-buyer/seller-dashboard"
+            routeDescription="Seller Inventory & Sales Hub"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'SELLER_DASHBOARD' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col">
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
@@ -1431,8 +1492,19 @@ export const App: React.FC = () => {
             </main>
           </div>
         </div>
+        )
       ) : currentView === 'SELLER_CREATE_LISTING' ? (
-        <div className="flex-1 flex flex-col">
+        !currentUser || (currentUser.role !== 'SELLER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
+          <AccessDeniedSecurityScreen
+            currentUser={currentUser}
+            requiredRole="SELLER"
+            routePath="/seller-buyer/seller/create-listing"
+            routeDescription="List New Vehicle"
+            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'SELLER_CREATE_LISTING' })}
+            onGoHome={() => navigateToView('HOME')}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col">
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
@@ -1468,6 +1540,7 @@ export const App: React.FC = () => {
             </main>
           </div>
         </div>
+        )
       ) : (
         /* HOME View: Sticky 96px AJ Auctions Navbar + Full HomePage */
         <div className="flex-1 flex flex-col">

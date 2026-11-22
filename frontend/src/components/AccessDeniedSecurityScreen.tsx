@@ -1,17 +1,21 @@
 import React from 'react';
-import { ShieldAlert, Lock, ArrowLeft, LogIn, ExternalLink, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, Lock, ArrowLeft, LogIn, ShieldCheck } from 'lucide-react';
 import { User } from '../types';
 
 interface AccessDeniedSecurityScreenProps {
   currentUser: User | null;
   requiredRole?: string;
+  routePath?: string;
+  routeDescription?: string;
   onLogin: () => void;
   onGoHome: () => void;
 }
 
 export const AccessDeniedSecurityScreen: React.FC<AccessDeniedSecurityScreenProps> = ({
   currentUser,
-  requiredRole = 'ADMIN',
+  requiredRole = 'BUYER',
+  routePath = '/seller-buyer/buyer-dashboard',
+  routeDescription = 'Buyer Portal',
   onLogin,
   onGoHome,
 }) => {
@@ -21,10 +25,10 @@ export const AccessDeniedSecurityScreen: React.FC<AccessDeniedSecurityScreenProp
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-center items-center p-4 selection:bg-[#059669] selection:text-white">
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 text-center shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Ambient Top Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-[#059669] shadow-[0_0_40px_10px_rgba(211,36,55,0.6)]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-[#059669] shadow-[0_0_40px_10px_rgba(5,150,105,0.6)]" />
 
         {/* Security Shield Icon */}
-        <div className="w-20 h-20 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-5 text-[#059669] shadow-lg">
+        <div className="w-20 h-20 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-5 text-[#059669] shadow-lg">
           <ShieldAlert className="w-10 h-10" />
         </div>
 
@@ -43,11 +47,11 @@ export const AccessDeniedSecurityScreen: React.FC<AccessDeniedSecurityScreenProp
         <p className="text-xs sm:text-sm text-slate-400 mb-6 leading-relaxed">
           {isUnauthenticated ? (
             <>
-              The requested route <code className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-red-300">/seller-buyer/admin</code> is strictly protected. You must validate your credentials before access can be granted.
+              The requested route <code className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-emerald-400">{routePath}</code> ({routeDescription}) is strictly protected. You must sign in with a verified <strong className="text-slate-200">{requiredRole}</strong> account before access can be granted.
             </>
           ) : (
             <>
-              Your account is signed in as <strong className="text-slate-200">{currentUser.fullName}</strong> (<span className="font-mono text-slate-300">{currentUser.email}</span>) with role <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold font-mono">{currentUser.role}</span>. Administrative privileges (<span className="font-mono text-red-300">{requiredRole}</span>) are required.
+              Your account is signed in as <strong className="text-slate-200">{currentUser.fullName}</strong> (<span className="font-mono text-slate-300">{currentUser.email}</span>) with role <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold font-mono">{currentUser.role}</span>. Verified privileges (<span className="font-mono text-emerald-400">{requiredRole}</span>) are required to access {routeDescription}.
             </>
           )}
         </p>
@@ -57,6 +61,10 @@ export const AccessDeniedSecurityScreen: React.FC<AccessDeniedSecurityScreenProp
           <div className="flex justify-between items-center text-[11px]">
             <span className="text-slate-500">Security Rule:</span>
             <span className="font-mono text-slate-300 font-bold">RBAC_STRICT_TOKEN_VERIFY</span>
+          </div>
+          <div className="flex justify-between items-center text-[11px]">
+            <span className="text-slate-500">Target Resource:</span>
+            <span className="font-mono text-slate-300">{routePath}</span>
           </div>
           <div className="flex justify-between items-center text-[11px]">
             <span className="text-slate-500">Cryptographic Check:</span>
@@ -75,10 +83,10 @@ export const AccessDeniedSecurityScreen: React.FC<AccessDeniedSecurityScreenProp
         <div className="space-y-3">
           <button
             onClick={onLogin}
-            className="w-full py-3 px-4 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-xl transition cursor-pointer shadow-lg shadow-red-950/50 flex items-center justify-center gap-2 text-sm"
+            className="w-full py-3 px-4 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-xl transition cursor-pointer shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 text-sm"
           >
             <LogIn className="w-4 h-4" />
-            <span>{isUnauthenticated ? 'Sign In to Authenticate' : 'Sign In as Administrator'}</span>
+            <span>{isUnauthenticated ? `Sign In to Authenticate (${requiredRole})` : `Switch to ${requiredRole} Account`}</span>
           </button>
 
           <button
