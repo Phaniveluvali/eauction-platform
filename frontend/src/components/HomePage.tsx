@@ -93,11 +93,11 @@ export const HomePage: React.FC<HomePageProps> = ({
       <section className="relative w-full bg-[#020B18] overflow-hidden select-none border-b border-slate-900">
         <div className="relative w-full overflow-hidden flex items-center justify-center">
           <img
-            src={getAssetUrl('/assets/banner-aj.webp')}
+            src={getAssetUrl('/assets/hero-banner-v3-enterprise.webp?v=3.2')}
             alt="AJ Auctions Official Digital Auction Portal"
             className="w-full h-auto object-cover block"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = getAssetUrl('/assets/banner-aj.png');
+              (e.target as HTMLImageElement).src = getAssetUrl('/assets/hero-banner-v3-enterprise.png?v=3.2');
             }}
           />
 

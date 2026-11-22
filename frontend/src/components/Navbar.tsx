@@ -99,18 +99,18 @@ export const Navbar: React.FC<NavbarProps> = ({
       <header className="sticky top-0 z-40 w-full bg-[#0B132B] border-b border-slate-800/80 shadow-md backdrop-blur-md bg-[#0B132B]/95 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 sm:h-22 flex items-center justify-between">
           
-          {/* AJ Auctions Brand Logo with Registered Mark & AshwikTechnologies Tagline */}
+          {/* AJ Auctions Brand Logo - EXACT CLONE OF IMAGE 3 */}
           <div className="flex items-center space-x-4">
             <button 
               onClick={onHomeClick}
               className="flex items-center text-left focus:outline-none transition hover:opacity-95 cursor-pointer"
             >
               <img 
-                src={getAssetUrl('/assets/logo-aj-white.png')} 
+                src={getAssetUrl('/assets/nav-logo-exact-v3.png?v=3.2')} 
                 alt="AJ Auctions" 
-                className="h-12 sm:h-14 w-auto object-contain" 
+                className="h-10 sm:h-12 w-auto object-contain" 
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = getAssetUrl('/assets/logo-aj.png');
+                  (e.target as HTMLImageElement).src = getAssetUrl('/assets/logo-aj-transparent.png');
                 }}
               />
             </button>
@@ -238,16 +238,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right-Side Controls: Currency, Language & Login/Profile */}
           <div className="flex items-center space-x-3 sm:space-x-4">
             
-            {/* UAE Currency Pill */}
-            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-emerald-400 font-bold text-xs">
+            {/* UAE Currency Pill & Bilingual Switcher hidden on desktop to match Image 3 */}
+            <div className="hidden items-center gap-1 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-emerald-400 font-bold text-xs">
               <span>AED</span>
               <span className="text-[10px] text-emerald-500 font-sans">د.إ</span>
             </div>
 
-            {/* Bilingual Switcher */}
             <button
               onClick={toggleLanguage}
-              className="px-2.5 py-1 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/60 rounded-lg border border-slate-700/60 transition cursor-pointer"
+              className="hidden px-2.5 py-1 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/60 rounded-lg border border-slate-700/60 transition cursor-pointer"
               title="Switch language"
             >
               {lang === 'EN' ? 'العربية' : 'EN'}
@@ -341,10 +340,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
             ) : (
-              /* When Logged Out: EXACT LIME GREEN 'LOGIN' BUTTON (SCREENSHOT 1) */
+              /* Exact Rounded Border Login Button matching Image 3 */
               <button
                 onClick={() => initiateKeycloakLogin({ action: 'login' })}
-                className="bg-[#7ED321] hover:bg-[#6ec01b] text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition cursor-pointer shadow-lg active:scale-95"
+                className="bg-transparent border border-slate-500 hover:border-white text-white font-medium px-5 py-1.5 rounded-full text-sm transition cursor-pointer"
                 title="Log in to AJ Auctions"
               >
                 {lang === 'AR' ? 'تسجيل الدخول' : 'Login'}
