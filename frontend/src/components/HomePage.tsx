@@ -2,16 +2,11 @@ import React, { useMemo } from 'react';
 import { User, Vehicle, Auction } from '../types';
 import { PortalView } from './PortalSidebar';
 import { getAssetUrl } from '../utils/assets';
-import { 
-  Car, 
-  Gavel, 
-  ShieldCheck, 
-  Zap, 
-  CheckCircle2, 
-  Headphones, 
-  ArrowRight 
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Language, useTranslation } from './i18n';
+import { TrustBadgesStrip } from './TrustBadgesStrip';
+import { FeaturedAuctionsCarousel } from './FeaturedAuctionsCarousel';
+import { StatsCounterStrip } from './StatsCounterStrip';
 
 interface HomePageProps {
   vehicles: Vehicle[];
@@ -40,6 +35,11 @@ export const HomePage: React.FC<HomePageProps> = ({
   onlineAuctionsCount,
   silentAuctionsCount,
   onNavigate,
+  onSelectAuction,
+  onViewDetails,
+  onOpenBidModal,
+  favoriteIds = [],
+  onToggleFavorite,
   lang = 'EN',
 }) => {
   const { t } = useTranslation(lang);
@@ -86,114 +86,54 @@ export const HomePage: React.FC<HomePageProps> = ({
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 flex flex-col">
       {/* ============================================================ */}
-      {/* 1. HERO BANNER + FLOATING CATEGORIES CARD (SCREENSHOT 1)    */}
+      {/* 1. HERO BANNER WITH NATIVE GLOWING NEON BOXES (IMAGE 1)      */}
+      {/*    Zero overlapping cards! Clean transparent interactive     */}
+      {/*    hotspots over native art buttons & glowing neon boxes.   */}
       {/* ============================================================ */}
       <section className="relative w-full bg-[#020B18] overflow-hidden select-none border-b border-slate-900">
-        {/* Rich 2K Background Artwork (Official Digital Auction Portal, Fleet & Excavator) */}
-        <div className="relative w-full overflow-hidden flex items-center justify-center min-h-[380px] sm:min-h-[460px] lg:min-h-[520px]">
+        <div className="relative w-full overflow-hidden flex items-center justify-center">
           <img
             src={getAssetUrl('/assets/banner-aj.webp')}
-            alt="AJ Auctions Premier Portal"
-            className="w-full h-auto object-cover min-h-[380px] sm:min-h-[460px] lg:min-h-[520px] block"
+            alt="AJ Auctions Official Digital Auction Portal"
+            className="w-full h-auto object-cover block"
             onError={(e) => {
               (e.target as HTMLImageElement).src = getAssetUrl('/assets/banner-aj.png');
             }}
           />
 
-          {/* Overlay: Desktop Transparent Click Targets on Left + Floating Card on Right */}
-          <div className="absolute inset-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between pointer-events-none">
-            
-            {/* Left Desktop Interactive Hotspots over 'Explore Auctions' and 'Sell Your Vehicle' */}
-            <div className="hidden lg:flex flex-col justify-end h-full pb-14 pointer-events-auto">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => onNavigate('ONLINE_AUCTIONS')}
-                  className="w-[185px] h-[48px] rounded-full opacity-0 hover:opacity-10 bg-white transition cursor-pointer"
-                  title={lang === 'AR' ? 'استكشف المزادات' : 'Explore Auctions'}
-                />
-                <button
-                  onClick={() => onNavigate('SELLER_CREATE_LISTING')}
-                  className="w-[165px] h-[48px] rounded-full opacity-0 hover:opacity-10 bg-white transition cursor-pointer"
-                  title={lang === 'AR' ? 'اعرض مركبتك للبيع' : 'Sell Your Vehicle'}
-                />
-              </div>
-            </div>
+          {/* Transparent interactive desktop & tablet hotspots */}
+          {/* 1. Explore Auctions Button */}
+          <button
+            onClick={() => onNavigate('ONLINE_AUCTIONS')}
+            className="absolute left-[3.2%] bottom-[11%] w-[15.5%] h-[20%] rounded-full opacity-0 hover:opacity-20 hover:bg-white transition cursor-pointer"
+            title={lang === 'AR' ? 'استكشف المزادات' : 'Explore Auctions'}
+          />
 
-            {/* Right: Floating 'Auction Categories' Card (Exact Match to Screenshot 1) */}
-            <div className="pointer-events-auto my-auto ml-auto hidden sm:block">
-              <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-[340px] sm:w-[380px] lg:w-[410px] border border-slate-100">
-                <h4 className="text-lg sm:text-xl font-bold text-slate-900 mb-4 tracking-tight">
-                  {lang === 'AR' ? 'فئات المزاد' : 'Auction Categories'}
-                </h4>
+          {/* 2. Sell Your Vehicle Button */}
+          <button
+            onClick={() => onNavigate('SELLER_CREATE_LISTING')}
+            className="absolute left-[19.2%] bottom-[11%] w-[14%] h-[20%] rounded-full opacity-0 hover:opacity-20 hover:bg-white transition cursor-pointer"
+            title={lang === 'AR' ? 'اعرض مركبتك للبيع' : 'Sell Your Vehicle'}
+          />
 
-                {/* 2 Category Boxes */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  {/* Active Auctions */}
-                  <button
-                    onClick={() => onNavigate('ONLINE_AUCTIONS')}
-                    className="border border-slate-200/90 rounded-xl p-3 sm:p-4 text-center hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer bg-slate-50/50 hover:bg-white group"
-                    title={lang === 'AR' ? 'عرض المزادات النشطة' : 'View Active Auctions'}
-                  >
-                    <Car className="w-8 h-8 text-slate-700 mx-auto mb-1.5 group-hover:text-emerald-600 transition" />
-                    <div className="text-xs text-slate-600 font-medium">
-                      {lang === 'AR' ? 'المزادات النشطة' : 'Active Auctions'}
-                    </div>
-                    <div className="text-2xl font-bold text-green-600 mt-1">
-                      {stats.onlineActive}
-                    </div>
-                  </button>
+          {/* 3. Active Auctions Glowing Neon Box */}
+          <button
+            onClick={() => onNavigate('ONLINE_AUCTIONS')}
+            className="absolute right-[16.5%] top-[13%] w-[13.8%] h-[74%] rounded-2xl opacity-0 hover:opacity-25 hover:bg-emerald-400/20 hover:ring-2 hover:ring-emerald-400 transition cursor-pointer"
+            title={lang === 'AR' ? 'عرض المزادات النشطة' : 'View Active Auctions'}
+          />
 
-                  {/* Silent Auctions */}
-                  <button
-                    onClick={() => onNavigate('SILENT_AUCTIONS')}
-                    className="border border-slate-200/90 rounded-xl p-3 sm:p-4 text-center hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer bg-slate-50/50 hover:bg-white group"
-                    title={lang === 'AR' ? 'عرض المزادات الصامتة' : 'View Silent Auctions'}
-                  >
-                    <Gavel className="w-8 h-8 text-slate-700 mx-auto mb-1.5 group-hover:text-emerald-600 transition" />
-                    <div className="text-xs text-slate-600 font-medium">
-                      {lang === 'AR' ? 'المزادات الصامتة' : 'Silent Auctions'}
-                    </div>
-                    <div className="text-2xl font-bold text-green-600 mt-1">
-                      {stats.silentActive}
-                    </div>
-                  </button>
-                </div>
-
-                {/* 4 Micro Trust Assurances */}
-                <div className="grid grid-cols-4 gap-1.5 pt-3 border-t border-slate-100 text-center">
-                  <div className="flex flex-col items-center">
-                    <ShieldCheck className="w-5 h-5 text-emerald-600 mb-1" />
-                    <span className="text-[10px] text-slate-700 font-semibold leading-tight">
-                      {lang === 'AR' ? 'إعلانات موثقة' : 'Verified Listings'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <Zap className="w-5 h-5 text-emerald-600 mb-1" />
-                    <span className="text-[10px] text-slate-700 font-semibold leading-tight">
-                      {lang === 'AR' ? 'مزايدة آمنة' : 'Secure Bidding'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 mb-1" />
-                    <span className="text-[10px] text-slate-700 font-semibold leading-tight">
-                      {lang === 'AR' ? 'شفافية كاملة' : 'Transparent Process'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <Headphones className="w-5 h-5 text-emerald-600 mb-1" />
-                    <span className="text-[10px] text-slate-700 font-semibold leading-tight">
-                      {lang === 'AR' ? 'دعم متواصل' : 'Dedicated Support'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* 4. Silent Auctions Glowing Neon Box */}
+          <button
+            onClick={() => onNavigate('SILENT_AUCTIONS')}
+            className="absolute right-[1.8%] top-[13%] w-[13.8%] h-[74%] rounded-2xl opacity-0 hover:opacity-25 hover:bg-emerald-400/20 hover:ring-2 hover:ring-emerald-400 transition cursor-pointer"
+            title={lang === 'AR' ? 'عرض المزادات الصامتة' : 'View Silent Auctions'}
+          />
         </div>
 
-        {/* Mobile/Small Tablet Fallback Card & Action Buttons */}
+        {/* Mobile Quick Action Buttons (shown only on phones to prevent tiny tap targets) */}
         <div className="sm:hidden bg-[#030C1B] p-4 border-t border-slate-800">
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2">
             <button
               onClick={() => onNavigate('ONLINE_AUCTIONS')}
               className="flex-1 bg-[#7ED321] text-slate-950 font-bold py-2.5 rounded-full text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
@@ -208,47 +148,38 @@ export const HomePage: React.FC<HomePageProps> = ({
               {lang === 'AR' ? 'اعرض مركبتك' : 'Sell Your Vehicle'}
             </button>
           </div>
-
-          <div className="bg-white rounded-xl p-4 shadow-xl">
-            <h4 className="text-base font-bold text-slate-900 mb-3">
-              {lang === 'AR' ? 'فئات المزاد' : 'Auction Categories'}
-            </h4>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <button
-                onClick={() => onNavigate('ONLINE_AUCTIONS')}
-                className="border border-slate-200 rounded-lg p-3 text-center bg-slate-50"
-              >
-                <Car className="w-6 h-6 text-slate-700 mx-auto mb-1" />
-                <div className="text-[11px] text-slate-600">
-                  {lang === 'AR' ? 'نشطة' : 'Active'}
-                </div>
-                <div className="text-lg font-bold text-green-600">{stats.onlineActive}</div>
-              </button>
-              <button
-                onClick={() => onNavigate('SILENT_AUCTIONS')}
-                className="border border-slate-200 rounded-lg p-3 text-center bg-slate-50"
-              >
-                <Gavel className="w-6 h-6 text-slate-700 mx-auto mb-1" />
-                <div className="text-[11px] text-slate-600">
-                  {lang === 'AR' ? 'صامتة' : 'Silent'}
-                </div>
-                <div className="text-lg font-bold text-green-600">{stats.silentActive}</div>
-              </button>
-            </div>
-            <div className="grid grid-cols-4 gap-1 text-center pt-2 border-t border-slate-100 text-[9px] text-slate-600 font-medium">
-              <div>Verified</div>
-              <div>Secure</div>
-              <div>Transparent</div>
-              <div>Support</div>
-            </div>
-          </div>
         </div>
       </section>
 
       {/* ============================================================ */}
-      {/* 2. TESTIMONIALS SECTION (EXACT CLONE OF SCREENSHOT 2)       */}
+      {/* 2. FLOATING TRUST BADGES STRIP (EXACT CLONE OF IMAGE 1)      */}
       {/* ============================================================ */}
-      <section className="bg-white py-14 sm:py-16 border-b border-slate-100">
+      <TrustBadgesStrip lang={lang} />
+
+      {/* ============================================================ */}
+      {/* 3. FEATURED AUCTIONS CAROUSEL (EXACT CLONE OF IMAGE 1)       */}
+      {/* ============================================================ */}
+      <FeaturedAuctionsCarousel
+        auctions={auctions}
+        vehicles={vehicles}
+        favoriteIds={favoriteIds}
+        onToggleFavorite={onToggleFavorite}
+        onSelectAuction={onSelectAuction}
+        onViewDetails={onViewDetails}
+        onOpenBidModal={onOpenBidModal}
+        onViewAll={() => onNavigate('ONLINE_AUCTIONS')}
+        lang={lang}
+      />
+
+      {/* ============================================================ */}
+      {/* 4. SCALE STATS COUNTER STRIP (EXACT CLONE OF IMAGE 1)        */}
+      {/* ============================================================ */}
+      <StatsCounterStrip lang={lang} />
+
+      {/* ============================================================ */}
+      {/* 5. TESTIMONIALS SECTION (EXACT CLONE OF IMAGE 2)             */}
+      {/* ============================================================ */}
+      <section id="testimonials-section" className="bg-white py-14 sm:py-16 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
@@ -325,7 +256,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* ============================================================ */}
-      {/* 3. DARK NAVY ENTERPRISE FOOTER (EXACT CLONE OF SCREENSHOT 2) */}
+      {/* 6. DARK NAVY ENTERPRISE FOOTER (EXACT CLONE OF IMAGE 2)      */}
       {/* ============================================================ */}
       <footer className="bg-[#121B2A] text-slate-300 pt-12 pb-8 border-t border-slate-800 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

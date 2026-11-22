@@ -38,28 +38,28 @@ export const TrustBadgesStrip: React.FC<TrustBadgesStripProps> = ({ isArabic: is
   ];
 
   return (
-    <section className="bg-slate-900 border-y border-slate-800/80 py-5">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="relative -mt-6 sm:-mt-8 z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-4 sm:p-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 divide-y sm:divide-y-0 lg:divide-x lg:divide-slate-100">
           {badges.map((b, idx) => {
             const Icon = b.icon;
             return (
               <div
                 key={idx}
-                className="flex items-center space-x-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-emerald-500/40 transition group"
+                className="flex items-center space-x-3 p-2 group hover:opacity-90 transition"
               >
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-                  <Icon className="w-5 h-5 text-emerald-400" />
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                  <Icon className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div className="min-w-0">
-                  <h4 className="text-white text-xs sm:text-sm font-semibold truncate">{b.title}</h4>
-                  <p className="text-slate-400 text-[11px] truncate">{b.desc}</p>
+                  <h4 className="text-slate-900 text-xs sm:text-sm font-bold truncate">{b.title}</h4>
+                  <p className="text-slate-500 text-[11px] truncate">{b.desc}</p>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
-    </section>
+    </div>
   );
 };

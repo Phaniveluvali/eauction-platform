@@ -38,7 +38,7 @@ export const StatsCounterStrip: React.FC<StatsCounterStripProps> = ({ isArabic: 
   ];
 
   return (
-    <section className="bg-gradient-to-r from-[#031525] via-[#052b21] to-[#031525] border-y border-emerald-900/40 py-8">
+    <section className="bg-[#0B132B] border-y border-slate-800/80 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 text-center">
           {stats.map((s, idx) => {

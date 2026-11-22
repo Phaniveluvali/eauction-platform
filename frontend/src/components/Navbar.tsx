@@ -192,7 +192,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               {lang === 'AR' ? 'كيف يعمل' : 'How it Works'}
             </button>
 
-            {/* 5. Support */}
+            {/* 5. About Us (Matching Image 1) */}
+            <button
+              onClick={() => {
+                const testim = document.getElementById('testimonials-section');
+                if (testim) {
+                  testim.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-slate-200 hover:text-white transition cursor-pointer pb-1"
+            >
+              {lang === 'AR' ? 'معلومات عنا' : 'About Us'}
+            </button>
+
+            {/* 6. Support */}
             <button
               onClick={() => {
                 const footer = document.querySelector('footer');
@@ -395,6 +408,30 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="block w-full text-left py-2 text-slate-300 hover:text-white"
             >
               How it Works
+            </button>
+            <button
+              onClick={() => {
+                const testim = document.getElementById('testimonials-section');
+                if (testim) {
+                  testim.scrollIntoView({ behavior: 'smooth' });
+                }
+                setIsMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 text-slate-300 hover:text-white"
+            >
+              About Us
+            </button>
+            <button
+              onClick={() => {
+                const footer = document.querySelector('footer');
+                if (footer) {
+                  footer.scrollIntoView({ behavior: 'smooth' });
+                }
+                setIsMobileMenuOpen(false);
+              }}
+              className="block w-full text-left py-2 text-slate-300 hover:text-white"
+            >
+              Support
             </button>
           </div>
         )}

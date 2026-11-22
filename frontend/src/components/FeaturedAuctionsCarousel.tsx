@@ -37,10 +37,91 @@ export const FeaturedAuctionsCarousel: React.FC<FeaturedAuctionsCarouselProps> =
     return () => clearInterval(timer);
   }, []);
 
-  // Filter top active & upcoming auctions
-  const displayAuctions = auctions
+  // Filter top active & upcoming auctions, or fallback to top vehicles matching Image 1
+  const activeAuctions = auctions
     .filter((a) => a.status === 'ACTIVE' || a.status === 'PENDING')
     .slice(0, 12);
+
+  const fallbackAuctions: Auction[] = [
+    {
+      id: 'feat-1',
+      vehicleId: 'v-feat-1',
+      auctionType: 'ONLINE',
+      status: 'ACTIVE',
+      startPrice: 65000,
+      currentHighestBid: 78500,
+      endTime: new Date(Date.now() + 86400000 * 2).toISOString(),
+      vehicle: {
+        id: 'v-feat-1',
+        make: 'Toyota',
+        model: 'Fortuner 4.0L EXR 4x4',
+        manufacturingYear: 2023,
+        odometerReadingKm: 34000,
+        fuelType: 'PETROL',
+        registrationNumber: 'DXB-L-54219',
+        mediaPaths: ['https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80'],
+      } as any,
+    } as any,
+    {
+      id: 'feat-2',
+      vehicleId: 'v-feat-2',
+      auctionType: 'ONLINE',
+      status: 'ACTIVE',
+      startPrice: 38000,
+      currentHighestBid: 42500,
+      endTime: new Date(Date.now() + 86400000 * 1.5).toISOString(),
+      vehicle: {
+        id: 'v-feat-2',
+        make: 'Hyundai',
+        model: 'Creta 1.5L Smart Plus',
+        manufacturingYear: 2024,
+        odometerReadingKm: 18000,
+        fuelType: 'PETROL',
+        registrationNumber: 'AUH-14-8832',
+        mediaPaths: ['https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80'],
+      } as any,
+    } as any,
+    {
+      id: 'feat-3',
+      vehicleId: 'v-feat-3',
+      auctionType: 'ONLINE',
+      status: 'ACTIVE',
+      startPrice: 85000,
+      currentHighestBid: 96000,
+      endTime: new Date(Date.now() + 86400000 * 3).toISOString(),
+      vehicle: {
+        id: 'v-feat-3',
+        make: 'Tata',
+        model: 'Prima 2528.K Heavy Tipper 6x4',
+        manufacturingYear: 2023,
+        odometerReadingKm: 62000,
+        fuelType: 'DIESEL',
+        registrationNumber: 'SHJ-COMM-9012',
+        mediaPaths: ['https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=800&q=80'],
+      } as any,
+    } as any,
+    {
+      id: 'feat-4',
+      vehicleId: 'v-feat-4',
+      auctionType: 'ONLINE',
+      status: 'ACTIVE',
+      startPrice: 110000,
+      currentHighestBid: 125000,
+      endTime: new Date(Date.now() + 86400000 * 4).toISOString(),
+      vehicle: {
+        id: 'v-feat-4',
+        make: 'JCB',
+        model: '3DX EcoXcellence Backhoe Loader',
+        manufacturingYear: 2022,
+        odometerReadingKm: 4200,
+        fuelType: 'DIESEL',
+        registrationNumber: 'AJM-HE-3310',
+        mediaPaths: ['https://images.unsplash.com/photo-1578885136359-16c8bd4d3a8e?auto=format&fit=crop&w=800&q=80'],
+      } as any,
+    } as any,
+  ];
+
+  const displayAuctions = activeAuctions.length > 0 ? activeAuctions : fallbackAuctions;
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -64,44 +145,37 @@ export const FeaturedAuctionsCarousel: React.FC<FeaturedAuctionsCarouselProps> =
   };
 
   return (
-    <section className="py-10 bg-slate-50 border-b border-slate-200">
+    <section className="py-12 bg-white border-b border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Header Title with View All & Arrows */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Header Title with View All & Arrows (Matching Image 1) */}
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="w-2.5 h-6 bg-emerald-500 rounded-full" />
-              <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                {isArabic ? 'المزادات المميزة المباشرة' : 'Featured Auctions'}
-              </h3>
-            </div>
-            <p className="text-slate-500 text-xs sm:text-sm mt-1">
-              {isArabic 
-                ? 'مركبات أساطيل معتمدة ومفحوصة بالكامل جاهزة للمزايدة الفورية في الإمارات'
-                : 'Verified UAE Fleet & Commercial Vehicles Available for Immediate Bidding'}
-            </p>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {isArabic ? 'المزادات المميزة' : 'Featured Auctions'}
+            </h3>
+            <div className="w-12 h-1 bg-[#7ED321] rounded-full mt-2" />
           </div>
 
           <div className="flex items-center space-x-3">
             {onViewAll && (
               <button
                 onClick={onViewAll}
-                className="text-emerald-700 font-bold text-sm hover:text-emerald-800 transition flex items-center gap-1 mr-2"
+                className="text-emerald-700 font-bold text-sm hover:text-emerald-800 transition flex items-center gap-1 mr-2 cursor-pointer"
               >
                 {isArabic ? 'عرض كل المزادات ←' : 'View All Auctions →'}
               </button>
             )}
             <button
               onClick={() => scroll('left')}
-              className="w-9 h-9 rounded-full bg-white border border-slate-300 shadow-sm flex items-center justify-center hover:bg-slate-100 transition"
+              className="w-9 h-9 rounded-full bg-white border border-slate-300 shadow-sm flex items-center justify-center hover:bg-slate-100 transition cursor-pointer"
               title="Previous"
             >
               <ChevronLeft className="w-5 h-5 text-slate-700" />
             </button>
             <button
               onClick={() => scroll('right')}
-              className="w-9 h-9 rounded-full bg-white border border-slate-300 shadow-sm flex items-center justify-center hover:bg-slate-100 transition"
+              className="w-9 h-9 rounded-full bg-white border border-slate-300 shadow-sm flex items-center justify-center hover:bg-slate-100 transition cursor-pointer"
               title="Next"
             >
               <ChevronRight className="w-5 h-5 text-slate-700" />
@@ -121,9 +195,9 @@ export const FeaturedAuctionsCarousel: React.FC<FeaturedAuctionsCarouselProps> =
               vehicles.find((v) => v.id === auction.vehicleId);
 
             const vehicleMake = vehicle?.make || 'Toyota';
-            const vehicleModel = vehicle?.model || 'Land Cruiser VXR';
+            const vehicleModel = vehicle?.model || 'Fortuner EXR 4x4';
             const vehicleYear = vehicle?.manufacturingYear || (vehicle as any)?.year || 2023;
-            const vehicleMileage = vehicle?.odometerReadingKm || (vehicle as any)?.mileage || 42000;
+            const vehicleMileage = vehicle?.odometerReadingKm || (vehicle as any)?.mileage || 34000;
             const vehicleFuel = vehicle?.fuelType || 'PETROL';
             const vehiclePlate = vehicle?.registrationNumber || (vehicle?.lotNo ? `LOT #AJ-${vehicle.lotNo}` : `LOT #AJ-${auction.id.substring(0, 6).toUpperCase()}`);
             const vehicleId = vehicle?.id || auction.vehicleId;
@@ -136,13 +210,13 @@ export const FeaturedAuctionsCarousel: React.FC<FeaturedAuctionsCarouselProps> =
             const isFav = favoriteIds.includes(vehicleId);
             const isLive = auction.status === 'ACTIVE';
             const priceLabel = auction.currentHighestBid ? 'Current Bid' : 'Starting Bid';
-            const displayPrice = auction.currentHighestBid || auction.startPrice || 25000;
+            const displayPrice = auction.currentHighestBid || auction.startPrice || 45000;
 
             return (
               <div
                 key={auction.id}
                 onClick={() => onViewDetails && vehicle ? onViewDetails(auction, vehicle) : onSelectAuction(auction)}
-                className="w-[280px] sm:w-[320px] bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-emerald-500/40 transition-all duration-300 shrink-0 overflow-hidden cursor-pointer snap-start flex flex-col group"
+                className="w-[280px] sm:w-[310px] bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-emerald-500/40 transition-all duration-300 shrink-0 overflow-hidden cursor-pointer snap-start flex flex-col group"
               >
                 {/* Photo & Badges */}
                 <div className="relative h-44 sm:h-48 bg-slate-900 overflow-hidden">
@@ -180,7 +254,7 @@ export const FeaturedAuctionsCarousel: React.FC<FeaturedAuctionsCarouselProps> =
                         e.stopPropagation();
                         onToggleFavorite(vehicleId);
                       }}
-                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-900/60 hover:bg-slate-900 text-white flex items-center justify-center backdrop-blur-sm transition"
+                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-900/60 hover:bg-slate-900 text-white flex items-center justify-center backdrop-blur-sm transition cursor-pointer"
                       title="Save to Watchlist"
                     >
                       <Heart
@@ -238,7 +312,7 @@ export const FeaturedAuctionsCarousel: React.FC<FeaturedAuctionsCarouselProps> =
                   {/* Action Button */}
                   <button
                     onClick={() => onSelectAuction(auction)}
-                    className="w-full mt-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5"
+                    className="w-full mt-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     {isLive ? 'Place Bid' : 'View Details'}
                   </button>
