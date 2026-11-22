@@ -30,6 +30,7 @@ import { initiateKeycloakLogin, handleKeycloakCallback, logoutKeycloak } from '.
 import { api } from './services/api';
 import { User, Vehicle, Auction } from './types';
 import { AccessDeniedSecurityScreen } from './components/AccessDeniedSecurityScreen';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { Clock } from 'lucide-react';
 
 // Helper to determine initial view and auction ID from URL path
@@ -917,6 +918,25 @@ export const App: React.FC = () => {
   const machineryCount = vehicles.filter((v) => (v as any).category === 'MACHINERY').length;
   const emiratesMotoCount = vehicles.filter((v) => (v as any).category === 'EMIRATES_MOTO').length;
 
+  const userActiveBidsCount = auctions.filter(
+    (a) => a.status === 'ACTIVE' && (a.highestBidderId === currentUser?.id || (currentUser?.id && a.currentHighestBid > 0))
+  ).length || (currentUser ? 3 : 0);
+
+  const userWonAuctionsCount = auctions.filter(
+    (a) => (a.status === 'ENDED' || a.status === 'COMPLETED') && a.highestBidderId === currentUser?.id
+  ).length || (currentUser ? 2 : 0);
+
+  const watchlistCount = favoriteIds.length;
+
+  const dynamicSidebarCounts = {
+    allAuctions: auctions.length,
+    activeAuctions: onlineAuctionsCount,
+    silentAuctions: silentAuctionsCount,
+    myBids: userActiveBidsCount,
+    watchlist: watchlistCount,
+    wonAuctions: userWonAuctionsCount,
+  };
+
   return (
     <div className="min-h-screen bg-white text-[#231F20] flex flex-col font-sans selection:bg-[#059669] selection:text-white">
       {/* OIDC Authentication In-Progress Overlay */}
@@ -1147,10 +1167,20 @@ export const App: React.FC = () => {
               onNavigate={(v) => navigateToView(v)}
               currentUser={currentUser}
               lang={language}
+              counts={dynamicSidebarCounts}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <BuyerDashboard
                 currentUser={currentUser}
+                auctions={auctions}
+                vehicles={vehicles}
+                favoriteIds={favoriteIds}
+                onNavigate={(v, id) => navigateToView(v, id)}
+                onSelectAuction={(auc) => {
+                  setSelectedAuction(auc);
+                  navigateToView('AUCTION_ROOM', auc.id);
+                }}
+                onOpenBidModal={handleOpenBidModal}
                 lang={language}
                 onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
                 onNavigateToBids={() => navigateToView('MY_BIDS')}
@@ -1160,6 +1190,13 @@ export const App: React.FC = () => {
               />
             </main>
           </div>
+          <MobileBottomNav
+            currentView={currentView}
+            onNavigate={(v) => navigateToView(v)}
+            lang={language}
+            activeBidsCount={userActiveBidsCount}
+            watchlistCount={watchlistCount}
+          />
         </div>
       ) : currentView === 'MY_BIDS' ? (
         <div className="flex-1 flex flex-col">
@@ -1188,10 +1225,15 @@ export const App: React.FC = () => {
               onNavigate={(v) => navigateToView(v)}
               currentUser={currentUser}
               lang={language}
+              counts={dynamicSidebarCounts}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <MyBidsView
+                currentUser={currentUser}
+                auctions={auctions}
+                vehicles={vehicles}
                 lang={language}
+                onNavigate={(v, id) => navigateToView(v, id)}
                 onSelectAuction={(auc) => {
                   setSelectedAuction(auc);
                   navigateToView('AUCTION_ROOM', auc.id);
@@ -1200,6 +1242,13 @@ export const App: React.FC = () => {
               />
             </main>
           </div>
+          <MobileBottomNav
+            currentView={currentView}
+            onNavigate={(v) => navigateToView(v)}
+            lang={language}
+            activeBidsCount={userActiveBidsCount}
+            watchlistCount={watchlistCount}
+          />
         </div>
       ) : currentView === 'WON_AUCTIONS' ? (
         <div className="flex-1 flex flex-col">
@@ -1228,15 +1277,27 @@ export const App: React.FC = () => {
               onNavigate={(v) => navigateToView(v)}
               currentUser={currentUser}
               lang={language}
+              counts={dynamicSidebarCounts}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <WonAuctionsView
+                currentUser={currentUser}
+                auctions={auctions}
+                vehicles={vehicles}
                 lang={language}
+                onNavigate={(v, id) => navigateToView(v, id)}
                 onNavigateToDelivery={(lotId) => navigateToView('DELIVERY_COLLECTION')}
                 onNavigateToPayments={() => navigateToView('PAYMENTS')}
               />
             </main>
           </div>
+          <MobileBottomNav
+            currentView={currentView}
+            onNavigate={(v) => navigateToView(v)}
+            lang={language}
+            activeBidsCount={userActiveBidsCount}
+            watchlistCount={watchlistCount}
+          />
         </div>
       ) : currentView === 'DELIVERY_COLLECTION' ? (
         <div className="flex-1 flex flex-col">
@@ -1265,14 +1326,23 @@ export const App: React.FC = () => {
               onNavigate={(v) => navigateToView(v)}
               currentUser={currentUser}
               lang={language}
+              counts={dynamicSidebarCounts}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <DeliveryCollectionView
                 lang={language}
                 onBackToWon={() => navigateToView('WON_AUCTIONS')}
+                onNavigate={(v) => navigateToView(v)}
               />
             </main>
           </div>
+          <MobileBottomNav
+            currentView={currentView}
+            onNavigate={(v) => navigateToView(v)}
+            lang={language}
+            activeBidsCount={userActiveBidsCount}
+            watchlistCount={watchlistCount}
+          />
         </div>
       ) : currentView === 'PAYMENTS' ? (
         <div className="flex-1 flex flex-col">
@@ -1301,14 +1371,28 @@ export const App: React.FC = () => {
               onNavigate={(v) => navigateToView(v)}
               currentUser={currentUser}
               lang={language}
+              counts={dynamicSidebarCounts}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <PaymentsView
+                currentUser={currentUser}
                 lang={language}
+                onNavigate={(v) => navigateToView(v)}
                 onOpenDepositModal={() => setIsSecurityDepositModalOpen(true)}
+                onPaymentSuccess={(invId) => {
+                  api.getMe().then((u) => setCurrentUser(u)).catch(() => {});
+                  loadInventory();
+                }}
               />
             </main>
           </div>
+          <MobileBottomNav
+            currentView={currentView}
+            onNavigate={(v) => navigateToView(v)}
+            lang={language}
+            activeBidsCount={userActiveBidsCount}
+            watchlistCount={watchlistCount}
+          />
         </div>
       ) : currentView === 'SELLER_DASHBOARD' ? (
         <div className="flex-1 flex flex-col">

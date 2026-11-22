@@ -4,23 +4,24 @@ import {
   Search, 
   Gavel, 
   Zap, 
-  Calendar, 
+  Clock, 
   HelpCircle, 
-  MessageSquare, 
-  Info, 
-  Headphones,
-  ShieldCheck,
-  Truck,
-  Heart,
-  CreditCard,
-  LayoutDashboard,
-  Trophy,
-  Receipt,
-  Car,
+  Heart, 
+  CreditCard, 
+  LayoutDashboard, 
+  Trophy, 
+  Receipt, 
+  Truck, 
+  Bell, 
+  User as UserIcon, 
+  Settings as SettingsIcon,
+  Bookmark,
+  ChevronRight,
+  Shield,
   PlusCircle,
   TrendingUp,
-  DollarSign,
-  Shield
+  X,
+  Menu
 } from 'lucide-react';
 import { getAssetUrl } from '../utils/assets';
 import { User } from '../types';
@@ -52,6 +53,16 @@ interface PortalSidebarProps {
   onNavigate: (view: PortalView) => void;
   currentUser?: User | null;
   lang?: Language;
+  counts?: {
+    allAuctions?: number;
+    activeAuctions?: number;
+    silentAuctions?: number;
+    myBids?: number;
+    watchlist?: number;
+    wonAuctions?: number;
+  };
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const PortalSidebar: React.FC<PortalSidebarProps> = ({
@@ -59,269 +70,339 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   onNavigate,
   currentUser,
   lang = 'EN',
+  counts = {},
+  isMobileOpen = false,
+  onCloseMobile,
 }) => {
-  const { t } = useTranslation(lang);
+  const isArabic = lang === 'AR';
   const isBuyer = currentUser?.role === 'BUYER';
   const isSeller = currentUser?.role === 'SELLER';
   const isAdmin = currentUser?.role === 'ADMIN' || Boolean(currentUser?.isSuperAdmin || (currentUser as any)?.superAdmin);
 
-  return (
-    <aside className="w-56 sm:w-64 bg-white border-r border-slate-200 min-h-screen flex flex-col shrink-0 select-none">
-      
-      {/* Top AJ Logo */}
+  // Dynamic counts fallback to 0
+  const allCount = counts.allAuctions ?? 0;
+  const activeCount = counts.activeAuctions ?? 0;
+  const silentCount = counts.silentAuctions ?? 0;
+  const myBidsCount = counts.myBids ?? 0;
+  const watchlistCount = counts.watchlist ?? 0;
+  const wonCount = counts.wonAuctions ?? 0;
+
+  interface MenuItem {
+    id: PortalView | 'SAVED_SEARCHES' | 'NOTIFICATIONS' | 'PROFILE' | 'SETTINGS';
+    label: string;
+    labelAr: string;
+    icon: React.ComponentType<{ className?: string }>;
+    count?: number;
+    targetView?: PortalView;
+    category?: 'buyer' | 'general' | 'seller' | 'admin';
+  }
+
+  const menuItems: MenuItem[] = [
+    {
+      id: 'BUYER_DASHBOARD',
+      label: 'Dashboard',
+      labelAr: 'لوحة التحكم',
+      icon: LayoutDashboard,
+      targetView: 'BUYER_DASHBOARD',
+      category: 'buyer',
+    },
+    {
+      id: 'ONLINE_AUCTIONS',
+      label: 'Browse Auctions',
+      labelAr: 'تصفح المزادات',
+      icon: Search,
+      count: allCount,
+      targetView: 'ONLINE_AUCTIONS',
+      category: 'buyer',
+    },
+    {
+      id: 'ONLINE_AUCTIONS',
+      label: 'Active Auctions',
+      labelAr: 'المزادات النشطة',
+      icon: Gavel,
+      count: activeCount,
+      targetView: 'ONLINE_AUCTIONS',
+      category: 'buyer',
+    },
+    {
+      id: 'SILENT_AUCTIONS',
+      label: 'Silent Auctions',
+      labelAr: 'المزادات الصامتة',
+      icon: Zap,
+      count: silentCount,
+      targetView: 'SILENT_AUCTIONS',
+      category: 'buyer',
+    },
+    {
+      id: 'MY_BIDS',
+      label: 'My Bids',
+      labelAr: 'مزايداتي',
+      icon: Clock,
+      count: myBidsCount,
+      targetView: 'MY_BIDS',
+      category: 'buyer',
+    },
+    {
+      id: 'FAVORITES',
+      label: 'Watchlist',
+      labelAr: 'قائمة المراقبة',
+      icon: Heart,
+      count: watchlistCount,
+      targetView: 'FAVORITES',
+      category: 'buyer',
+    },
+    {
+      id: 'WON_AUCTIONS',
+      label: 'Won Auctions',
+      labelAr: 'المزادات الفائزة',
+      icon: Trophy,
+      count: wonCount,
+      targetView: 'WON_AUCTIONS',
+      category: 'buyer',
+    },
+    {
+      id: 'SAVED_SEARCHES',
+      label: 'Saved Searches',
+      labelAr: 'عمليات البحث المحفوظة',
+      icon: Bookmark,
+      targetView: 'ONLINE_AUCTIONS',
+      category: 'buyer',
+    },
+    {
+      id: 'PAYMENTS',
+      label: 'Payments',
+      labelAr: 'المدفوعات',
+      icon: CreditCard,
+      targetView: 'PAYMENTS',
+      category: 'buyer',
+    },
+    {
+      id: 'PAYMENTS',
+      label: 'Invoices & Ledger',
+      labelAr: 'الفواتير والسجل',
+      icon: Receipt,
+      targetView: 'PAYMENTS',
+      category: 'buyer',
+    },
+    {
+      id: 'DELIVERY_COLLECTION',
+      label: 'Delivery / Collection',
+      labelAr: 'التسليم والاستلام',
+      icon: Truck,
+      targetView: 'DELIVERY_COLLECTION',
+      category: 'buyer',
+    },
+    {
+      id: 'NOTIFICATIONS',
+      label: 'Notifications',
+      labelAr: 'الإشعارات',
+      icon: Bell,
+      category: 'general',
+    },
+    {
+      id: 'PROFILE',
+      label: 'Profile',
+      labelAr: 'الملف الشخصي',
+      icon: UserIcon,
+      category: 'general',
+    },
+    {
+      id: 'SETTINGS',
+      label: 'Settings',
+      labelAr: 'الإعدادات',
+      icon: SettingsIcon,
+      category: 'general',
+    },
+    {
+      id: 'HELP',
+      label: 'Help & Support',
+      labelAr: 'المساعدة والدعم',
+      icon: HelpCircle,
+      targetView: 'HELP',
+      category: 'general',
+    },
+  ];
+
+  const handleItemClick = (item: MenuItem) => {
+    if (item.targetView) {
+      onNavigate(item.targetView);
+    }
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  };
+
+  const isItemActive = (item: MenuItem) => {
+    if (item.id === 'BUYER_DASHBOARD' && currentView === 'BUYER_DASHBOARD') return true;
+    if (item.id === 'MY_BIDS' && currentView === 'MY_BIDS') return true;
+    if (item.id === 'FAVORITES' && currentView === 'FAVORITES') return true;
+    if (item.id === 'WON_AUCTIONS' && currentView === 'WON_AUCTIONS') return true;
+    if (item.id === 'DELIVERY_COLLECTION' && currentView === 'DELIVERY_COLLECTION') return true;
+    if (item.id === 'PAYMENTS' && currentView === 'PAYMENTS') return true;
+    if (item.id === 'ONLINE_AUCTIONS' && currentView === 'ONLINE_AUCTIONS') return true;
+    if (item.id === 'SILENT_AUCTIONS' && currentView === 'SILENT_AUCTIONS') return true;
+    if (item.id === 'HELP' && currentView === 'HELP') return true;
+    return false;
+  };
+
+  const sidebarContent = (
+    <div className="h-full flex flex-col bg-[#0B132B] text-slate-300 select-none">
+      {/* Brand Header */}
       <div 
         onClick={() => onNavigate('HOME')}
-        className="p-5 border-b border-slate-100 cursor-pointer hover:opacity-90 transition flex items-center justify-start"
+        className="p-4 lg:p-5 border-b border-slate-800/80 cursor-pointer flex items-center justify-between group"
       >
-        <img 
-          src={getAssetUrl('/assets/logo-aj.png')} 
-          alt="AJ Auctions • Powered by AshwikTechnologies" 
-          className="h-10 w-auto object-contain"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = getAssetUrl('/assets/main_logo-aj.png');
-          }}
-        />
+        <div className="flex items-center gap-3">
+          <img 
+            src={getAssetUrl('/assets/nav-logo-exact-v3.png')} 
+            alt="AJ Auctions" 
+            className="h-8 lg:h-9 w-auto object-contain brightness-110"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = getAssetUrl('/assets/logo-aj.png');
+            }}
+          />
+        </div>
+        {onCloseMobile && (
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onCloseMobile();
+            }} 
+            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
-      {/* Navigation List */}
-      <nav className="p-4 space-y-6 flex-1 text-xs sm:text-sm overflow-y-auto">
-        
-        {/* Home */}
-        <div>
-          <button
-            onClick={() => onNavigate('HOME')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-              currentView === 'HOME'
-                ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            <Home className="w-4 h-4 text-emerald-600" />
-            <span>{lang === 'AR' ? 'الرئيسية' : 'Home'}</span>
-          </button>
-        </div>
-
-        {/* Section: Buyer Portal (When logged in as BUYER or visiting buyer pages) */}
-        {(isBuyer || currentView === 'BUYER_DASHBOARD' || currentView === 'MY_BIDS' || currentView === 'WON_AUCTIONS' || currentView === 'DELIVERY_COLLECTION' || currentView === 'PAYMENTS') && (
-          <div className="space-y-1">
-            <div className="px-3 text-[11px] font-bold text-emerald-700 uppercase tracking-wider flex items-center justify-between">
-              <span>{lang === 'AR' ? 'بوابة المشتري' : 'Buyer Hub'}</span>
-              <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">AED</span>
+      {/* User Telemetry Pill (Compact) */}
+      {currentUser && (
+        <div className="px-4 py-3 border-b border-slate-800/60 bg-slate-900/40">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-[#7ED321] text-[#0B132B] font-black text-xs flex items-center justify-center shrink-0">
+              {currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'B'}
             </div>
-
-            <button
-              onClick={() => onNavigate('BUYER_DASHBOARD')}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-                currentView === 'BUYER_DASHBOARD'
-                  ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4 text-emerald-600" />
-              <span>{lang === 'AR' ? 'لوحة تحكم المزايد' : 'Buyer Overview'}</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate('MY_BIDS')}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-                currentView === 'MY_BIDS'
-                  ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <Gavel className="w-4 h-4 text-slate-500" />
-              <span>{lang === 'AR' ? 'مزايداتي النشطة' : 'My Active Bids'}</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate('WON_AUCTIONS')}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-                currentView === 'WON_AUCTIONS'
-                  ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <Trophy className="w-4 h-4 text-amber-500" />
-              <span>{lang === 'AR' ? 'المركبات الفائزة' : 'Won Auctions'}</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate('DELIVERY_COLLECTION')}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-                currentView === 'DELIVERY_COLLECTION'
-                  ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <Truck className="w-4 h-4 text-blue-600" />
-              <span>{lang === 'AR' ? 'حجز الاستلام وتصريح البوابة' : 'Yard Collection & Pass'}</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate('PAYMENTS')}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-                currentView === 'PAYMENTS'
-                  ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <Receipt className="w-4 h-4 text-slate-500" />
-              <span>{lang === 'AR' ? 'الفواتير والمدفوعات (AED)' : 'Invoices & Ledger'}</span>
-            </button>
+            <div className="hidden lg:block min-w-0 flex-1">
+              <div className="text-xs font-bold text-white truncate">
+                {currentUser.fullName || 'Verified Bidder'}
+              </div>
+              <div className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{currentUser.role || 'BUYER'} • UAE</span>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Section: Seller Portal (When logged in as SELLER or visiting seller pages) */}
-        {(isSeller || currentView === 'SELLER_DASHBOARD' || currentView === 'SELLER_CREATE_LISTING') && (
-          <div className="space-y-1">
-            <div className="px-3 text-[11px] font-bold text-blue-700 uppercase tracking-wider flex items-center justify-between">
-              <span>{lang === 'AR' ? 'بوابة البائع' : 'Seller Hub'}</span>
-              <span className="text-[9px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">Consignor</span>
+      {/* Navigation Items List */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 lg:px-3 space-y-1 custom-scrollbar">
+        {menuItems.map((item, idx) => {
+          const active = isItemActive(item);
+          const Icon = item.icon;
+
+          return (
+            <button
+              key={`${item.id}-${idx}`}
+              onClick={() => handleItemClick(item)}
+              title={isArabic ? item.labelAr : item.label}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs lg:text-sm font-semibold transition-all duration-150 cursor-pointer group ${
+                active 
+                  ? 'bg-[#7ED321] text-[#0B132B] shadow-md shadow-[#7ED321]/20 font-bold' 
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Icon className={`w-4 h-4 shrink-0 transition ${active ? 'text-[#0B132B]' : 'text-slate-400 group-hover:text-white'}`} />
+                <span className="hidden lg:inline truncate">
+                  {isArabic ? item.labelAr : item.label}
+                </span>
+              </div>
+
+              {/* Dynamic Count Badge */}
+              {item.count !== undefined && item.count > 0 && (
+                <span className={`hidden lg:inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                  active 
+                    ? 'bg-[#0B132B] text-[#7ED321]' 
+                    : 'bg-slate-800 text-slate-300 border border-slate-700'
+                }`}>
+                  {item.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+
+        {/* Seller Shortcut if logged in as SELLER */}
+        {isSeller && (
+          <div className="pt-3 mt-3 border-t border-slate-800/60">
+            <div className="hidden lg:block px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-blue-400">
+              Seller Hub
             </div>
-
             <button
               onClick={() => onNavigate('SELLER_DASHBOARD')}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
                 currentView === 'SELLER_DASHBOARD'
-                  ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-[#7ED321] text-[#0B132B] font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
-              <TrendingUp className="w-4 h-4 text-emerald-600" />
-              <span>{lang === 'AR' ? 'أداء المبيعات والمخزون' : 'Seller Dashboard'}</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate('SELLER_CREATE_LISTING')}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-                currentView === 'SELLER_CREATE_LISTING'
-                  ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <PlusCircle className="w-4 h-4 text-blue-600" />
-              <span>{lang === 'AR' ? '+ إضافة مركبة للمزاد' : '+ List Vehicle (AED)'}</span>
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-4 h-4 text-blue-400" />
+                <span className="hidden lg:inline">Seller Dashboard</span>
+              </div>
             </button>
           </div>
         )}
 
-        {/* Section: Admin Shortcut (if Admin) */}
+        {/* Admin Shortcut if Admin */}
         {isAdmin && (
-          <div className="space-y-1">
-            <div className="px-3 text-[11px] font-bold text-purple-700 uppercase tracking-wider">
-              {lang === 'AR' ? 'الإدارة والعمليات' : 'Administration'}
-            </div>
+          <div className="pt-2">
             <button
               onClick={() => onNavigate('ADMIN')}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
                 currentView === 'ADMIN'
-                  ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-[#7ED321] text-[#0B132B] font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
-              <Shield className="w-4 h-4 text-purple-600" />
-              <span>{lang === 'AR' ? 'لوحة التحكم المركزية' : 'Admin Operations'}</span>
+              <div className="flex items-center gap-3">
+                <Shield className="w-4 h-4 text-purple-400" />
+                <span className="hidden lg:inline">Admin Console</span>
+              </div>
             </button>
           </div>
         )}
-
-        {/* Section: Vehicle Finder */}
-        <div className="space-y-1">
-          <div className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            {lang === 'AR' ? 'البحث في الكتالوج' : 'Vehicle Finder'}
-          </div>
-          <button
-            onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-              currentView === 'ONLINE_AUCTIONS'
-                ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            <Search className="w-4 h-4 text-slate-400" />
-            <span>{lang === 'AR' ? 'بحث الكتالوج المباشر' : 'Search Catalog (300+)'}</span>
-          </button>
-        </div>
-
-        {/* Section: Auctions */}
-        <div className="space-y-1">
-          <div className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            {lang === 'AR' ? 'أسواق المزادات' : 'Marketplaces'}
-          </div>
-
-          <button
-            onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
-          >
-            <Gavel className="w-4 h-4 text-slate-400" />
-            <span>{lang === 'AR' ? 'المزايدة المباشرة' : 'Live Bidding'}</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
-          >
-            <Zap className="w-4 h-4 text-amber-500" />
-            <span>{lang === 'AR' ? 'فرص اليوم' : "Today's Drops"}</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('SILENT_AUCTIONS')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-              currentView === 'SILENT_AUCTIONS'
-                ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            <Calendar className="w-4 h-4 text-slate-400" />
-            <span>{lang === 'AR' ? 'المزادات الصامتة' : 'Silent Auctions (50)'}</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('HELP')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium transition cursor-pointer ${
-              currentView === 'HELP'
-                ? 'text-emerald-700 bg-emerald-50 font-bold border-r-2 border-emerald-600'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            <HelpCircle className="w-4 h-4 text-slate-400" />
-            <span>{lang === 'AR' ? 'فحص 150 نقطة' : '150-Point Inspection'}</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('HELP')}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
-          >
-            <MessageSquare className="w-4 h-4 text-slate-400" />
-            <span>{lang === 'AR' ? 'الأسئلة الشائعة' : 'Buyer FAQs'}</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('HELP')}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
-          >
-            <Info className="w-4 h-4 text-slate-400" />
-            <span>{lang === 'AR' ? 'عن AJ للمزادات' : 'About AJ Auctions'}</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('HELP')}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-xl font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
-          >
-            <Headphones className="w-4 h-4 text-emerald-600" />
-            <span>{lang === 'AR' ? 'الدعم على مدار الساعة' : 'Contact 24/7 (UAE)'}</span>
-          </button>
-        </div>
-
       </nav>
 
-      {/* Footer Branding in Sidebar */}
-      <div className="p-4 border-t border-slate-100 text-[10px] text-slate-400 flex flex-col gap-1">
-        <div className="font-semibold text-slate-600">AJ Auctions • UAE</div>
-        <div>Powered by AshwikTechnologies © 2026</div>
+      {/* Footer Branding */}
+      <div className="p-3 border-t border-slate-800/80 bg-slate-950/40 text-[10px] text-slate-500">
+        <div className="hidden lg:block font-medium text-slate-400">AJ Auctions • UAE</div>
+        <div className="hidden lg:block text-slate-500 text-[9px] mt-0.5">Powered by AshwikTechnologies</div>
+        <div className="lg:hidden text-center font-bold text-slate-400">AJ</div>
       </div>
+    </div>
+  );
 
-    </aside>
+  return (
+    <>
+      {/* Desktop & Tablet Persistent Sidebar */}
+      <aside className="hidden md:flex flex-col shrink-0 w-16 lg:w-64 min-h-screen border-r border-slate-800/80 sticky top-0 h-screen z-30 transition-all duration-200">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer (When Open) */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" 
+            onClick={onCloseMobile} 
+          />
+          <div className="relative w-72 max-w-[85vw] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 };

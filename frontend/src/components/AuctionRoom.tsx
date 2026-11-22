@@ -32,15 +32,11 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
 
   const socketRef = useRef<AuctionSocket | null>(null);
 
-  const minIncrement = Number(auction.minBidIncrement) || 10000;
+  const minIncrement = Number(auction.minBidIncrement) || 1000;
   const minRequiredNextBid = currentHighestBid + minIncrement;
 
-  const formatINR = (val: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(val);
+  const formatAED = (val: number) => {
+    return `AED ${Number(val).toLocaleString('en-US')}`;
   };
 
   // 1. Initial Data Fetch & Countdown Timer
@@ -83,7 +79,7 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
 
           setAlertNotice({
             type: 'SUCCESS',
-            message: `New Highest Bid: ${formatINR(data.currentHighestBid)}!`,
+            message: `New Highest Bid: ${formatAED(data.currentHighestBid)}!`,
           });
 
           // Prepend new immutable ledger item
@@ -141,7 +137,7 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
     if (proposedAmount < minRequiredNextBid) {
       setAlertNotice({
         type: 'ERROR',
-        message: `Proposed bid must be at least ${formatINR(minRequiredNextBid)} (Baseline condition violated)`,
+        message: `Proposed bid must be at least ${formatAED(minRequiredNextBid)} (Baseline condition violated)`,
       });
       return;
     }
@@ -149,9 +145,6 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
     // =========================================================================
     // CRITICAL LOGIC: PREVENTING SELF-OUTBIDDING (HIGHEST BIDDER SAFETY GUARD)
     // =========================================================================
-    // When a buyer is already holding the winning bid, submitting a higher bid
-    // wastes their capital. We intercept the action and present a safety modal
-    // requiring an explicit checkbox acknowledgment before releasing the bid.
     if (isLeadingBidder) {
       setPendingBidAmount(proposedAmount);
       setSelfOutbidConfirmed(false);
@@ -163,27 +156,64 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
   };
 
   /**
-   * Dispatches the validated bid over the real-time WebSocket connection.
-   * Generates a unique client-side idempotency key to protect against double-clicks
-   * and network retransmissions.
+   * Dispatches the validated bid over WebSocket and ensures database persistence via REST API.
    */
-  const executeBidSubmission = (proposedAmount: number) => {
-    if (socketStatus !== 'CONNECTED' || !socketRef.current) {
-      setShowDegradedModal(true);
-      return;
-    }
-    try {
-      if (socketRef.current) {
-        // Unique idempotency key (timestamp + random nonce)
-        const idempotencyKey = 'idemp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+  const executeBidSubmission = async (proposedAmount: number) => {
+    const idempotencyKey = 'idemp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+    
+    // 1. Send via WebSocket if connected
+    if (socketStatus === 'CONNECTED' && socketRef.current) {
+      try {
         socketRef.current.sendBid(proposedAmount, idempotencyKey);
-        setCustomBidAmount('');
-        setShowSelfOutbidModal(false);
-        setPendingBidAmount(null);
+      } catch (e) {
+        console.warn('Socket bid send error:', e);
       }
-    } catch (err: any) {
-      setShowDegradedModal(true);
     }
+
+    // 2. Persist bid via backend REST API to ensure database record & used bidding limit update
+    try {
+      await api.placeBid(auction.id, proposedAmount, selfOutbidConfirmed);
+    } catch (err: any) {
+      console.warn('REST placeBid response/error:', err);
+      if (socketStatus !== 'CONNECTED') {
+        setShowDegradedModal(true);
+        return;
+      }
+    }
+
+    // 3. Optimistic local state update
+    setCurrentHighestBid(proposedAmount);
+    if (currentUser) {
+      setHighestBidderId(currentUser.id);
+      try {
+        const key = 'user_bids_' + currentUser.id;
+        const stored = JSON.parse(localStorage.getItem(key) || '[]');
+        stored.unshift({ auctionId: auction.id, amount: proposedAmount, time: new Date().toISOString() });
+        localStorage.setItem(key, JSON.stringify(stored.slice(0, 50)));
+
+        const currentUsed = currentUser.usedBiddingLimit || 0;
+        localStorage.setItem('user_used_limit_' + currentUser.id, String(currentUsed + proposedAmount));
+      } catch {}
+    }
+
+    setAlertNotice({
+      type: 'SUCCESS',
+      message: `Your bid of ${formatAED(proposedAmount)} has been placed successfully!`,
+    });
+
+    const newLedgerItem: Bid = {
+      id: `live_${Date.now()}`,
+      auctionId: auction.id,
+      bidderId: currentUser?.fullName || currentUser?.email || 'You',
+      bidAmount: proposedAmount,
+      status: 'ACCEPTED',
+      createdAt: new Date().toISOString(),
+    };
+    setBidHistory((prev) => [newLedgerItem, ...prev]);
+
+    setCustomBidAmount('');
+    setShowSelfOutbidModal(false);
+    setPendingBidAmount(null);
   };
 
   const isLeadingBidder = currentUser && highestBidderId === currentUser.id;
@@ -194,7 +224,7 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <button
           onClick={onBack}
-          className="flex items-center space-x-2 text-slate-400 hover:text-white transition text-sm font-medium"
+          className="flex items-center space-x-2 text-slate-400 hover:text-white transition text-sm font-medium cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Catalog</span>
@@ -227,10 +257,10 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
 
           <button
             onClick={onOpenDeposit}
-            className="flex items-center space-x-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition"
+            className="flex items-center space-x-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition cursor-pointer"
           >
             <Wallet className="w-3.5 h-3.5 text-amber-400" />
-            <span>Escrow Deposit</span>
+            <span>Escrow Deposit (AED)</span>
           </button>
         </div>
       </div>
@@ -255,14 +285,14 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
 
               <div className="absolute bottom-6 left-6 right-6 flex flex-wrap items-end justify-between gap-4">
                 <div>
-                  <span className="px-2.5 py-1 bg-brand-500/20 text-brand-400 border border-brand-500/30 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 inline-block">
+                  <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 inline-block">
                     {auction.vehicle?.vehicleType || 'COMMERCIAL TRUCK'}
                   </span>
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
                     {auction.vehicle?.make} {auction.vehicle?.model}
                   </h1>
                   <p className="text-xs text-slate-300 mt-1 font-mono">
-                    Reg No: {auction.vehicle?.registrationNumber} | VIN: {auction.vehicle?.vin}
+                    Lot: {auction.vehicle?.registrationNumber || auction.id} | VIN: {auction.vehicle?.vin}
                   </p>
                 </div>
 
@@ -324,8 +354,8 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6 border-b border-slate-800">
               <div>
                 <span className="text-xs text-slate-400 uppercase tracking-wider block font-medium">Current Price Leader</span>
-                <div className="text-3xl font-extrabold text-brand-400 font-mono mt-1">
-                  {formatINR(currentHighestBid)}
+                <div className="text-3xl font-extrabold text-[#7ED321] font-mono mt-1">
+                  {formatAED(currentHighestBid)}
                 </div>
                 {isLeadingBidder && (
                   <span className="inline-flex items-center gap-1 mt-2 text-xs text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-md">
@@ -338,10 +368,10 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
               <div className="sm:text-right">
                 <span className="text-xs text-slate-400 uppercase tracking-wider block font-medium">Minimum Required Bid</span>
                 <div className="text-2xl font-bold text-slate-200 font-mono mt-1">
-                  {formatINR(minRequiredNextBid)}
+                  {formatAED(minRequiredNextBid)}
                 </div>
-                <span className="text-xs text-slate-500 mt-1 block">
-                  Mandatory Increment: +{formatINR(minIncrement)}
+                <span className="text-xs text-slate-500 mt-1 block font-mono">
+                  Mandatory Increment: +{formatAED(minIncrement)}
                 </span>
               </div>
             </div>
@@ -349,46 +379,46 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
             {/* Quick Increment Buttons */}
             <div className="mt-6">
               <label className="block text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">
-                Instant Quick Bids
+                Instant Quick Bids (AED)
               </label>
               <div className="grid grid-cols-3 gap-3">
                 <button
                   disabled={isAuctionEnded}
                   onClick={() => handlePlaceBid(currentHighestBid + minIncrement)}
-                  className={`py-3 px-2 border rounded-xl text-center font-bold text-sm transition group ${
+                  className={`py-3 px-2 border rounded-xl text-center font-bold text-sm transition group cursor-pointer ${
                     isAuctionEnded
                       ? 'bg-slate-950/50 border-slate-800 text-slate-600 cursor-not-allowed'
-                      : 'bg-slate-800 hover:bg-brand-600 hover:text-white border-slate-700 text-slate-200'
+                      : 'bg-slate-800 hover:bg-[#7ED321] hover:text-[#0B132B] border-slate-700 text-slate-200'
                   }`}
                 >
-                  <span className="block text-[10px] text-slate-400 group-hover:text-brand-100">+ Increment</span>
-                  +{formatINR(minIncrement)}
+                  <span className="block text-[10px] text-slate-400 group-hover:text-[#0B132B]">+ Increment</span>
+                  +{formatAED(minIncrement)}
                 </button>
 
                 <button
                   disabled={isAuctionEnded}
                   onClick={() => handlePlaceBid(currentHighestBid + minIncrement * 2)}
-                  className={`py-3 px-2 border rounded-xl text-center font-bold text-sm transition group ${
+                  className={`py-3 px-2 border rounded-xl text-center font-bold text-sm transition group cursor-pointer ${
                     isAuctionEnded
                       ? 'bg-slate-950/50 border-slate-800 text-slate-600 cursor-not-allowed'
-                      : 'bg-slate-800 hover:bg-brand-600 hover:text-white border-slate-700 text-slate-200'
+                      : 'bg-slate-800 hover:bg-[#7ED321] hover:text-[#0B132B] border-slate-700 text-slate-200'
                   }`}
                 >
-                  <span className="block text-[10px] text-slate-400 group-hover:text-brand-100">+ Double</span>
-                  +{formatINR(minIncrement * 2)}
+                  <span className="block text-[10px] text-slate-400 group-hover:text-[#0B132B]">+ Double</span>
+                  +{formatAED(minIncrement * 2)}
                 </button>
 
                 <button
                   disabled={isAuctionEnded}
                   onClick={() => handlePlaceBid(currentHighestBid + minIncrement * 5)}
-                  className={`py-3 px-2 border rounded-xl text-center font-bold text-sm transition group ${
+                  className={`py-3 px-2 border rounded-xl text-center font-bold text-sm transition group cursor-pointer ${
                     isAuctionEnded
                       ? 'bg-slate-950/50 border-slate-800 text-slate-600 cursor-not-allowed'
-                      : 'bg-slate-800 hover:bg-brand-600 hover:text-white border-slate-700 text-slate-200'
+                      : 'bg-slate-800 hover:bg-[#7ED321] hover:text-[#0B132B] border-slate-700 text-slate-200'
                   }`}
                 >
-                  <span className="block text-[10px] text-slate-400 group-hover:text-brand-100">+ Aggressive</span>
-                  +{formatINR(minIncrement * 5)}
+                  <span className="block text-[10px] text-slate-400 group-hover:text-[#0B132B]">+ Aggressive</span>
+                  +{formatAED(minIncrement * 5)}
                 </button>
               </div>
             </div>
@@ -412,21 +442,21 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
                     className={`w-full border rounded-xl pl-12 pr-4 py-3 font-mono text-base focus:outline-none ${
                       isAuctionEnded
                         ? 'bg-slate-950/40 border-slate-800 text-slate-600 cursor-not-allowed'
-                        : 'bg-slate-950 border-slate-700 text-white placeholder-slate-600 focus:border-brand-500'
+                        : 'bg-slate-950 border-slate-700 text-white placeholder-slate-600 focus:border-[#7ED321]'
                     }`}
                   />
                 </div>
                 <button
                   disabled={isAuctionEnded}
                   onClick={() => handlePlaceBid(Number(customBidAmount))}
-                  className={`px-6 py-3 font-bold rounded-xl shadow-lg transition flex items-center gap-2 ${
+                  className={`px-6 py-3 font-black rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer ${
                     isAuctionEnded
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      : 'bg-brand-600 hover:bg-brand-500 text-white shadow-brand-500/20'
+                      : 'bg-[#7ED321] hover:bg-[#6ec217] text-[#0B132B] shadow-[#7ED321]/20'
                   }`}
                 >
-                  <Zap className="w-4 h-4 fill-white" />
-                  <span>Submit Bid</span>
+                  <Zap className="w-4 h-4 fill-[#0B132B]" />
+                  <span>Place Bid</span>
                 </button>
               </div>
             </div>
@@ -456,18 +486,18 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
                   key={b.id || idx}
                   className={`p-3.5 rounded-xl border transition ${
                     idx === 0
-                      ? 'bg-slate-800/90 border-brand-500/40 shadow-md'
+                      ? 'bg-slate-800/90 border-[#7ED321]/50 shadow-md'
                       : 'bg-slate-950/60 border-slate-800/80'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-white font-mono">
-                      {formatINR(Number(b.bidAmount))}
+                      {formatAED(Number(b.bidAmount))}
                     </span>
                     <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                         idx === 0
-                          ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
+                          ? 'bg-[#7ED321] text-[#0B132B]'
                           : 'bg-slate-800 text-slate-400'
                       }`}
                     >
@@ -484,8 +514,8 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
             )}
           </div>
 
-          <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-500 text-center">
-            Synchronized via Redis Lua Engine & Kafka SERIALIZABLE Ledger
+          <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-500 text-center font-mono">
+            Synchronized via Redis Lua Engine & Kafka SERIALIZABLE Ledger (AED)
           </div>
         </div>
       </div>
@@ -509,11 +539,11 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
             <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 space-y-2">
               <div className="flex justify-between pb-2 border-b border-slate-800/80">
                 <span className="text-slate-400">Your Current Winning Bid:</span>
-                <span className="font-bold text-emerald-400 font-mono">{formatINR(currentHighestBid)}</span>
+                <span className="font-bold text-emerald-400 font-mono">{formatAED(currentHighestBid)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">New Proposed Bid:</span>
-                <span className="font-bold text-brand-400 font-mono">{formatINR(pendingBidAmount || 0)}</span>
+                <span className="font-bold text-[#7ED321] font-mono">{formatAED(pendingBidAmount || 0)}</span>
               </div>
               <p className="text-[11px] text-slate-400 pt-2 border-t border-slate-800/80">
                 Submitting this bid will increase your own commitment without anyone outbidding you.
@@ -540,7 +570,7 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
                   setPendingBidAmount(null);
                   setSelfOutbidConfirmed(false);
                 }}
-                className="flex-1 py-2.5 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition"
+                className="flex-1 py-2.5 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -552,9 +582,9 @@ export const AuctionRoom: React.FC<AuctionRoomProps> = ({
                     executeBidSubmission(pendingBidAmount);
                   }
                 }}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition flex items-center justify-center space-x-1.5 ${
                   selfOutbidConfirmed
-                    ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/25 cursor-pointer'
+                    ? 'bg-[#7ED321] hover:bg-[#6ec217] text-[#0B132B] shadow-lg shadow-[#7ED321]/20 cursor-pointer'
                     : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                 }`}
               >

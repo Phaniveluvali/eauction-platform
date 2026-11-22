@@ -16,6 +16,7 @@ import {
 import { Auction, Vehicle, User } from '../types';
 import { PortalView } from './PortalSidebar';
 import { VehicleCard } from './VehicleCard';
+import { MobileBottomNav } from './MobileBottomNav';
 
 interface FavoritesPageProps {
   vehicles: Vehicle[];
@@ -222,6 +223,13 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
           </div>
         )}
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        currentView="FAVORITES"
+        onNavigate={onNavigate}
+        watchlistCount={favoriteIds.length}
+      />
     </div>
   );
 };

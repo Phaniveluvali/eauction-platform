@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Auction, Vehicle, User } from '../types';
 import { PortalSidebar, PortalView } from './PortalSidebar';
+import { MobileBottomNav } from './MobileBottomNav';
 import { VehicleCard } from './VehicleCard';
 import { 
   X, 
@@ -201,7 +202,19 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
       
       {/* Desktop Left Sidebar */}
       <div className="hidden md:flex shrink-0">
-        <PortalSidebar currentView="ONLINE_AUCTIONS" onNavigate={onNavigate} />
+        <PortalSidebar
+          currentView="ONLINE_AUCTIONS"
+          onNavigate={onNavigate}
+          currentUser={currentUser}
+          counts={{
+            allAuctions: auctions.length,
+            activeAuctions: activeCount,
+            silentAuctions: auctions.filter((a) => a.auctionType === 'SILENT').length,
+            myBids: 0,
+            watchlist: favoriteIds.length,
+            wonAuctions: 0,
+          }}
+        />
       </div>
 
       {/* Mobile Drawer Backdrop and Sidebar */}
@@ -228,7 +241,16 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
                 onNavigate={(view) => {
                   setIsMobileSidebarOpen(false);
                   onNavigate(view);
-                }} 
+                }}
+                currentUser={currentUser}
+                counts={{
+                  allAuctions: auctions.length,
+                  activeAuctions: activeCount,
+                  silentAuctions: auctions.filter((a) => a.auctionType === 'SILENT').length,
+                  myBids: 0,
+                  watchlist: favoriteIds.length,
+                  wonAuctions: 0,
+                }}
               />
             </div>
           </div>
@@ -647,6 +669,13 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
       )}
 
       </main>
+
+      {/* Touch-Friendly Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        currentView="ONLINE_AUCTIONS"
+        onNavigate={onNavigate}
+        watchlistCount={favoriteIds.length}
+      />
 
     </div>
   );
