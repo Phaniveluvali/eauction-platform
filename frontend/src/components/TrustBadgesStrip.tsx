@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, RefreshCw, Lock, CheckCircle2, Headphones } from 'lucide-react';
+import { ShieldCheck, ClipboardCheck, Coins, Award, Headphones } from 'lucide-react';
 import { Language } from './i18n';
 
 interface TrustBadgesStripProps {
@@ -11,22 +11,22 @@ export const TrustBadgesStrip: React.FC<TrustBadgesStripProps> = ({ isArabic: is
   const isArabic = lang === 'AR' || isArabicProp;
   const badges = [
     {
-      icon: CheckCircle2,
-      title: isArabic ? 'مركبات مفحوصة وموثقة' : 'Verified Vehicles',
+      icon: ShieldCheck,
+      title: isArabic ? 'مركبات موثقة ومفحوصة' : 'Verified Vehicles',
       desc: isArabic ? 'فحص فني شامل ومعتمد' : '150-Point Inspection',
     },
     {
-      icon: RefreshCw,
+      icon: ClipboardCheck,
       title: isArabic ? 'عملية شفافة' : 'Transparent Process',
       desc: isArabic ? 'مزايدة مباشرة دون رسوم خفية' : 'Zero Hidden Bidding Fees',
     },
     {
-      icon: Lock,
+      icon: Coins,
       title: isArabic ? 'مدفوعات آمنة' : 'Secure Payments',
       desc: isArabic ? 'حساب ضمان مصرفي إماراتي' : 'UAE Central Bank Escrow',
     },
     {
-      icon: ShieldCheck,
+      icon: Award,
       title: isArabic ? 'فحص فني متعدد النقاط' : 'Multi-Point Inspection',
       desc: isArabic ? 'تقارير فنية دقيقة ومعتمدة' : 'RTA & Tasjeel Certified',
     },

@@ -105,28 +105,28 @@ export const HomePage: React.FC<HomePageProps> = ({
           {/* 1. Explore Auctions Button */}
           <button
             onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className="absolute left-[3.2%] bottom-[11%] w-[15.5%] h-[20%] rounded-full opacity-0 hover:opacity-20 hover:bg-white transition cursor-pointer"
+            className="absolute left-[4.3%] bottom-[10.2%] w-[14.5%] h-[19.5%] rounded-full opacity-0 hover:opacity-20 hover:bg-white transition cursor-pointer"
             title={lang === 'AR' ? 'استكشف المزادات' : 'Explore Auctions'}
           />
 
           {/* 2. Sell Your Vehicle Button */}
           <button
             onClick={() => onNavigate('SELLER_CREATE_LISTING')}
-            className="absolute left-[19.2%] bottom-[11%] w-[14%] h-[20%] rounded-full opacity-0 hover:opacity-20 hover:bg-white transition cursor-pointer"
+            className="absolute left-[19.9%] bottom-[10.2%] w-[13.5%] h-[19.5%] rounded-full opacity-0 hover:opacity-20 hover:bg-white transition cursor-pointer"
             title={lang === 'AR' ? 'اعرض مركبتك للبيع' : 'Sell Your Vehicle'}
           />
 
           {/* 3. Active Auctions Glowing Neon Box */}
           <button
             onClick={() => onNavigate('ONLINE_AUCTIONS')}
-            className="absolute right-[16.5%] top-[13%] w-[13.8%] h-[74%] rounded-2xl opacity-0 hover:opacity-25 hover:bg-emerald-400/20 hover:ring-2 hover:ring-emerald-400 transition cursor-pointer"
+            className="absolute left-[68.4%] top-[11.7%] w-[14.0%] h-[74.2%] rounded-2xl opacity-0 hover:opacity-30 hover:bg-emerald-400/20 hover:ring-2 hover:ring-emerald-400 transition cursor-pointer"
             title={lang === 'AR' ? 'عرض المزادات النشطة' : 'View Active Auctions'}
           />
 
           {/* 4. Silent Auctions Glowing Neon Box */}
           <button
             onClick={() => onNavigate('SILENT_AUCTIONS')}
-            className="absolute right-[1.8%] top-[13%] w-[13.8%] h-[74%] rounded-2xl opacity-0 hover:opacity-25 hover:bg-emerald-400/20 hover:ring-2 hover:ring-emerald-400 transition cursor-pointer"
+            className="absolute left-[83.5%] top-[11.7%] w-[14.0%] h-[74.2%] rounded-2xl opacity-0 hover:opacity-30 hover:bg-emerald-400/20 hover:ring-2 hover:ring-emerald-400 transition cursor-pointer"
             title={lang === 'AR' ? 'عرض المزادات الصامتة' : 'View Silent Auctions'}
           />
         </div>
