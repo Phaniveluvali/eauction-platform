@@ -459,6 +459,10 @@ export const App: React.FC = () => {
 
       // Primary: Keycloak OIDC SSO Authorization Code Callback Handler
       if (code && state) {
+        // Zero-Delay URL Sanitization: Strip sensitive OAuth query parameters from address bar immediately (0ms)
+        // to prevent shoulder-surfing, browser history leakage, and referrer exposure.
+        window.history.replaceState({ oidc: true }, document.title, window.location.pathname);
+
         setIsOidcProcessing(true);
         setOidcError(null);
         try {
