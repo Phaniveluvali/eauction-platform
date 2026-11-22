@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Navbar } from './components/Navbar';
 import { HomePage } from './components/HomePage';
 import { AuctionRoom } from './components/AuctionRoom';
@@ -897,28 +897,36 @@ export const App: React.FC = () => {
     }
   };
 
-  // Dynamic Category Counts backed by instant fastCounts & localStorage cache
-  const calculatedOnline = auctions.filter(
-    (a) => a.status === 'ACTIVE' && (!a.auctionType || a.auctionType === 'ONLINE')
-  ).length;
+  // Dynamic Category Counts backed by instant fastCounts & useMemo optimization
+  const calculatedOnline = useMemo(() => {
+    return auctions.filter(
+      (a) => a.status === 'ACTIVE' && (!a.auctionType || a.auctionType === 'ONLINE')
+    ).length;
+  }, [auctions]);
   const onlineAuctionsCount = calculatedOnline > 0 ? calculatedOnline : fastCounts.online;
 
-  const calculatedSilent = auctions.filter(
-    (a) => a.status === 'ACTIVE' && a.auctionType === 'SILENT'
-  ).length;
+  const calculatedSilent = useMemo(() => {
+    return auctions.filter(
+      (a) => a.status === 'ACTIVE' && a.auctionType === 'SILENT'
+    ).length;
+  }, [auctions]);
   const silentAuctionsCount = calculatedSilent > 0 ? calculatedSilent : fastCounts.silent;
 
-  const uaePlatesCount = vehicles.filter((v) => (v as any).category === 'PLATES').length;
-  const machineryCount = vehicles.filter((v) => (v as any).category === 'MACHINERY').length;
-  const emiratesMotoCount = vehicles.filter((v) => (v as any).category === 'EMIRATES_MOTO').length;
+  const uaePlatesCount = useMemo(() => vehicles.filter((v) => (v as any).category === 'PLATES').length, [vehicles]);
+  const machineryCount = useMemo(() => vehicles.filter((v) => (v as any).category === 'MACHINERY').length, [vehicles]);
+  const emiratesMotoCount = useMemo(() => vehicles.filter((v) => (v as any).category === 'EMIRATES_MOTO').length, [vehicles]);
 
-  const userActiveBidsCount = auctions.filter(
-    (a) => a.status === 'ACTIVE' && (a.highestBidderId === currentUser?.id || (currentUser?.id && a.currentHighestBid > 0))
-  ).length || (currentUser ? 3 : 0);
+  const userActiveBidsCount = useMemo(() => {
+    return auctions.filter(
+      (a) => a.status === 'ACTIVE' && (a.highestBidderId === currentUser?.id || (currentUser?.id && a.currentHighestBid > 0))
+    ).length || (currentUser ? 3 : 0);
+  }, [auctions, currentUser?.id]);
 
-  const userWonAuctionsCount = auctions.filter(
-    (a) => (a.status === 'ENDED' || a.status === 'COMPLETED') && a.highestBidderId === currentUser?.id
-  ).length || (currentUser ? 2 : 0);
+  const userWonAuctionsCount = useMemo(() => {
+    return auctions.filter(
+      (a) => (a.status === 'ENDED' || a.status === 'COMPLETED') && a.highestBidderId === currentUser?.id
+    ).length || (currentUser ? 2 : 0);
+  }, [auctions, currentUser?.id]);
 
   const watchlistCount = favoriteIds.length;
 
