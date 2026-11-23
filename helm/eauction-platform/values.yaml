@@ -18,14 +18,19 @@ global:
   environment: "single-node"
 
   # Primary Fully Qualified Domain Name (FQDN) for the platform API & IAM endpoints
-  domain: "tecnics-internal.online"
+  domain: "ajauctions.online"
 
   # Alternate Fully Qualified Domain Name (FQDN) for Frontend UI and WebSocket gateway
-  altDomain: "eauction.tecnics-internal.online"
+  altDomain: "www.ajauctions.online"
 
   # Name of the Kubernetes TLS secret containing the wildcard/SAN SSL certificate and private key.
   # The secret must exist in the target release namespace and contain tls.crt and tls.key.
-  tlsSecretName: "ca-vmx-tls-cert"
+  tlsSecretName: "ajauctions-tls-cert"
+
+  # Legacy migration domains for zero-downtime dual access
+  legacyDomain: "tecnics-internal.online"
+  legacyAltDomain: "eauction.tecnics-internal.online"
+  legacyTlsSecretName: "ca-vmx-tls-cert"
 
   # Soft scheduling switch for single-node vs multi-node topologies.
   # - true: Uses preferredDuringSchedulingIgnoredDuringExecution and ScheduleAnyway.
