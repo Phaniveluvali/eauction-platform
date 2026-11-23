@@ -59,7 +59,7 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
     e.preventDefault();
     if (!currentUser) {
       onClose();
-      initiateKeycloakLogin({ action: 'login' });
+      window.location.href = '/seller-buyer/signin';
       return;
     }
 
@@ -176,11 +176,11 @@ export const SecurityDepositModal: React.FC<SecurityDepositModalProps> = ({
             <button
               onClick={() => {
                 onClose();
-                initiateKeycloakLogin({ action: 'login', returnView: 'ONLINE_AUCTIONS' });
+                window.location.href = '/seller-buyer/signin';
               }}
               className="w-full bg-[#059669] hover:bg-[#047857] text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-md cursor-pointer"
             >
-              Sign In with Keycloak SSO
+              Sign In to Your Account
             </button>
           </div>
         ) : (

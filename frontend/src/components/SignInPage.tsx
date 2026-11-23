@@ -251,21 +251,21 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => handleQuickFill('admin@eauction.in', 'Admin@123')}
+                onClick={() => handleQuickFill('admin@eauction.in', 'Welcome@123')}
                 className="py-1.5 px-2 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 transition cursor-pointer text-center"
               >
                 Super Admin
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickFill('awaadmin@gmail.com', 'Admin@123')}
+                onClick={() => handleQuickFill('awaadmin@gmail.com', 'Welcome@123')}
                 className="py-1.5 px-2 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 transition cursor-pointer text-center"
               >
                 AWA Admin
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickFill('awabuyer1@gmail.com', 'Buyer@123')}
+                onClick={() => handleQuickFill('awabuyer1@gmail.com', 'Welcome@123')}
                 className="py-1.5 px-2 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 transition cursor-pointer text-center"
               >
                 Buyer

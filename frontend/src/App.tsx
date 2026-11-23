@@ -433,7 +433,7 @@ export const App: React.FC = () => {
     if (!currentUser) {
       localStorage.setItem('pending_favourite_id', vehicleId);
       alert('Please log in as a buyer to save favorite vehicles to your personal watchlist.');
-      initiateKeycloakLogin({ action: 'login', returnView: 'FAVORITES' });
+      navigateToView('SIGNIN');
       return;
     }
     if (currentUser.role !== 'BUYER') {
@@ -587,11 +587,7 @@ export const App: React.FC = () => {
       currentUserRef.current = null;
       setCurrentUser(null);
       setSecurityNotice('Your session has expired. Please log in with Keycloak SSO to continue.');
-      if (ROUTE_SECURITY_RULES[currentView]?.requiresAuth) {
-        initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: currentView });
-      } else {
-        navigateToView('SIGNIN');
-      }
+      navigateToView('SIGNIN');
     };
 
     window.addEventListener('eauction:unauthorized', handleAuthExpired);
@@ -983,7 +979,7 @@ export const App: React.FC = () => {
               requiredRole="ADMIN"
               routePath="/seller-buyer/admin"
               routeDescription="Administrator Console"
-              onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ADMIN' })}
+              onLogin={() => navigateToView('SIGNIN')}
               onGoHome={() => navigateToView('HOME')}
             />
           )
@@ -1019,7 +1015,7 @@ export const App: React.FC = () => {
               loadInventory();
             }}
             onOpenDeposit={() => setIsDepositOpen(true)}
-            onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onRequireAuth={() => navigateToView('SIGNIN')}
           />
         </main>
       ) : currentView === 'VEHICLE_DETAILS' && selectedVehicleDetails ? (
@@ -1035,7 +1031,7 @@ export const App: React.FC = () => {
           }}
           onOpenBidModal={(auc) => handleOpenBidModal(auc)}
           onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
-          onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ONLINE_AUCTIONS' })}
+          onRequireAuth={() => navigateToView('SIGNIN')}
         />
       ) : currentView === 'FAVORITES' ? (
         !currentUser || (currentUser.role !== 'BUYER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
@@ -1044,7 +1040,7 @@ export const App: React.FC = () => {
             requiredRole="BUYER"
             routePath="/seller-buyer/favorites"
             routeDescription="Buyer Watchlist"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'FAVORITES' })}
+            onLogin={() => navigateToView('SIGNIN')}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1067,7 +1063,7 @@ export const App: React.FC = () => {
             requiredRole="BUYER"
             routePath="/seller-buyer/security-deposit"
             routeDescription="Security Deposit Management"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'SECURITY_DEPOSIT' })}
+            onLogin={() => navigateToView('SIGNIN')}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1091,7 +1087,7 @@ export const App: React.FC = () => {
             setSelectedAuction(auc);
             navigateToView('AUCTION_ROOM', auc.id);
           }}
-          onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+          onRequireAuth={() => navigateToView('SIGNIN')}
           onNavigate={(view) => navigateToView(view)}
           onBackHome={() => navigateToView('HOME')}
           onOpenBidModal={handleOpenBidModal}
@@ -1102,7 +1098,7 @@ export const App: React.FC = () => {
           vehicles={vehicles}
           auctions={auctions}
           currentUser={currentUser}
-          onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+          onRequireAuth={() => navigateToView('SIGNIN')}
           onNavigate={(view) => navigateToView(view)}
           onBackHome={() => navigateToView('HOME')}
         />
@@ -1113,7 +1109,7 @@ export const App: React.FC = () => {
         />
       ) : currentView === 'SIGNIN_SIGNUP' ? (
         <SignInAndSignUpPage
-          onGoSignIn={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+          onGoSignIn={() => navigateToView('SIGNIN')}
           onGoSignUp={() => navigateToView('SIGNUP')}
           onBackHome={() => navigateToView('HOME')}
           onNavigate={(view) => navigateToView(view)}
@@ -1156,7 +1152,7 @@ export const App: React.FC = () => {
             requiredRole="BUYER"
             routePath="/seller-buyer/buyer-dashboard"
             routeDescription="Buyer Control Center"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'BUYER_DASHBOARD' })}
+            onLogin={() => navigateToView('SIGNIN')}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1164,7 +1160,7 @@ export const App: React.FC = () => {
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
-            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenAuth={() => navigateToView('SIGNIN')}
             onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
             onOpenAdmin={() => navigateToView('ADMIN')}
             onLogout={handleLogout}
@@ -1225,7 +1221,7 @@ export const App: React.FC = () => {
             requiredRole="BUYER"
             routePath="/seller-buyer/my-bids"
             routeDescription="Active Bids Ledger"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'MY_BIDS' })}
+            onLogin={() => navigateToView('SIGNIN')}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1233,7 +1229,7 @@ export const App: React.FC = () => {
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
-            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenAuth={() => navigateToView('SIGNIN')}
             onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
             onOpenAdmin={() => navigateToView('ADMIN')}
             onLogout={handleLogout}
@@ -1288,7 +1284,7 @@ export const App: React.FC = () => {
             requiredRole="BUYER"
             routePath="/seller-buyer/won-auctions"
             routeDescription="Won Lots & Settlements"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'WON_AUCTIONS' })}
+            onLogin={() => navigateToView('SIGNIN')}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1296,7 +1292,7 @@ export const App: React.FC = () => {
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
-            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenAuth={() => navigateToView('SIGNIN')}
             onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
             onOpenAdmin={() => navigateToView('ADMIN')}
             onLogout={handleLogout}
@@ -1348,7 +1344,7 @@ export const App: React.FC = () => {
             requiredRole="BUYER"
             routePath="/seller-buyer/delivery-collection"
             routeDescription="Yard Delivery & Gate Pass"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'DELIVERY_COLLECTION' })}
+            onLogin={() => navigateToView('SIGNIN')}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1356,7 +1352,7 @@ export const App: React.FC = () => {
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
-            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenAuth={() => navigateToView('SIGNIN')}
             onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
             onOpenAdmin={() => navigateToView('ADMIN')}
             onLogout={handleLogout}
@@ -1404,7 +1400,7 @@ export const App: React.FC = () => {
             requiredRole="BUYER"
             routePath="/seller-buyer/payments"
             routeDescription="UAE Tax Invoices & Payments"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'PAYMENTS' })}
+            onLogin={() => navigateToView('SIGNIN')}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1412,7 +1408,7 @@ export const App: React.FC = () => {
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
-            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenAuth={() => navigateToView('SIGNIN')}
             onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
             onOpenAdmin={() => navigateToView('ADMIN')}
             onLogout={handleLogout}
@@ -1465,7 +1461,7 @@ export const App: React.FC = () => {
             requiredRole="SELLER"
             routePath="/seller-buyer/seller-dashboard"
             routeDescription="Seller Management Portal"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'SELLER_DASHBOARD' })}
+            onLogin={() => navigateToView('SIGNIN')}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1486,7 +1482,7 @@ export const App: React.FC = () => {
             requiredRole="SELLER"
             routePath="/seller-buyer/seller/create-listing"
             routeDescription="List New Vehicle"
-            onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'SELLER_CREATE_LISTING' })}
+            onLogin={() => navigateToView('SIGNIN')}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
@@ -1506,7 +1502,7 @@ export const App: React.FC = () => {
           <Navbar
             currentUser={currentUser}
             favoriteCount={favoriteIds.length}
-            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+            onOpenAuth={() => navigateToView('SIGNIN')}
             onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
             onOpenAdmin={() => navigateToView('ADMIN')}
             onLogout={handleLogout}
@@ -1539,12 +1535,12 @@ export const App: React.FC = () => {
                 setSelectedAuction(auc);
                 navigateToView('AUCTION_ROOM', auc.id);
               }}
-              onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+              onOpenAuth={() => navigateToView('SIGNIN')}
               onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
               onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
               searchFilter={searchQuery}
               onNavigate={(view) => navigateToView(view)}
-              onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+              onRequireAuth={() => navigateToView('SIGNIN')}
               onOpenBidModal={handleOpenBidModal}
               onViewDetails={handleViewDetails}
               lang={language}
@@ -1579,7 +1575,7 @@ export const App: React.FC = () => {
         onClose={() => setIsBidModalOpen(false)}
         onSuccessBid={handleBidSuccess}
         onOpenDeposit={() => setIsSecurityDepositModalOpen(true)}
-        onRequireAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'ONLINE_AUCTIONS' })}
+        onRequireAuth={() => navigateToView('SIGNIN')}
         />
       )}
 
@@ -1606,11 +1602,11 @@ export const App: React.FC = () => {
               <button
                 onClick={() => {
                   setIsIdleTimedOut(false);
-                  initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: currentView });
+                  navigateToView('SIGNIN');
                 }}
                 className="w-full py-3 px-4 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-xl transition cursor-pointer shadow-md"
               >
-                Log In with Keycloak SSO
+                Log In to Your Account
               </button>
               <button
                 onClick={() => setIsIdleTimedOut(false)}

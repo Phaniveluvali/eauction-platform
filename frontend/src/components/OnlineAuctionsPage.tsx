@@ -87,7 +87,11 @@ export const OnlineAuctionsPage: React.FC<OnlineAuctionsPageProps> = ({
     e.stopPropagation();
     if (!currentUser) {
       alert('Please log in as a buyer to save favorite vehicles to your watchlist.');
-      initiateKeycloakLogin({ action: 'login' });
+      if (onRequireAuth) {
+        onRequireAuth();
+      } else {
+        window.location.href = '/seller-buyer/signin';
+      }
       return;
     }
     if (currentUser.role !== 'BUYER') {

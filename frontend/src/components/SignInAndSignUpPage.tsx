@@ -57,11 +57,14 @@ export const SignInAndSignUpPage: React.FC<SignInAndSignUpPageProps> = ({
           {/* Direct Keycloak SSO Options */}
           <div className="w-full space-y-3.5 max-w-md mx-auto mb-8">
             <button
-              onClick={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
+              onClick={() => {
+                if (onGoSignIn) onGoSignIn();
+                else window.location.href = '/seller-buyer/signin';
+              }}
               className="w-full py-3.5 px-6 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2.5 cursor-pointer text-sm uppercase tracking-wider"
             >
               <Lock className="w-4 h-4" />
-              <span>Sign In with Keycloak SSO</span>
+              <span>Sign In</span>
               <ArrowRight className="w-4 h-4 ml-auto" />
             </button>
 
