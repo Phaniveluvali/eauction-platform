@@ -24,4 +24,10 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     boolean existsByVin(String vin);
 
     boolean existsByRegistrationNumber(String registrationNumber);
+
+    @org.springframework.data.jpa.repository.Query(
+        value = "SELECT v.* FROM vehicles v INNER JOIN auctions a ON v.id = a.vehicle_id WHERE a.status = 'ACTIVE'",
+        nativeQuery = true
+    )
+    List<Vehicle> findActiveAuctionVehicles();
 }

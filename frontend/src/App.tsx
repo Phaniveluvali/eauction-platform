@@ -12,6 +12,7 @@ import { WonAuctionsView } from './components/WonAuctionsView';
 import { DeliveryCollectionView } from './components/DeliveryCollectionView';
 import { PaymentsView } from './components/PaymentsView';
 import { SellerDashboard } from './components/SellerDashboard';
+import { SellerPortal } from './components/SellerPortal';
 import { SellerCreateListingWizard } from './components/SellerCreateListingWizard';
 import { Language } from './components/i18n';
 import { OnlineAuctionsPage } from './components/OnlineAuctionsPage';
@@ -51,7 +52,7 @@ const getRouteFromPath = (): { view: PortalView; auctionId?: string; vehicleId?:
   if (path.includes('/won-auctions')) return { view: 'WON_AUCTIONS' };
   if (path.includes('/delivery-collection')) return { view: 'DELIVERY_COLLECTION' };
   if (path.includes('/payments')) return { view: 'PAYMENTS' };
-  if (path.includes('/seller-dashboard')) return { view: 'SELLER_DASHBOARD' };
+  if (path.includes('/seller-dashboard') || path.includes('/seller-portal') || path.includes('/seller/dashboard')) return { view: 'SELLER_DASHBOARD' };
   if (path.includes('/seller/create-listing') || path.includes('/seller-create-listing')) return { view: 'SELLER_CREATE_LISTING' };
   if (path.includes('/online-auctions')) return { view: 'ONLINE_AUCTIONS' };
   if (path.includes('/silent-auctions')) return { view: 'SILENT_AUCTIONS' };
@@ -774,8 +775,8 @@ export const App: React.FC = () => {
     setLoading(true);
     try {
       const [fetchedVehicles, fetchedAuctions] = await Promise.all([
-        api.getVehicles(),
-        api.getAuctions(),
+        api.getActiveVehicles(),
+        api.getAuctions('ACTIVE'),
       ]);
 
       // High-performance O(1) Map lookup for instant catalog enrichment
@@ -1113,7 +1114,7 @@ export const App: React.FC = () => {
       ) : currentView === 'SIGNIN_SIGNUP' ? (
         <SignInAndSignUpPage
           onGoSignIn={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
-          onGoSignUp={() => initiateKeycloakLogin({ action: 'register' })}
+          onGoSignUp={() => navigateToView('SIGNUP')}
           onBackHome={() => navigateToView('HOME')}
           onNavigate={(view) => navigateToView(view)}
         />
@@ -1133,6 +1134,7 @@ export const App: React.FC = () => {
         <SignInPage
           oidcError={oidcError}
           securityNotice={securityNotice}
+          onGoSignUp={() => navigateToView('SIGNUP')}
           onSuccess={(user) => {
             currentUserRef.current = user;
             setCurrentUser(user);
@@ -1144,7 +1146,6 @@ export const App: React.FC = () => {
             }
             loadInventory();
           }}
-          onGoSignUp={() => initiateKeycloakLogin({ action: 'register' })}
           onBackHome={() => navigateToView('HOME')}
           onNavigate={(view) => navigateToView(view)}
         />
@@ -1457,53 +1458,26 @@ export const App: React.FC = () => {
           />
         </div>
         )
-      ) : currentView === 'SELLER_DASHBOARD' ? (
+            ) : currentView === 'SELLER_DASHBOARD' ? (
         !currentUser || (currentUser.role !== 'SELLER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
           <AccessDeniedSecurityScreen
             currentUser={currentUser}
             requiredRole="SELLER"
             routePath="/seller-buyer/seller-dashboard"
-            routeDescription="Seller Inventory & Sales Hub"
+            routeDescription="Seller Management Portal"
             onLogin={() => initiateKeycloakLogin({ action: 'login', prompt: 'login', returnView: 'SELLER_DASHBOARD' })}
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
-          <div className="flex-1 flex flex-col">
-          <Navbar
+          <SellerPortal
             currentUser={currentUser}
-            favoriteCount={favoriteIds.length}
-            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
-            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
-            onOpenAdmin={() => navigateToView('ADMIN')}
-            onLogout={handleLogout}
-            onLiveNowClick={handleLiveNowClick}
-            onSearchChange={(q) => setSearchQuery(q)}
-            onHomeClick={() => navigateToView('HOME')}
-            onNavigate={(view) => navigateToView(view)}
             onlineAuctionsCount={onlineAuctionsCount}
             silentAuctionsCount={silentAuctionsCount}
-            uaePlatesCount={uaePlatesCount}
-            machineryCount={machineryCount}
-            emiratesMotoCount={emiratesMotoCount}
-            lang={language}
-            onToggleLanguage={handleToggleLanguage}
+            initialSubScreen="dashboard"
+            onNavigateHome={() => navigateToView('HOME')}
+            onLogout={handleLogout}
+            onOpenLiveChat={() => navigateToView('HELP')}
           />
-          <div className="flex-1 flex flex-col md:flex-row bg-slate-50">
-            <PortalSidebar
-              currentView={currentView}
-              onNavigate={(v) => navigateToView(v)}
-              currentUser={currentUser}
-              lang={language}
-            />
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-              <SellerDashboard
-                lang={language}
-                onCreateListing={() => navigateToView('SELLER_CREATE_LISTING')}
-                onViewAllListings={() => navigateToView('ONLINE_AUCTIONS')}
-              />
-            </main>
-          </div>
-        </div>
         )
       ) : currentView === 'SELLER_CREATE_LISTING' ? (
         !currentUser || (currentUser.role !== 'SELLER' && !currentUser.isSuperAdmin && !(currentUser as any)?.superAdmin) ? (
@@ -1516,42 +1490,15 @@ export const App: React.FC = () => {
             onGoHome={() => navigateToView('HOME')}
           />
         ) : (
-          <div className="flex-1 flex flex-col">
-          <Navbar
+          <SellerPortal
             currentUser={currentUser}
-            favoriteCount={favoriteIds.length}
-            onOpenAuth={() => initiateKeycloakLogin({ action: 'login', prompt: 'login' })}
-            onOpenCreateVehicle={() => setIsCreateVehicleOpen(true)}
-            onOpenAdmin={() => navigateToView('ADMIN')}
-            onLogout={handleLogout}
-            onLiveNowClick={handleLiveNowClick}
-            onSearchChange={(q) => setSearchQuery(q)}
-            onHomeClick={() => navigateToView('HOME')}
-            onNavigate={(view) => navigateToView(view)}
             onlineAuctionsCount={onlineAuctionsCount}
             silentAuctionsCount={silentAuctionsCount}
-            uaePlatesCount={uaePlatesCount}
-            machineryCount={machineryCount}
-            emiratesMotoCount={emiratesMotoCount}
-            lang={language}
-            onToggleLanguage={handleToggleLanguage}
+            initialSubScreen="create-listing"
+            onNavigateHome={() => navigateToView('HOME')}
+            onLogout={handleLogout}
+            onOpenLiveChat={() => navigateToView('HELP')}
           />
-          <div className="flex-1 flex flex-col md:flex-row bg-slate-50">
-            <PortalSidebar
-              currentView={currentView}
-              onNavigate={(v) => navigateToView(v)}
-              currentUser={currentUser}
-              lang={language}
-            />
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-              <SellerCreateListingWizard
-                lang={language}
-                onCancel={() => navigateToView('SELLER_DASHBOARD')}
-                onSubmitSuccess={() => navigateToView('SELLER_DASHBOARD')}
-              />
-            </main>
-          </div>
-        </div>
         )
       ) : (
         /* HOME View: Sticky 96px AJ Auctions Navbar + Full HomePage */

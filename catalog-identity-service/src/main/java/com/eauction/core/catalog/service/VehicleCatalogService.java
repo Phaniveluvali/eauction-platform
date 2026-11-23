@@ -20,6 +20,7 @@ public interface VehicleCatalogService {
     List<Vehicle> batchArchive(List<UUID> ids);
     List<Vehicle> batchCreateVehicles(UUID sellerId, List<CreateVehicleRequest> requests);
     List<Vehicle> listVehicles(String type, String make);
+    List<Vehicle> listActiveVehicles();
     Optional<Vehicle> getVehicleById(UUID id);
     Optional<Vehicle> getVehicleByVin(String vin);
     List<Vehicle> getVehiclesBySeller(UUID sellerId);

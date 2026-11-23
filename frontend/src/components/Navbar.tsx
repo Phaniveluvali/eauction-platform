@@ -340,14 +340,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
             ) : (
-              /* Exact Rounded Border Login Button matching Image 3 */
-              <button
-                onClick={() => initiateKeycloakLogin({ action: 'login' })}
-                className="bg-transparent border border-slate-500 hover:border-white text-white font-medium px-5 py-1.5 rounded-full text-sm transition cursor-pointer"
-                title="Log in to AJ Auctions"
-              >
-                {lang === 'AR' ? 'تسجيل الدخول' : 'Login'}
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={() => initiateKeycloakLogin({ action: 'login' })}
+                  className="bg-transparent border border-slate-500 hover:border-white text-white font-medium px-4 sm:px-5 py-1.5 rounded-full text-xs sm:text-sm transition cursor-pointer"
+                  title="Log in to AJ Auctions"
+                >
+                  {lang === 'AR' ? 'تسجيل الدخول' : 'Login'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (onNavigate) {
+                      onNavigate('SIGNUP');
+                    } else {
+                      window.location.href = '/seller-buyer/signup';
+                    }
+                  }}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 sm:px-5 py-1.5 rounded-full text-xs sm:text-sm transition cursor-pointer shadow-md shadow-emerald-500/20"
+                  title="Sign up for AJ Auctions"
+                >
+                  {lang === 'AR' ? 'إنشاء حساب' : 'Sign Up'}
+                </button>
+              </div>
             )}
 
             {/* Mobile Menu Toggle Button */}
@@ -432,6 +446,33 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Support
             </button>
+
+            {!currentUser && (
+              <div className="pt-3 mt-3 border-t border-slate-800 flex gap-2">
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    initiateKeycloakLogin({ action: 'login' });
+                  }}
+                  className="flex-1 py-2 text-center text-xs font-semibold text-white border border-slate-700 rounded-xl hover:bg-slate-800 transition"
+                >
+                  {lang === 'AR' ? 'تسجيل الدخول' : 'Login'}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    if (onNavigate) {
+                      onNavigate('SIGNUP');
+                    } else {
+                      window.location.href = '/seller-buyer/signup';
+                    }
+                  }}
+                  className="flex-1 py-2 text-center text-xs font-bold text-slate-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 transition"
+                >
+                  {lang === 'AR' ? 'إنشاء حساب' : 'Sign Up'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </header>

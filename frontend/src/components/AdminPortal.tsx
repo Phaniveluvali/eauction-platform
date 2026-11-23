@@ -60,12 +60,21 @@ import {
   Megaphone,
   Copy,
   MessageCircle,
-  ArrowLeftRight
+  ArrowLeftRight,
+  HelpCircle,
+  LayoutGrid,
+  ShieldCheck,
+  CreditCard,
+  BarChart3,
+  Menu
 } from 'lucide-react';
 import { User, Vehicle, Auction } from '../types';
 import { SEED_USERS, SeedUserRecord } from '../data/seedUsers';
 import { api } from '../services/api';
 import { AccessDeniedSecurityScreen } from './AccessDeniedSecurityScreen';
+import { NotificationControlCenter } from './NotificationControlCenter';
+import { AdminDashboardOverview } from './AdminDashboardOverview';
+import { notificationApi, NotificationSettings } from '../services/api/notificationApi';
 
 interface AdminPortalProps {
   currentUser: User | null;
@@ -86,7 +95,8 @@ type AdminTab =
   | 'accountant'
   | 'reports'
   | 'admin'
-  | 'dashboard';
+  | 'dashboard'
+  | 'notifications';
 
 type SubViewType =
   | 'none'
@@ -220,15 +230,52 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const isSeller = currentUser?.role === 'SELLER';
   const isSuperAdmin = currentUser?.isSuperAdmin || currentUser?.role === 'ADMIN';
 
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
+    globalEnabled: false,
+    emailEnabled: false,
+    smsEnabled: false,
+    whatsappEnabled: true,
+    auctionStartedEnabled: false,
+    auctionClosingSoonEnabled: false,
+    outbidEnabled: false,
+    auctionWonEnabled: true,
+  });
+
+  useEffect(() => {
+    notificationApi.getNotificationSettings().then(setNotifSettings).catch(() => {});
+  }, []);
+
+  const handleToggleGlobalNotif = async () => {
+    try {
+      const updated = await notificationApi.toggleGlobalNotifications(currentUser?.email || 'admin@eauction.in');
+      setNotifSettings(updated);
+    } catch (err: any) {
+      console.error('Failed to toggle notifications:', err);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<AdminTab>(() => {
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search).get('tab');
-      if (p && ['sellers', 'operations', 'management', 'accountant', 'reports', 'admin', 'dashboard'].includes(p)) {
+      if (p && ['sellers', 'operations', 'management', 'accountant', 'reports', 'admin', 'dashboard', 'notifications'].includes(p)) {
         return p as AdminTab;
       }
     }
-    return 'sellers';
+    return 'dashboard';
   });
+
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [globalSearchTerm, setGlobalSearchTerm] = useState('');
+  const [expandedNav, setExpandedNav] = useState<Record<string, boolean>>({
+    users: false,
+    vehicles: false,
+    auctions: false,
+    reports: false,
+  });
+
+  const toggleNavGroup = (group: string) => {
+    setExpandedNav((prev) => ({ ...prev, [group]: !prev[group] }));
+  };
 
   const [activeSubView, setActiveSubView] = useState<SubViewType>(() => {
     if (typeof window !== 'undefined') {
@@ -1602,6 +1649,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     if (activeSubView === 'photo_vehicles') return 'PhotoVehicle';
     if (activeSubView === 'technical_test') return 'Technical Test';
     if (activeSubView === 'inactive_auctions') return 'Inactive Auctions';
+    if (activeTab === 'notifications') return 'Notification Control Center';
     if (activeTab === 'admin') return 'User Administration';
     if (activeSubView !== 'none') return activeSubView.replace('_', ' ');
     return activeTab;
@@ -1672,207 +1720,557 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row text-slate-800">
-      {/* 1. LEFT SIDEBAR: Role-gated */}
-      <aside className="w-full md:w-60 bg-white border-r border-slate-200 flex flex-col shrink-0">
-        {/* Brand Logo matching Screenshots */}
-        <div className="p-4 border-b border-slate-100 flex items-center justify-start">
-          <img
-            src={getAssetUrl('/assets/logo-aj.png')}
-            alt="AJ Auctions"
-            className="h-8 w-auto object-contain cursor-pointer"
-            onClick={onSwitchToMarketplace}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = getAssetUrl('/assets/main_logo-aj.png');
+      {/* 1. LEFT SIDEBAR: Role-gated Dark Navy Theme */}
+      {/* Mobile Backdrop */}
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 md:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0B132B] border-r border-slate-800 text-slate-300 flex flex-col transition-transform duration-300 md:static md:translate-x-0 ${
+          mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        {/* Brand Logo & Header matching Screenshot */}
+        <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
+          <div
+            className="flex items-center space-x-3 cursor-pointer"
+            onClick={() => {
+              setActiveTab('dashboard');
+              setActiveSubView('none');
+              setMobileMenuOpen(false);
             }}
-          />
+          >
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white flex items-center justify-center shadow-md shadow-emerald-950/50">
+              <Gavel className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-base font-black tracking-tight text-white flex items-center space-x-1">
+                <span>AJ AUCTIONS</span>
+              </div>
+              <div className="text-[10px] text-slate-400 font-medium">Powered by AshwikTechnologies</div>
+            </div>
+          </div>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="md:hidden text-slate-400 hover:text-white p-1"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation links */}
-        <nav className="p-3 space-y-1 flex-1 overflow-y-auto text-sm">
-          {/* Home Link (Always visible) */}
-          <button
-            onClick={onSwitchToMarketplace}
-            className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition text-left cursor-pointer"
-          >
-            <Home className="w-5 h-5 text-slate-400" />
-            <span className="font-medium">Home</span>
-          </button>
-
-          {/* Sellers Link (Always visible, default active) */}
+        <nav className="p-3 space-y-1.5 flex-1 overflow-y-auto text-xs">
+          {/* 1. Dashboard */}
           <button
             onClick={() => {
-              setActiveTab('sellers');
+              setActiveTab('dashboard');
               setActiveSubView('none');
+              setMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition text-left ${
-              activeTab === 'sellers' && activeSubView === 'none'
-                ? 'bg-red-50 text-[#059669] font-semibold shadow-xs'
-                : 'text-slate-600 hover:bg-slate-50 font-medium'
+            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+              activeTab === 'dashboard' && activeSubView === 'none'
+                ? 'bg-[#10B981] text-white shadow-lg shadow-emerald-950/40'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
-            <Briefcase className={`w-5 h-5 ${activeTab === 'sellers' ? 'text-[#059669]' : 'text-slate-400'}`} />
-            <span>Sellers</span>
+            <LayoutGrid className="w-4 h-4 shrink-0" />
+            <span>Dashboard</span>
           </button>
 
-          {/* Role-gated links: Only visible for Admin / Super Admin */}
-          {!isSeller && (
-            <>
-              <button
-                onClick={() => {
-                  setActiveTab('operations');
-                  setActiveSubView('none');
-                }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition text-left ${
-                  activeTab === 'operations' && activeSubView === 'none'
-                    ? 'bg-red-50 text-[#059669] font-semibold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-50 font-medium'
+          {/* 2. Users & Roles (Expandable) */}
+          <div>
+            <button
+              onClick={() => toggleNavGroup('users')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+                activeTab === 'admin' && activeSubView !== 'none'
+                  ? 'text-white bg-slate-800/80'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <Users className="w-4 h-4 shrink-0" />
+                <span>Users & Roles</span>
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  expandedNav.users || activeTab === 'admin' ? 'rotate-180 text-white' : ''
                 }`}
-              >
-                <Wrench className={`w-5 h-5 ${activeTab === 'operations' ? 'text-[#059669]' : 'text-slate-400'}`} />
-                <span>Operations</span>
-              </button>
+              />
+            </button>
+            {(expandedNav.users || activeTab === 'admin') && (
+              <div className="pl-9 pr-2 py-1 space-y-1 text-xs">
+                <button
+                  onClick={() => {
+                    setActiveTab('admin');
+                    setActiveSubView('customer_list');
+                    setUserRoleFilter('ALL');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeTab === 'admin' && activeSubView === 'customer_list' && userRoleFilter === 'ALL'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All Users ({userStats.totalCustomers})
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('admin');
+                    setActiveSubView('customer_list');
+                    setUserRoleFilter('BUYER');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeTab === 'admin' && activeSubView === 'customer_list' && userRoleFilter === 'BUYER'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Buyers ({userStats.buyers})
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('admin');
+                    setActiveSubView('seller_list');
+                    setUserRoleFilter('SELLER');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeTab === 'admin' && activeSubView === 'seller_list'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Sellers ({userStats.sellers})
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('admin');
+                    setActiveSubView('none');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeTab === 'admin' && activeSubView === 'none'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Roles & Permissions
+                </button>
+              </div>
+            )}
+          </div>
 
-              {/* Operations Submodule Quick Links */}
-              {activeTab === 'operations' && (
-                <div className="pl-6 pr-2 py-1 space-y-1">
-                  <button
-                    onClick={() => {
-                      setActiveTab('operations');
-                      setActiveSubView('live_sessions_users');
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
-                      activeSubView === 'live_sessions_users'
-                        ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 shadow-xs'
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Live Sessions Users</span>
-                    </div>
-                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      {liveSessions.length}
-                    </span>
-                  </button>
-                </div>
-              )}
+          {/* 3. KYC & Verification */}
+          <button
+            onClick={() => {
+              setActiveTab('admin');
+              setActiveSubView('customer_list');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+              activeTab === 'admin' && activeSubView === 'customer_list' && editingCustomer
+                ? 'bg-[#10B981] text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span>KYC & Verification</span>
+          </button>
 
-              <button
-                onClick={() => {
-                  setActiveTab('management');
-                  setActiveSubView('none');
-                }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition text-left ${
-                  activeTab === 'management' && activeSubView === 'none'
-                    ? 'bg-red-50 text-[#059669] font-semibold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-50 font-medium'
+          {/* 4. Vehicle Listings (Expandable) */}
+          <div>
+            <button
+              onClick={() => toggleNavGroup('vehicles')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+                activeTab === 'sellers'
+                  ? 'text-white bg-slate-800/80'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <Car className="w-4 h-4 shrink-0" />
+                <span>Vehicle Listings</span>
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  expandedNav.vehicles || activeTab === 'sellers' ? 'rotate-180 text-white' : ''
                 }`}
-              >
-                <Layers className={`w-5 h-5 ${activeTab === 'management' ? 'text-[#059669]' : 'text-slate-400'}`} />
-                <span>Management</span>
-              </button>
+              />
+            </button>
+            {(expandedNav.vehicles || activeTab === 'sellers') && (
+              <div className="pl-9 pr-2 py-1 space-y-1 text-xs">
+                <button
+                  onClick={() => {
+                    setActiveTab('sellers');
+                    setActiveSubView('vehicle_inventory');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeSubView === 'vehicle_inventory'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All Inventory ({vehicles.length})
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('sellers');
+                    setActiveSubView('add_new_car');
+                    setAddCarTab('single');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeSubView === 'add_new_car'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  + Add a New Car
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('operations');
+                    setActiveSubView('unapproved_vehicles');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeSubView === 'unapproved_vehicles'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Unapproved Vehicles
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('operations');
+                    setActiveSubView('washed_vehicles');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeSubView === 'washed_vehicles'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Washed Vehicles
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('operations');
+                    setActiveSubView('photo_vehicles');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeSubView === 'photo_vehicles'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Photo Inspection
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('operations');
+                    setActiveSubView('technical_test');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeSubView === 'technical_test'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Technical Test
+                </button>
+              </div>
+            )}
+          </div>
 
-              <button
-                onClick={() => {
-                  setActiveSubView('ai_marketing_console');
-                }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition text-left cursor-pointer ${
-                  activeSubView === 'ai_marketing_console'
-                    ? 'bg-purple-50 text-purple-700 font-bold border border-purple-200 shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-50 font-medium'
+          {/* 5. Auctions (Expandable) */}
+          <div>
+            <button
+              onClick={() => toggleNavGroup('auctions')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+                activeTab === 'management' && activeSubView === 'active_auctions'
+                  ? 'text-white bg-slate-800/80'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <Gavel className="w-4 h-4 shrink-0" />
+                <span>Auctions</span>
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  expandedNav.auctions || (activeTab === 'management' && activeSubView === 'active_auctions')
+                    ? 'rotate-180 text-white'
+                    : ''
                 }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <Megaphone className={`w-5 h-5 ${activeSubView === 'ai_marketing_console' ? 'text-purple-600' : 'text-slate-400'}`} />
-                  <span>AI Live Marketing</span>
-                </div>
-                <span className="px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-extrabold uppercase">
-                  Live Popups
-                </span>
-              </button>
+              />
+            </button>
+            {(expandedNav.auctions || (activeTab === 'management' && activeSubView === 'active_auctions')) && (
+              <div className="pl-9 pr-2 py-1 space-y-1 text-xs">
+                <button
+                  onClick={() => {
+                    setActiveTab('management');
+                    setActiveSubView('active_auctions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeSubView === 'active_auctions'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Active Auctions ({auctions.filter((a) => a.status === 'ACTIVE').length})
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('management');
+                    setActiveSubView('active_auctions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left py-1.5 px-2 rounded-lg transition text-slate-400 hover:text-white"
+                >
+                  Silent Auctions (50)
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('operations');
+                    setActiveSubView('inactive_auctions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    activeSubView === 'inactive_auctions'
+                      ? 'text-emerald-400 font-bold bg-slate-800/60'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Auction Approvals
+                </button>
+              </div>
+            )}
+          </div>
 
-              <button
-                onClick={() => {
-                  setActiveTab('accountant');
-                  setActiveSubView('invoices_payments');
-                }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition text-left cursor-pointer ${
-                  (activeTab === 'accountant' && activeSubView === 'none') || activeSubView === 'invoices_payments'
-                    ? 'bg-red-50 text-[#059669] font-semibold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-50 font-medium'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <DollarSign className={`w-5 h-5 ${(activeTab === 'accountant' && activeSubView === 'none') || activeSubView === 'invoices_payments' ? 'text-[#059669]' : 'text-slate-400'}`} />
-                  <span>Financial Ledger & AI</span>
-                </div>
-                <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                  Replica
-                </span>
-              </button>
+          {/* 6. Bids */}
+          <button
+            onClick={() => {
+              setActiveTab('operations');
+              setActiveSubView('live_sessions_users');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+              activeSubView === 'live_sessions_users'
+                ? 'bg-[#10B981] text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Zap className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>Bids & Sessions</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+              {liveSessions.length}
+            </span>
+          </button>
 
-              <button
-                onClick={() => {
-                  setActiveTab('reports');
-                  setActiveSubView('none');
-                }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition text-left ${
-                  activeTab === 'reports' && activeSubView === 'none'
-                    ? 'bg-red-50 text-[#059669] font-semibold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-50 font-medium'
-                }`}
-              >
-                <FileText className={`w-5 h-5 ${activeTab === 'reports' ? 'text-[#059669]' : 'text-slate-400'}`} />
-                <span>Reports</span>
-              </button>
+          {/* 7. Transactions */}
+          <button
+            onClick={() => {
+              setActiveTab('accountant');
+              setActiveSubView('invoices_payments');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+              activeTab === 'accountant' && activeSubView === 'invoices_payments'
+                ? 'bg-[#10B981] text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <CreditCard className="w-4 h-4 shrink-0" />
+            <span>Transactions</span>
+          </button>
 
-              <button
-                onClick={() => {
-                  setActiveTab('admin');
-                  setActiveSubView('none');
-                }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition text-left ${
-                  activeTab === 'admin' && activeSubView === 'none'
-                    ? 'bg-red-50 text-[#059669] font-semibold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-50 font-medium'
-                }`}
-              >
-                <Shield className={`w-5 h-5 ${activeTab === 'admin' ? 'text-[#059669]' : 'text-slate-400'}`} />
-                <span>User Administration</span>
-              </button>
+          {/* 8. Payments & Settlements */}
+          <button
+            onClick={() => {
+              setActiveTab('accountant');
+              setActiveSubView('invoices_payments');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+              activeTab === 'accountant' && activeSubView === 'none'
+                ? 'bg-[#10B981] text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <DollarSign className="w-4 h-4 shrink-0" />
+            <span>Payments & Settlements</span>
+          </button>
 
-              <button
-                onClick={() => {
-                  setActiveTab('dashboard');
-                  setActiveSubView('none');
-                }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition text-left ${
-                  activeTab === 'dashboard' && activeSubView === 'none'
-                    ? 'bg-red-50 text-[#059669] font-semibold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-50 font-medium'
+          {/* 9. Reports & Analytics (Expandable) */}
+          <div>
+            <button
+              onClick={() => toggleNavGroup('reports')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+                activeTab === 'reports'
+                  ? 'text-white bg-slate-800/80'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <BarChart3 className="w-4 h-4 shrink-0" />
+                <span>Reports & Analytics</span>
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  expandedNav.reports || activeTab === 'reports' ? 'rotate-180 text-white' : ''
                 }`}
-              >
-                <TrendingUp className={`w-5 h-5 ${activeTab === 'dashboard' ? 'text-[#059669]' : 'text-slate-400'}`} />
-                <span>Dashboard</span>
-              </button>
-            </>
-          )}
+              />
+            </button>
+            {(expandedNav.reports || activeTab === 'reports') && (
+              <div className="pl-9 pr-2 py-1 space-y-1 text-xs">
+                <button
+                  onClick={() => {
+                    setActiveTab('reports');
+                    setActiveSubView('none');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left py-1.5 px-2 rounded-lg transition text-slate-400 hover:text-white"
+                >
+                  Sales Report
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('reports');
+                    setActiveSubView('none');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left py-1.5 px-2 rounded-lg transition text-slate-400 hover:text-white"
+                >
+                  Awarded Report
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('reports');
+                    setActiveSubView('none');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left py-1.5 px-2 rounded-lg transition text-slate-400 hover:text-white"
+                >
+                  Sellers Report
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 10. Content Management */}
+          <button
+            onClick={() => {
+              setActiveTab('operations');
+              setActiveSubView('none');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+              activeTab === 'operations' && activeSubView === 'none'
+                ? 'bg-[#10B981] text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Layers className="w-4 h-4 shrink-0" />
+            <span>Content Management</span>
+          </button>
+
+          {/* 11. Notifications */}
+          <button
+            onClick={() => {
+              setActiveTab('notifications');
+              setActiveSubView('none');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+              activeTab === 'notifications'
+                ? 'bg-[#10B981] text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Bell className="w-4 h-4 shrink-0" />
+              <span>Notifications</span>
+            </div>
+            <span
+              className={`w-2 h-2 rounded-full ${
+                notifSettings.globalEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'
+              }`}
+            />
+          </button>
+
+          {/* 12. Audit Logs */}
+          <button
+            onClick={() => {
+              setActiveTab('reports');
+              setActiveSubView('operation_log');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer ${
+              activeSubView === 'operation_log'
+                ? 'bg-[#10B981] text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <FileText className="w-4 h-4 shrink-0" />
+            <span>Audit Logs</span>
+          </button>
+
+          {/* 13. System Health */}
+          <button
+            onClick={() => {
+              setActiveTab('dashboard');
+              setActiveSubView('none');
+              setMobileMenuOpen(false);
+            }}
+            className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer text-slate-400 hover:text-white hover:bg-slate-800/60"
+          >
+            <Activity className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span>System Health</span>
+          </button>
+
+          {/* 14. Settings */}
+          <button
+            onClick={() => {
+              setActiveTab('admin');
+              setActiveSubView('none');
+              setMobileMenuOpen(false);
+            }}
+            className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-bold transition text-left cursor-pointer text-slate-400 hover:text-white hover:bg-slate-800/60"
+          >
+            <Settings className="w-4 h-4 shrink-0" />
+            <span>Settings</span>
+          </button>
         </nav>
 
-        {/* User Profile & Sign Out Footer */}
-        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+        {/* User Profile Footer matching Screenshot */}
+        <div className="p-3 border-t border-slate-800/80 bg-slate-900/60">
           <div className="flex items-center space-x-2.5 mb-2 px-1">
-            <div className="w-8 h-8 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-xs">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 font-black flex items-center justify-center text-xs shadow-xs">
               {currentUser?.fullName?.charAt(0) || 'A'}
             </div>
             <div className="flex-1 min-w-0 text-xs">
-              <p className="font-semibold text-slate-800 truncate">{currentUser?.fullName || 'Administrator'}</p>
-              <p className="text-[10px] text-slate-400 font-mono truncate">{currentUser?.email || 'admin@eauction.in'}</p>
+              <p className="font-bold text-white truncate">{currentUser?.fullName || 'Admin'}</p>
+              <p className="text-[10px] text-emerald-400 font-semibold truncate">System Administrator</p>
             </div>
           </div>
           <button
             onClick={onLogout}
-            className="w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+            className="w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
@@ -1881,118 +2279,105 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       </aside>
 
       {/* 2. MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Top Header Bar matching Screenshots: ✕ Header Title ... 🔔 👤 */}
-        <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between shadow-2xs relative z-30">
-          <div className="flex items-center space-x-3">
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto pb-16 md:pb-0">
+        {/* Top Header Bar matching Screenshot */}
+        <header className="bg-white border-b border-slate-200/90 px-4 md:px-8 py-3.5 flex items-center justify-between shadow-2xs sticky top-0 z-30">
+          <div className="flex items-center space-x-3 flex-1 max-w-xl">
+            {/* Mobile Menu Hamburger */}
             <button
-              onClick={activeSubView !== 'none' ? () => setActiveSubView('none') : onSwitchToMarketplace}
-              className="p-1 hover:bg-slate-100 rounded-lg text-slate-800 transition cursor-pointer flex items-center justify-center"
-              title={activeSubView !== 'none' ? 'Back to submodules' : 'Close and return to Home'}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              title="Toggle Navigation Menu"
             >
-              <X className="w-5 h-5 stroke-[2.5]" />
+              <Menu className="w-5 h-5" />
             </button>
-            <h2 className="text-xl font-bold text-slate-900 capitalize tracking-tight flex items-center gap-2">
-              <span>{getHeaderTitle()}</span>
-            </h2>
+
+            {/* Back to Overview or Return to Marketplace */}
+            {activeSubView !== 'none' ? (
+              <button
+                onClick={() => setActiveSubView('none')}
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-800 transition cursor-pointer flex items-center space-x-1.5 text-xs font-bold"
+                title="Back to Overview"
+              >
+                <X className="w-4 h-4 stroke-[2.5]" />
+                <span className="hidden sm:inline">Back</span>
+              </button>
+            ) : (
+              <button
+                onClick={onSwitchToMarketplace}
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-800 transition cursor-pointer flex items-center space-x-1.5 text-xs font-bold"
+                title="Return to Public Marketplace"
+              >
+                <Home className="w-4 h-4 text-emerald-600" />
+                <span className="hidden sm:inline">Marketplace</span>
+              </button>
+            )}
+
+            {/* Global Search Bar (Matching Uploaded Screenshot) */}
+            <div className="relative flex-1 max-w-md hidden sm:block">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search users, vehicles, auctions, bids, transactions..."
+                value={globalSearchTerm}
+                onChange={(e) => setGlobalSearchTerm(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:bg-white transition"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          {/* Top Right Utilities matching Screenshot */}
+          <div className="flex items-center space-x-3">
+            {/* Notification Master Toggle Pill */}
             <button
-              onClick={() => setActiveSubView('operation_log')}
-              className="p-1.5 text-slate-700 hover:text-[#059669] transition cursor-pointer relative"
-              title="Notifications & System Logs"
+              onClick={handleToggleGlobalNotif}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition shadow-2xs cursor-pointer ${
+                notifSettings.globalEnabled
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
+                  : 'bg-red-50 text-red-700 border border-red-300 hover:bg-red-100'
+              }`}
+              title="Click to toggle system notifications"
             >
-              <Bell className="w-5 h-5 stroke-[2]" />
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  notifSettings.globalEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                }`}
+              />
+              <span>{notifSettings.globalEnabled ? 'Alerts: ON' : 'Alerts: MUTED'}</span>
             </button>
 
-            {/* Admin Header User Profile & Sign Out Dropdown (Screenshot 2 & 3) */}
-            <div className="relative">
-              <button
-                onClick={() => setIsAdminProfileOpen(!isAdminProfileOpen)}
-                className="flex items-center space-x-2 p-1 rounded-full hover:bg-slate-100 transition cursor-pointer focus:outline-none"
-                title="Admin Account Profile & Sign Out"
-              >
-                <div className="w-8 h-8 rounded-full border border-slate-800 flex items-center justify-center text-slate-800 bg-white shadow-xs">
-                  <UserIcon className="w-4 h-4 text-slate-800" />
-                </div>
-              </button>
+            {/* Notification Bell with Badge (12) */}
+            <button
+              onClick={() => {
+                setActiveTab('notifications');
+                setActiveSubView('none');
+              }}
+              className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition cursor-pointer relative"
+              title="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+                12
+              </span>
+            </button>
 
-              {isAdminProfileOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-2xl border border-slate-200 p-5 z-50 text-center animate-fadeIn">
-                  <div className="w-16 h-16 rounded-full border-2 border-[#231F20] flex items-center justify-center mx-auto mb-2 text-[#231F20] bg-white">
-                    <UserIcon className="w-10 h-10 text-slate-800" />
-                  </div>
+            {/* Help Icon */}
+            <button
+              className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              title="Help & Support"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
 
-                  <h4 className="font-bold text-[#231F20] text-base leading-tight">
-                    {currentUser?.fullName || 'Administrator'}
-                  </h4>
-
-                  <p className="text-xs text-[#8C8C8C] mb-2 font-mono">
-                    {currentUser?.email || 'admin@eauction.in'}
-                  </p>
-
-                  {/* RBAC Badges */}
-                  <div className="flex flex-wrap items-center justify-center gap-1.5 mb-4">
-                    {Boolean(currentUser?.isSuperAdmin || (currentUser as any)?.superAdmin) && (
-                      <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <Shield className="w-3 h-3" />
-                        SUPER ADMIN
-                      </span>
-                    )}
-                    <span className="text-[10px] font-bold bg-red-100 text-[#059669] px-2 py-0.5 rounded-full">
-                      ROLE: {currentUser?.role || 'ADMIN'}
-                    </span>
-                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                      KYC VERIFIED
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <button
-                      onClick={() => {
-                        setIsAdminProfileOpen(false);
-                        onSwitchToMarketplace();
-                      }}
-                      className="py-2 px-3 bg-red-50 border border-red-200 rounded-md text-[#059669] font-bold hover:bg-red-100 transition cursor-pointer col-span-2"
-                    >
-                      Return to Marketplace
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setIsAdminProfileOpen(false);
-                        setActiveTab('admin');
-                        setActiveSubView('customer_list');
-                      }}
-                      className="py-2 px-3 border border-slate-300 rounded-md text-[#231F20] font-semibold hover:bg-slate-50 transition cursor-pointer"
-                    >
-                      User Admin
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setIsAdminProfileOpen(false);
-                        setActiveSubView('operation_log');
-                      }}
-                      className="py-2 px-3 border border-slate-300 rounded-md text-[#231F20] font-semibold hover:bg-slate-50 transition cursor-pointer"
-                    >
-                      System Logs
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setIsAdminProfileOpen(false);
-                        onLogout();
-                      }}
-                      className="py-2 px-3 border border-red-200 bg-red-50 text-red-600 font-bold hover:bg-red-100 rounded-md transition cursor-pointer col-span-2 flex items-center justify-center space-x-1.5"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+            {/* Admin Profile Pill */}
+            <div className="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 font-black flex items-center justify-center text-xs shadow-xs">
+                {currentUser?.fullName?.charAt(0) || 'A'}
+              </div>
+              <div className="hidden md:block text-left">
+                <div className="text-xs font-bold text-slate-900 leading-tight">Admin</div>
+                <div className="text-[10px] text-slate-400 font-medium">System Administrator</div>
+              </div>
             </div>
           </div>
         </header>
@@ -7040,88 +7425,84 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
               )}
 
+              {/* TAB 8: NOTIFICATION CONTROL CENTER */}
+              {activeTab === 'notifications' && !isSeller && (
+                <NotificationControlCenter currentAdminEmail={currentUser?.email || 'admin@eauction.in'} />
+              )}
+
               {/* TAB 7: DASHBOARD */}
               {activeTab === 'dashboard' && !isSeller && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-                      <span className="text-xs font-semibold text-slate-400 uppercase">Active Auctions</span>
-                      <p className="text-3xl font-extrabold text-slate-900 mt-1">
-                        {auctions.filter((a) => a.status === 'ACTIVE').length}
-                      </p>
-                      <p className="text-[11px] text-emerald-600 mt-1 font-medium">Live bidding running</p>
-                    </div>
-
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-                      <span className="text-xs font-semibold text-slate-400 uppercase">Total Inventory</span>
-                      <p className="text-3xl font-extrabold text-slate-900 mt-1">{vehicles.length}</p>
-                      <p className="text-[11px] text-slate-500 mt-1 font-medium">Commercial & Passenger</p>
-                    </div>
-
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-                      <span className="text-xs font-semibold text-slate-400 uppercase">Registered Users</span>
-                      <p className="text-3xl font-extrabold text-slate-900 mt-1">{userStats.totalCustomers.toLocaleString()}</p>
-                      <p className="text-[11px] text-emerald-600 mt-1 font-medium">
-                        {userStats.buyers.toLocaleString()} Buyers, {userStats.sellers} Sellers, {userStats.staff} Admins
-                      </p>
-                    </div>
-
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-                      <span className="text-xs font-semibold text-slate-400 uppercase">Top Recorded Bid</span>
-                      <p className="text-3xl font-extrabold text-emerald-600 mt-1">AED {topBid.amount.toLocaleString()}</p>
-                      <p className="text-[11px] text-slate-500 mt-1 font-mono truncate">{topBid.title}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-                      <h4 className="font-bold text-slate-900 text-sm mb-3">Quick Navigation Modules</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          onClick={() => {
-                            setActiveSubView('add_new_car');
-                            setAddCarTab('single');
-                          }}
-                          className="p-3 border border-slate-200 rounded-xl hover:bg-slate-50 text-left transition cursor-pointer"
-                        >
-                          <PlusCircle className="w-5 h-5 text-red-600 mb-1" />
-                          <div className="text-xs font-bold text-slate-900">Add a New Car</div>
-                          <div className="text-[10px] text-slate-400">Launch single or bulk listing</div>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setUserRoleFilter('ALL');
-                            setActiveSubView('customer_list');
-                          }}
-                          className="p-3 border border-slate-200 rounded-xl hover:bg-slate-50 text-left transition cursor-pointer"
-                        >
-                          <Users className="w-5 h-5 text-blue-600 mb-1" />
-                          <div className="text-xs font-bold text-slate-900">User Administration</div>
-                          <div className="text-[10px] text-slate-400">{userStats.totalCustomers.toLocaleString()} User Accounts</div>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-                      <h4 className="font-bold text-slate-900 text-sm mb-3">System Health</h4>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex items-center justify-between p-2 bg-emerald-50 rounded-lg text-emerald-800 font-medium">
-                          <span>WebSocket Real-Time Gateway</span>
-                          <span className="font-mono">ONLINE (:8081)</span>
-                        </div>
-                        <div className="flex items-center justify-between p-2 bg-emerald-50 rounded-lg text-emerald-800 font-medium">
-                          <span>PostgreSQL Core Database</span>
-                          <span className="font-mono">{userStats.totalCustomers.toLocaleString()} USERS READY</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <AdminDashboardOverview
+                  onNavigate={(tab, subview) => {
+                    setActiveTab(tab as any);
+                    if (subview) setActiveSubView(subview as any);
+                    setMobileMenuOpen(false);
+                  }}
+                />
               )}
             </div>
           )}
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation Bar matching Mobile Screenshot */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0B132B] border-t border-slate-800 flex items-center justify-around py-2 px-2 text-slate-400 backdrop-blur-md">
+        <button
+          onClick={() => {
+            setActiveTab('dashboard');
+            setActiveSubView('none');
+          }}
+          className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold ${
+            activeTab === 'dashboard' && activeSubView === 'none' ? 'text-emerald-400' : 'hover:text-white'
+          }`}
+        >
+          <LayoutGrid className="w-4 h-4 mb-0.5" />
+          <span>Dashboard</span>
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('management');
+            setActiveSubView('active_auctions');
+          }}
+          className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold ${
+            activeTab === 'management' ? 'text-emerald-400' : 'hover:text-white'
+          }`}
+        >
+          <Gavel className="w-4 h-4 mb-0.5" />
+          <span>Auctions</span>
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('admin');
+            setActiveSubView('customer_list');
+          }}
+          className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold ${
+            activeTab === 'admin' ? 'text-emerald-400' : 'hover:text-white'
+          }`}
+        >
+          <Users className="w-4 h-4 mb-0.5" />
+          <span>Users</span>
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('reports');
+            setActiveSubView('none');
+          }}
+          className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold ${
+            activeTab === 'reports' ? 'text-emerald-400' : 'hover:text-white'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 mb-0.5" />
+          <span>Reports</span>
+        </button>
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-bold hover:text-white"
+        >
+          <Menu className="w-4 h-4 mb-0.5" />
+          <span>More</span>
+        </button>
+      </div>
     </div>
   );
 };

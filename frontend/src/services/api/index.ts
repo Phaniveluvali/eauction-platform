@@ -3,12 +3,14 @@ import { catalogApi } from './catalogApi';
 import { auctionApi } from './auctionApi';
 import { sessionApi } from './sessionApi';
 import { aiMarketingApi } from './aiMarketingApi';
+import { notificationApi } from './notificationApi';
 
 export { authApi } from './authApi';
 export { catalogApi } from './catalogApi';
 export { auctionApi } from './auctionApi';
 export { sessionApi } from './sessionApi';
 export { aiMarketingApi } from './aiMarketingApi';
+export { notificationApi } from './notificationApi';
 
 export const api = {
   ...authApi,
@@ -16,6 +18,7 @@ export const api = {
   ...auctionApi,
   ...sessionApi,
   ...aiMarketingApi,
+  ...notificationApi,
 };
 
 export function isServiceDegraded(err: any): boolean {

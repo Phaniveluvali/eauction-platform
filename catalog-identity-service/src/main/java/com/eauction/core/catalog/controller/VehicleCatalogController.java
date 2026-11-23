@@ -186,8 +186,17 @@ public class VehicleCatalogController {
     @GetMapping
     public ResponseEntity<List<Vehicle>> listVehicles(
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String make) {
+            @RequestParam(required = false) String make,
+            @RequestParam(required = false, defaultValue = "false") boolean activeOnly) {
+        if (activeOnly) {
+            return ResponseEntity.ok(vehicleCatalogService.listActiveVehicles());
+        }
         return ResponseEntity.ok(vehicleCatalogService.listVehicles(type, make));
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<List<Vehicle>> listActiveVehicles() {
+        return ResponseEntity.ok(vehicleCatalogService.listActiveVehicles());
     }
 
     @GetMapping("/{id}")

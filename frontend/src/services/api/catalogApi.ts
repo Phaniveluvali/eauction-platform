@@ -2,6 +2,14 @@ import { Vehicle, UserStats } from '../../types';
 import { CATALOG_BASE, getAuthHeader } from './common';
 
 export const catalogApi = {
+  async getActiveVehicles(): Promise<Vehicle[]> {
+    const res = await fetch(`${CATALOG_BASE}/api/v1/catalog/vehicles/active`, {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) throw new Error('Failed to fetch active vehicles');
+    return res.json();
+  },
+
   async getVehicles(type?: string, make?: string): Promise<Vehicle[]> {
     const q = new URLSearchParams();
     if (type) q.set('type', type);

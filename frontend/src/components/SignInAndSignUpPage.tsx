@@ -11,6 +11,8 @@ interface SignInAndSignUpPageProps {
 }
 
 export const SignInAndSignUpPage: React.FC<SignInAndSignUpPageProps> = ({
+  onGoSignIn,
+  onGoSignUp,
   onBackHome,
   onNavigate,
 }) => {
@@ -64,11 +66,19 @@ export const SignInAndSignUpPage: React.FC<SignInAndSignUpPageProps> = ({
             </button>
 
             <button
-              onClick={() => initiateKeycloakLogin({ action: 'register' })}
+              onClick={() => {
+                if (onGoSignUp) {
+                  onGoSignUp();
+                } else if (onNavigate) {
+                  onNavigate('SIGNUP');
+                } else {
+                  window.location.href = '/seller-buyer/signup';
+                }
+              }}
               className="w-full py-3 px-6 bg-white hover:bg-slate-50 text-slate-800 font-semibold rounded-xl border border-slate-300 shadow-xs transition flex items-center justify-center gap-2.5 cursor-pointer text-sm"
             >
               <UserPlus className="w-4 h-4 text-slate-600" />
-              <span>Create New Account (Keycloak Registration)</span>
+              <span>Create New Account</span>
             </button>
           </div>
 

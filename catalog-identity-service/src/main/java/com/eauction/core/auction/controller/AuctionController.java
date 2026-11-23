@@ -261,4 +261,102 @@ public class AuctionController {
         auction.setStatus("ENDED");
         return ResponseEntity.ok(auctionRepository.save(auction));
     }
+
+    @GetMapping("/dashboard/summary")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getDashboardSummary() {
+        if (jdbcTemplate == null) {
+            return ResponseEntity.ok(Map.of());
+        }
+        String sql = """
+            SELECT 
+                (SELECT count(*) FROM users) as total_users,
+                (SELECT count(*) FROM users WHERE role = 'BUYER') as total_buyers,
+                (SELECT count(*) FROM users WHERE role = 'SELLER') as total_sellers,
+                (SELECT count(*) FROM vehicles) as total_vehicles,
+                (SELECT count(*) FROM auctions WHERE status = 'ACTIVE') as active_auctions,
+                (SELECT count(*) FROM auctions WHERE status = 'ACTIVE' AND auction_type = 'ONLINE') as online_auctions,
+                (SELECT count(*) FROM auctions WHERE status = 'ACTIVE' AND auction_type = 'SILENT') as silent_auctions,
+                (SELECT count(*) FROM auctions WHERE status = 'PENDING') as scheduled_auctions,
+                (SELECT count(*) FROM auctions WHERE status = 'ENDED') as completed_auctions,
+                (SELECT count(*) FROM auctions WHERE status = 'CANCELLED') as cancelled_auctions,
+                (SELECT COALESCE(SUM(total_amount), 0) FROM sales_invoices) as total_transaction_value,
+                (SELECT COALESCE(SUM(net_payout), 0) FROM seller_settlements WHERE settlement_status = 'SETTLED') as settled_value,
+                (SELECT COALESCE(SUM(net_payout), 0) FROM seller_settlements WHERE settlement_status = 'PENDING') as pending_value,
+                (SELECT count(*) FROM kyc_documents WHERE status = 'APPROVED') as kyc_approved,
+                (SELECT count(*) FROM kyc_documents WHERE status = 'PENDING') as kyc_pending
+        """;
+        return ResponseEntity.ok(jdbcTemplate.queryForMap(sql));
+    }
+
+    @GetMapping("/dashboard/live-lots")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getDashboardLiveLots(@RequestParam(defaultValue = "5") int limit) {
+        if (jdbcTemplate == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        String sql = """
+            SELECT 
+                a.id::text as auction_id,
+                v.lot_no,
+                concat(v.make, ' ', v.model) as vehicle_name,
+                v.manufacturing_year,
+                v.vehicle_type,
+                COALESCE(v.media_paths[1], '') as thumbnail,
+                a.current_highest_bid,
+                a.end_time,
+                (SELECT count(*) FROM bids b WHERE b.auction_id = a.id) as bids_count
+            FROM auctions a
+            JOIN vehicles v ON a.vehicle_id = v.id
+            WHERE a.status = 'ACTIVE'
+            ORDER BY a.end_time ASC
+            LIMIT ?
+        """;
+        return ResponseEntity.ok(jdbcTemplate.queryForList(sql, limit));
+    }
+
+    @GetMapping("/dashboard/activity")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getDashboardActivity() {
+        if (jdbcTemplate == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        String sql = """
+            SELECT 
+                TO_CHAR(d.day, 'YYYY-MM-DD') as date_str,
+                TO_CHAR(d.day, 'Mon DD') as label,
+                COALESCE(COUNT(b.id), 0) as bids_count,
+                COALESCE(COUNT(DISTINCT CASE WHEN a.auction_type = 'ONLINE' THEN a.id END), 0) as online_auctions,
+                COALESCE(COUNT(DISTINCT CASE WHEN a.auction_type = 'SILENT' THEN a.id END), 0) as silent_auctions
+            FROM generate_series(CURRENT_DATE - INTERVAL '14 days', CURRENT_DATE, '1 day'::interval) d(day)
+            LEFT JOIN auctions a ON DATE(a.created_at) = DATE(d.day)
+            LEFT JOIN bids b ON DATE(b.created_at) = DATE(d.day)
+            GROUP BY d.day
+            ORDER BY d.day ASC
+        """;
+        return ResponseEntity.ok(jdbcTemplate.queryForList(sql));
+    }
+
+    @GetMapping("/dashboard/recent-activity")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getRecentActivity(@RequestParam(defaultValue = "10") int limit) {
+        if (jdbcTemplate == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        String sql = """
+            SELECT 
+                id::text,
+                admin_email,
+                action,
+                entity_type,
+                entity_id,
+                details,
+                created_at
+            FROM admin_audit_logs
+            ORDER BY created_at DESC
+            LIMIT ?
+        """;
+        return ResponseEntity.ok(jdbcTemplate.queryForList(sql, limit));
+    }
+
 }

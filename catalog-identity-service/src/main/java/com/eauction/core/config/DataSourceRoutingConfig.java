@@ -75,6 +75,9 @@ public class DataSourceRoutingConfig {
 
         HikariDataSource ds = new HikariDataSource();
         ds.setPoolName("HikariPool-Standby-Read");
+        if (url == null || url.isBlank()) {
+            url = "jdbc:postgresql://eauction-postgres-replica:5432/eauction_db";
+        }
         ds.setJdbcUrl(url);
         ds.setUsername(username);
         ds.setPassword(password);

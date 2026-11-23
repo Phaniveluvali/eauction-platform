@@ -20,12 +20,17 @@ public class NotificationService {
 
     private final List<NotificationChannel> channels;
     private final NotificationTemplateEngine templateEngine;
+    private final NotificationSettingsService settingsService;
     private final SecureRandom random = new SecureRandom();
     private final Map<String, OtpRecord> otpStore = new ConcurrentHashMap<>();
 
-    public NotificationService(List<NotificationChannel> channels, NotificationTemplateEngine templateEngine) {
+    public NotificationService(
+            List<NotificationChannel> channels, 
+            NotificationTemplateEngine templateEngine,
+            NotificationSettingsService settingsService) {
         this.channels = channels;
         this.templateEngine = templateEngine;
+        this.settingsService = settingsService;
     }
 
     private static class OtpRecord {
@@ -69,6 +74,9 @@ public class NotificationService {
     }
 
     public String sendWhatsAppOtp(String phoneNumber) {
+        if (settingsService != null && !settingsService.isWhatsAppAllowed()) {
+            log.info("[NOTIFICATION MUTED] WhatsApp OTP dispatched in mock mode (channel disabled by Admin).");
+        }
         String cleanPhone = phoneNumber.replaceAll("[^0-9+]", "");
         String otpCode = generateAndStoreOtp(cleanPhone);
 
@@ -95,6 +103,10 @@ public class NotificationService {
     }
 
     public void sendAuctionOutbidEmail(String toEmail, String auctionTitle, double currentBid, double minNextBid) {
+        if (settingsService != null && (!settingsService.isEmailAllowed() || !settingsService.getSettings().isOutbidEnabled())) {
+            log.info("[NOTIFICATION MUTED] Outbid email alert suppressed by Admin settings.");
+            return;
+        }
         String subject = "⚠️ Outbid Alert: " + auctionTitle;
         String guidance = "Another verified bidder just placed a higher bid of AED " + String.format("%,.2f", currentBid) + ". Place your next counter-bid now to stay in the lead!";
         String html = templateEngine.buildAuctionReminderHtml("OUTBID NOTICE", "You Have Been Outbid!", auctionTitle, minNextBid, "Active Auction", guidance, "Counter-Bid Now");
@@ -105,6 +117,10 @@ public class NotificationService {
     }
 
     public void sendAuctionEndingEmail(String toEmail, String auctionTitle, double currentBid, String timeLeft) {
+        if (settingsService != null && !settingsService.isAuctionClosingSoonNotificationAllowed()) {
+            log.info("[NOTIFICATION MUTED] Auction ending email suppressed by Admin settings.");
+            return;
+        }
         String subject = "⏳ Final Call: " + auctionTitle + " Closes in " + timeLeft;
         String guidance = "This auction lot is reaching its final countdown! Do not miss the hammer on this high-value Emirates Transport fleet vehicle.";
         String html = templateEngine.buildAuctionReminderHtml("FINAL HAMMER CALL", "Auction Ending Soon!", auctionTitle, currentBid, timeLeft, guidance, "Join Live Bidding");
@@ -115,6 +131,10 @@ public class NotificationService {
     }
 
     public void sendAuctionWonEmail(String toEmail, String buyerName, String auctionTitle, double winningBid, String auctionId) {
+        if (settingsService != null && (!settingsService.isEmailAllowed() || !settingsService.getSettings().isAuctionWonEnabled())) {
+            log.info("[NOTIFICATION MUTED] Auction won email suppressed by Admin settings.");
+            return;
+        }
         String subject = "🏆 Congratulations! You Won: " + auctionTitle;
         String guidance = "Congratulations " + buyerName + "! You are the official winning bidder for " + auctionTitle + " with a final winning hammer of AED " + String.format("%,.2f", winningBid) + ". Please proceed to security settlement.";
         String html = templateEngine.buildAuctionReminderHtml("AUCTION WON", "Hammer Fell - Congratulations!", auctionTitle, winningBid, "Auction Concluded", guidance, "Complete Settlement");
@@ -125,6 +145,10 @@ public class NotificationService {
     }
 
     public void sendAuction24hReminder(Auction auction, List<String> recipientEmails) {
+        if (settingsService != null && !settingsService.isAuctionStartedNotificationAllowed()) {
+            log.info("[NOTIFICATION MUTED] Auction 24h reminders suppressed by Admin settings.");
+            return;
+        }
         double startingPrice = auction.getStartPrice() != null ? auction.getStartPrice().doubleValue() : 0.0;
         String title = "Auction Lot #" + (auction.getVehicleId() != null ? auction.getVehicleId().toString().substring(0, 8) : auction.getId().toString().substring(0, 8));
         String subject = "📅 Starting in 24 Hours: " + title;
@@ -139,6 +163,10 @@ public class NotificationService {
     }
 
     public void sendAuction1hReminder(Auction auction, List<String> recipientEmails) {
+        if (settingsService != null && !settingsService.isAuctionStartedNotificationAllowed()) {
+            log.info("[NOTIFICATION MUTED] Auction 1h reminders suppressed by Admin settings.");
+            return;
+        }
         double startingPrice = auction.getStartPrice() != null ? auction.getStartPrice().doubleValue() : 0.0;
         String title = "Auction Lot #" + (auction.getVehicleId() != null ? auction.getVehicleId().toString().substring(0, 8) : auction.getId().toString().substring(0, 8));
         String subject = "⚡ Starting in 1 Hour: " + title;
@@ -152,7 +180,29 @@ public class NotificationService {
         }
     }
 
+    public void sendAuctionStartedNotice(Auction auction, List<String> recipientEmails) {
+        if (settingsService != null && !settingsService.isAuctionStartedNotificationAllowed()) {
+            log.info("[NOTIFICATION MUTED] Auction Started notices suppressed by Admin settings.");
+            return;
+        }
+        double startingPrice = auction.getStartPrice() != null ? auction.getStartPrice().doubleValue() : 0.0;
+        String title = "Auction Lot #" + (auction.getVehicleId() != null ? auction.getVehicleId().toString().substring(0, 8) : auction.getId().toString().substring(0, 8));
+        String subject = "🚗 Auction Started: " + title + " - Bidding is Live!";
+        String guidance = "Live bidding has officially commenced! Enter the virtual auction hall now to place your bids on this fleet vehicle.";
+        String html = templateEngine.buildAuctionReminderHtml("LIVE AUCTION OPEN", "Bidding is Now Open!", title, startingPrice, "Live Now", guidance, "Enter Live Bidding");
+        String text = "Auction " + title + " is now live! Starting price: AED " + startingPrice + ". Enter the virtual auction hall to place your bids.";
+
+        NotificationChannel emailChannel = resolveChannel("EMAIL");
+        for (String email : recipientEmails) {
+            emailChannel.send(email, subject, text, html);
+        }
+    }
+
     public void sendAuctionEnding1hNotice(Auction auction, List<String> recipientEmails) {
+        if (settingsService != null && !settingsService.isAuctionClosingSoonNotificationAllowed()) {
+            log.info("[NOTIFICATION MUTED] Auction Ending 1h notices suppressed by Admin settings.");
+            return;
+        }
         double currentPrice = auction.getCurrentHighestBid() != null && auction.getCurrentHighestBid().doubleValue() > 0
                 ? auction.getCurrentHighestBid().doubleValue()
                 : (auction.getStartPrice() != null ? auction.getStartPrice().doubleValue() : 0.0);

@@ -291,6 +291,12 @@ public class VehicleCatalogServiceImpl implements VehicleCatalogService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Vehicle> listActiveVehicles() {
+        return vehicleRepository.findActiveAuctionVehicles();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Vehicle> listVehicles(String type, String make) {
         if (type != null && !type.isBlank()) {
             return vehicleRepository.findByVehicleType(type.toUpperCase().trim());
