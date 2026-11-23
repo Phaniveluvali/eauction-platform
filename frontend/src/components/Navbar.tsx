@@ -342,7 +342,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <div className="flex items-center gap-2.5">
                 <button
-                  onClick={() => initiateKeycloakLogin({ action: 'login' })}
+                  onClick={() => {
+                    if (onNavigate) {
+                      onNavigate('SIGNIN');
+                    } else if (onOpenAuth) {
+                      onOpenAuth();
+                    } else {
+                      window.location.href = '/seller-buyer/signin';
+                    }
+                  }}
                   className="bg-transparent border border-slate-500 hover:border-white text-white font-medium px-4 sm:px-5 py-1.5 rounded-full text-xs sm:text-sm transition cursor-pointer"
                   title="Log in to AJ Auctions"
                 >
@@ -452,7 +460,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    initiateKeycloakLogin({ action: 'login' });
+                    if (onNavigate) {
+                      onNavigate('SIGNIN');
+                    } else if (onOpenAuth) {
+                      onOpenAuth();
+                    } else {
+                      window.location.href = '/seller-buyer/signin';
+                    }
                   }}
                   className="flex-1 py-2 text-center text-xs font-semibold text-white border border-slate-700 rounded-xl hover:bg-slate-800 transition"
                 >

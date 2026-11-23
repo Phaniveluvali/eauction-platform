@@ -258,7 +258,7 @@ catalogIdentity:
   # Container image definition
   image:
     repository: "krishnaveluvali/eauction-catalog-identity"
-    tag: "v2.1.0-admin-dashboard"
+    tag: "v2.1.2-auth-fix"
     pullPolicy: "IfNotPresent"
 
   # Service networking definition
@@ -422,7 +422,7 @@ frontend:
   # - To deploy legacy version (with old branding and old image assets): use "v1.0.0-legacy"
   image:
     repository: "krishnaveluvali/eauction-frontend"
-    tag: "v2.1.0-admin-dashboard"
+    tag: "v2.1.2-auth-fix"
     pullPolicy: "IfNotPresent"
 
   # Service networking definition

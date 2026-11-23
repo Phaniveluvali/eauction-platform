@@ -7,12 +7,30 @@
 import { api } from '../services/api';
 import { AuthResponse } from '../types';
 
+/**
+ * Dynamically resolves the active authentication origin from the current window location.
+ * Allows seamless, zero-downtime multi-domain access across https://ajauctions.online,
+ * https://www.ajauctions.online, and localhost.
+ */
+const getAuthOrigin = (): string => {
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return window.location.origin;
+  }
+  return 'https://ajauctions.online';
+};
+
 export const KEYCLOAK_CONFIG = {
   realm: 'eauction',
   clientId: 'eauction-portal',
-  authUrl: 'https://tecnics-internal.online/auth/realms/eauction/protocol/openid-connect/auth',
-  tokenUrl: 'https://tecnics-internal.online/auth/realms/eauction/protocol/openid-connect/token',
-  logoutUrl: 'https://tecnics-internal.online/auth/realms/eauction/protocol/openid-connect/logout',
+  get authUrl(): string {
+    return `${getAuthOrigin()}/auth/realms/eauction/protocol/openid-connect/auth`;
+  },
+  get tokenUrl(): string {
+    return `${getAuthOrigin()}/auth/realms/eauction/protocol/openid-connect/token`;
+  },
+  get logoutUrl(): string {
+    return `${getAuthOrigin()}/auth/realms/eauction/protocol/openid-connect/logout`;
+  },
 };
 
 // Generate cryptographically secure random string
