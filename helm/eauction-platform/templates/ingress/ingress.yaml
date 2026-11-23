@@ -57,6 +57,13 @@ spec:
                 name: eauction-bidding-engine
                 port:
                   number: {{ .Values.biddingEngine.service.port }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eauction-frontend
+                port:
+                  number: {{ .Values.frontend.service.port }}
     - host: {{ .Values.global.altDomain }}
       http:
         paths:
