@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
-  Home, 
+  Home,
+  LogOut, 
   Search, 
   Gavel, 
   Zap, 
@@ -63,6 +64,7 @@ interface PortalSidebarProps {
   };
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
+  onLogout?: () => void;
 }
 
 export const PortalSidebar: React.FC<PortalSidebarProps> = ({
@@ -73,6 +75,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   counts = {},
   isMobileOpen = false,
   onCloseMobile,
+  onLogout,
 }) => {
   const isArabic = lang === 'AR';
   const isBuyer = currentUser?.role === 'BUYER';
@@ -374,6 +377,35 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           </div>
         )}
       </nav>
+
+      {/* Marketplace Home & Sign Out Action Buttons */}
+      <div className="p-3 border-t border-slate-800/60 space-y-1.5 bg-slate-900/40">
+        <button
+          type="button"
+          onClick={() => onNavigate('HOME')}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:text-white hover:bg-emerald-500/10 border border-emerald-500/20 transition cursor-pointer"
+          title="Return to Public Marketplace Home"
+        >
+          <div className="flex items-center gap-3">
+            <Home className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="hidden lg:inline">{isArabic ? 'الرئيسية' : 'Marketplace Home'}</span>
+          </div>
+        </button>
+
+        {onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-200 hover:bg-rose-500/10 border border-rose-500/20 transition cursor-pointer"
+            title="Sign Out"
+          >
+            <div className="flex items-center gap-3">
+              <LogOut className="w-4 h-4 text-rose-400 shrink-0" />
+              <span className="hidden lg:inline">{isArabic ? 'تسجيل الخروج' : 'Log Out'}</span>
+            </div>
+          </button>
+        )}
+      </div>
 
       {/* Footer Branding */}
       <div className="p-3 border-t border-slate-800/80 bg-slate-950/40 text-[10px] text-slate-500">

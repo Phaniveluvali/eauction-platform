@@ -881,7 +881,20 @@ export const App: React.FC = () => {
     }
     currentUserRef.current = null;
     setCurrentUser(null);
-    logoutKeycloak(`${window.location.origin}/seller-buyer/`);
+    const idToken = localStorage.getItem('kc_id_token');
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('kc_access_token');
+      localStorage.removeItem('kc_id_token');
+      sessionStorage.clear();
+    } catch (e) {}
+
+    if (idToken) {
+      logoutKeycloak(`${window.location.origin}/seller-buyer/`);
+    } else {
+      navigateToView('HOME');
+      window.location.href = '/seller-buyer/';
+    }
   };
 
   const handleLiveNowClick = () => {
@@ -1183,6 +1196,7 @@ export const App: React.FC = () => {
               currentUser={currentUser}
               lang={language}
               counts={dynamicSidebarCounts}
+              onLogout={handleLogout}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <BuyerDashboard
@@ -1252,6 +1266,7 @@ export const App: React.FC = () => {
               currentUser={currentUser}
               lang={language}
               counts={dynamicSidebarCounts}
+              onLogout={handleLogout}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <MyBidsView
@@ -1315,6 +1330,7 @@ export const App: React.FC = () => {
               currentUser={currentUser}
               lang={language}
               counts={dynamicSidebarCounts}
+              onLogout={handleLogout}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <WonAuctionsView
@@ -1375,6 +1391,7 @@ export const App: React.FC = () => {
               currentUser={currentUser}
               lang={language}
               counts={dynamicSidebarCounts}
+              onLogout={handleLogout}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <DeliveryCollectionView
@@ -1431,6 +1448,7 @@ export const App: React.FC = () => {
               currentUser={currentUser}
               lang={language}
               counts={dynamicSidebarCounts}
+              onLogout={handleLogout}
             />
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
               <PaymentsView

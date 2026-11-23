@@ -328,6 +328,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   // Admin Header Profile Dropdown state
   const [isAdminProfileOpen, setIsAdminProfileOpen] = useState(false);
+  const adminProfileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (adminProfileRef.current && !adminProfileRef.current.contains(event.target as Node)) {
+        setIsAdminProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // User Administration & Dynamic Database Users state
   const [userRoleFilter, setUserRoleFilter] = useState<'ALL' | 'BUYER' | 'SELLER' | 'ADMIN'>('ALL');
@@ -2269,6 +2280,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             </div>
           </div>
           <button
+            type="button"
+            onClick={onSwitchToMarketplace}
+            className="w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition cursor-pointer mb-1 border border-emerald-500/20"
+            title="Return to Public Marketplace Home"
+          >
+            <Home className="w-4 h-4 text-emerald-400" />
+            <span>Marketplace Home</span>
+          </button>
+          <button
+            type="button"
             onClick={onLogout}
             className="w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition cursor-pointer"
           >
@@ -2369,15 +2390,87 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <HelpCircle className="w-5 h-5" />
             </button>
 
-            {/* Admin Profile Pill */}
-            <div className="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 font-black flex items-center justify-center text-xs shadow-xs">
-                {currentUser?.fullName?.charAt(0) || 'A'}
-              </div>
-              <div className="hidden md:block text-left">
-                <div className="text-xs font-bold text-slate-900 leading-tight">Admin</div>
-                <div className="text-[10px] text-slate-400 font-medium">System Administrator</div>
-              </div>
+            {/* Admin Profile Pill with Interactive Dropdown */}
+            <div className="relative" ref={adminProfileRef}>
+              <button
+                type="button"
+                onClick={() => setIsAdminProfileOpen(!isAdminProfileOpen)}
+                className="flex items-center space-x-2.5 pl-2 border-l border-slate-200 hover:bg-slate-50 py-1 px-2 rounded-xl transition cursor-pointer focus:outline-none"
+                title="Admin Profile & Menu"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 font-black flex items-center justify-center text-xs shadow-xs">
+                  {currentUser?.fullName?.charAt(0) || 'A'}
+                </div>
+                <div className="hidden md:block text-left">
+                  <div className="text-xs font-bold text-slate-900 leading-tight">{currentUser?.fullName || 'Admin'}</div>
+                  <div className="text-[10px] text-slate-400 font-medium">System Administrator</div>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${isAdminProfileOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isAdminProfileOpen && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-[#0B132B] rounded-2xl shadow-2xl border border-slate-700 p-5 z-50 text-center animate-in fade-in zoom-in-95 duration-150 text-white">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center mx-auto mb-2 font-black text-xl shadow-md">
+                    {currentUser?.fullName?.charAt(0) || 'A'}
+                  </div>
+
+                  <h4 className="font-bold text-white text-base leading-tight">
+                    {currentUser?.fullName || 'System Administrator'}
+                  </h4>
+
+                  <p className="text-xs text-slate-400 mb-2 font-mono truncate">
+                    {currentUser?.email || 'admin@eauction.in'}
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 mb-4">
+                    <span className="text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      ROLE: {currentUser?.role || 'ADMIN'}
+                    </span>
+                    <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                      SUPER ADMIN
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 text-xs">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setIsAdminProfileOpen(false);
+                        onSwitchToMarketplace();
+                      }}
+                      className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-900/30"
+                    >
+                      <Home className="w-4 h-4" />
+                      <span>Marketplace Home</span>
+                    </button>
+
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setIsAdminProfileOpen(false);
+                        setActiveTab('notifications');
+                        setActiveSubView('none');
+                      }}
+                      className="w-full py-2 px-3 bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Bell className="w-4 h-4 text-slate-400" />
+                      <span>Notification Controls</span>
+                    </button>
+
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setIsAdminProfileOpen(false);
+                        onLogout();
+                      }}
+                      className="w-full py-2.5 px-3 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-pointer mt-1"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>

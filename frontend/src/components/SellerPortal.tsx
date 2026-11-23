@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
+  Home,
+  LogOut,
   LayoutDashboard, 
   Car, 
   PlusSquare, 
@@ -77,6 +79,19 @@ export const SellerPortal: React.FC<SellerPortalProps> = ({
   onOpenLiveChat,
 }) => {
   const [activeScreen, setActiveScreen] = useState<SellerSubScreen>(initialSubScreen);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [listingFilter, setListingFilter] = useState<'All' | 'Live' | 'Scheduled' | 'Draft' | 'Sold'>('All');
   const [activeAuctionTab, setActiveAuctionTab] = useState<'Overview' | 'Specification' | 'Documents' | 'Inspection' | 'Bid History'>('Overview');
@@ -185,13 +200,38 @@ export const SellerPortal: React.FC<SellerPortalProps> = ({
           </div>
         </div>
 
-        {/* Right: Notifications, User Profile Pill */}
-        <div className="flex items-center gap-3 md:gap-4">
+        {/* Right: Home Button, Logout Button, Notifications, User Profile Pill with Interactive Dropdown */}
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* Direct Home Page Button */}
+          <button
+            type="button"
+            onClick={onNavigateHome}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 text-xs font-semibold transition cursor-pointer shadow-xs"
+            title="Return to Public Marketplace Home"
+          >
+            <Home className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden sm:inline">Home Page</span>
+          </button>
+
+          {/* Direct Quick Logout Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (onLogout) onLogout();
+              else window.location.href = '/seller-buyer/';
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-100 border border-rose-500/30 text-xs font-semibold transition cursor-pointer shadow-xs"
+            title="Log Out of Seller Portal"
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            <span className="hidden sm:inline">Log Out</span>
+          </button>
+
           {/* Notifications Button */}
           <div className="relative">
             <button 
               onClick={() => handleNavSelect('notifications')}
-              className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-full relative transition"
+              className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-full relative transition cursor-pointer"
               title="Notifications"
             >
               <Bell className="w-5 h-5" />
@@ -201,18 +241,99 @@ export const SellerPortal: React.FC<SellerPortalProps> = ({
             </button>
           </div>
 
-          {/* User Profile Pill */}
-          <div 
-            onClick={() => handleNavSelect('profile')}
-            className="flex items-center gap-2.5 pl-2 py-1 pr-3 rounded-full hover:bg-slate-800/60 cursor-pointer transition border border-slate-800"
-          >
-            <div className="w-8 h-8 rounded-full bg-cyan-600 text-white font-bold text-xs flex items-center justify-center ring-2 ring-cyan-400/30">
-              {sellerInitials}
-            </div>
-            <div className="hidden sm:block text-left">
-              <div className="text-xs font-bold text-white leading-tight">{sellerName}</div>
-              <div className="text-[10px] text-slate-400 leading-tight">Seller</div>
-            </div>
+          {/* User Profile Pill with Interactive Dropdown (Screenshot 2) */}
+          <div className="relative" ref={profileDropdownRef}>
+            <button 
+              type="button"
+              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+              className="flex items-center gap-2.5 pl-2 py-1 pr-3 rounded-full hover:bg-slate-800/80 cursor-pointer transition border border-slate-800 bg-slate-900/60 focus:outline-none"
+              title="User Profile & Menu"
+            >
+              <div className="w-8 h-8 rounded-full bg-cyan-600 text-white font-bold text-xs flex items-center justify-center ring-2 ring-cyan-400/30">
+                {sellerInitials}
+              </div>
+              <div className="hidden sm:block text-left">
+                <div className="text-xs font-bold text-white leading-tight">{sellerName}</div>
+                <div className="text-[10px] text-slate-400 leading-tight">Seller</div>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isProfileDropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-[#0B132B] rounded-2xl shadow-2xl border border-slate-700 p-5 z-50 text-center animate-in fade-in zoom-in-95 duration-150">
+                <div className="w-14 h-14 rounded-full bg-cyan-600 flex items-center justify-center mx-auto mb-2 text-white font-bold text-xl ring-2 ring-cyan-400/40">
+                  {sellerInitials}
+                </div>
+
+                <h4 className="font-bold text-white text-base leading-tight">
+                  {sellerName}
+                </h4>
+
+                <p className="text-xs text-slate-400 mb-2 font-mono truncate">
+                  {currentUser?.email || 'seller@ajauctions.online'}
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-1.5 mb-4">
+                  <span className="text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    ROLE: {currentUser?.role || 'SELLER'}
+                  </span>
+                  <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                    ID: SEL-10284
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 text-xs">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      onNavigateHome();
+                    }}
+                    className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-900/30"
+                  >
+                    <Home className="w-4 h-4" />
+                    <span>Marketplace Home</span>
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      handleNavSelect('profile');
+                    }}
+                    className="w-full py-2 px-3 bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <UserIcon className="w-4 h-4 text-slate-400" />
+                    <span>Seller Profile</span>
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      handleNavSelect('settings');
+                    }}
+                    className="w-full py-2 px-3 bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <SettingsIcon className="w-4 h-4 text-slate-400" />
+                    <span>Account Settings</span>
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      if (onLogout) onLogout();
+                      else window.location.href = '/seller-buyer/';
+                    }}
+                    className="w-full py-2.5 px-3 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-pointer mt-1"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -269,6 +390,32 @@ export const SellerPortal: React.FC<SellerPortalProps> = ({
               );
             })}
           </nav>
+
+          {/* Sidebar Actions: Home & Logout */}
+          <div className="p-3 border-t border-slate-800/80 space-y-1.5 bg-slate-900/40">
+            <button
+              type="button"
+              onClick={onNavigateHome}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs lg:text-sm font-semibold text-emerald-400 hover:text-white hover:bg-emerald-500/10 border border-emerald-500/20 transition cursor-pointer"
+              title="Return to Public Marketplace Home"
+            >
+              <Home className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Marketplace Home</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (onLogout) onLogout();
+                else window.location.href = '/seller-buyer/';
+              }}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs lg:text-sm font-semibold text-rose-400 hover:text-rose-200 hover:bg-rose-500/10 border border-rose-500/20 transition cursor-pointer"
+              title="Sign Out of Seller Portal"
+            >
+              <LogOut className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>Log Out</span>
+            </button>
+          </div>
 
           {/* Sidebar Footer */}
           <div className="p-3 border-t border-slate-800/80 bg-slate-950/40 text-[10px] text-slate-400 flex items-center justify-between">

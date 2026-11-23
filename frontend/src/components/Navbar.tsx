@@ -11,7 +11,9 @@ import {
   Bell,
   Shield,
   Heart,
-  Menu
+  Menu,
+  Home,
+  LogOut
 } from 'lucide-react';
 import { initiateKeycloakLogin } from '../utils/oidc';
 
@@ -290,6 +292,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
 
                     <div className="grid grid-cols-1 gap-2 text-xs">
+                      {/* Marketplace Home Navigation */}
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          if (onHomeClick) onHomeClick();
+                          else if (onNavigate) onNavigate('HOME');
+                        }}
+                        className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                      >
+                        <Home className="w-4 h-4" />
+                        <span>Marketplace Home</span>
+                      </button>
+
                       {currentUser.role === 'BUYER' && (
                         <button 
                           onClick={() => {
@@ -331,9 +347,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setIsProfileMenuOpen(false);
                           onLogout();
                         }}
-                        className="py-2.5 px-3 border border-slate-700 rounded-lg text-rose-400 font-semibold hover:bg-slate-800 transition cursor-pointer"
+                        className="py-2.5 px-3 border border-rose-500/30 text-rose-400 font-bold hover:bg-rose-500/10 rounded-lg transition cursor-pointer flex items-center justify-center gap-2"
                       >
-                        Sign Out
+                        <LogOut className="w-4 h-4 text-rose-400" />
+                        <span>Sign Out</span>
                       </button>
                     </div>
                   </div>
